@@ -5,21 +5,23 @@
 </template>
 
 <script lang="ts">
-import { defineComponent } from 'vue';
+  import { defineComponent } from 'vue';
 
-export default defineComponent({
-  methods: {
-    handleFileChange(event: Event) {
-      const file = (event.target as HTMLInputElement).files?.[0];
-      if (file) {
-        // Émettre un événement pour signaler qu'un fichier a été sélectionné
-        this.$emit('file-selected', file);
-      }
+  export default defineComponent({
+    name: 'Uploader',
+    // On remplace `methods` par une fonction `setup()`
+    setup(_, { emit }) {
+      const handleFileChange = (event: Event) => {
+        const file = (event.target as HTMLInputElement).files?.[0];
+        if (file) {
+          emit('file-selected', file);
+        }
+      };
+
+      // On retourne ce qu'on veut exposer au template
+      return {
+        handleFileChange
+      };
     }
-  }
-});
+  });
 </script>
-
-<style scoped>
-  /* Ajoute du style si nécessaire */
-</style>
