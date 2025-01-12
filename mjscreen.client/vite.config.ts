@@ -44,7 +44,10 @@ export default defineConfig({
         alias: {
             '@': fileURLToPath(new URL('./src', import.meta.url))
         }
-    },
+  },
+  css: {
+    postcss: './postcss.config.js', // Assure-toi que le chemin est correct
+  },
     server: {
         proxy: {
             '^/weatherforecast': {
