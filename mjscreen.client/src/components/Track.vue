@@ -5,7 +5,7 @@
          @play="isPlaying = true"
          @pause="isPlaying = false"
          @ended="handleTrackEnd"
-         :loop="track.isLooping" />
+         :loop="isLooping" />
 
   <!-- Boutons Play/Pause et Boucler -->
   <div class="controls">
@@ -52,6 +52,7 @@
       const player = ref<HTMLAudioElement | null>(null);
       const canvas = ref<HTMLCanvasElement | null>(null);
       const isPlaying = ref(false);
+      const isLooping = ref(props.track.loop || false);
 
       function togglePlay() {
         if (!player.value) return;
@@ -70,8 +71,8 @@
       }
       function toggleLoop() {
         if (!player.value) return;
-        props.track.loop = !props.track.loop;
-        emit('update', props.track); // Notifie le parent
+        isLooping.value = !isLooping.value;
+        emit('update', { ...props.track, loop: isLooping.value }); // Notifie le parent avec une copie modifiée de l'objet track
       }
 
       function updateVolume() {
@@ -115,6 +116,7 @@
 
       // Attendre que le composant soit monté pour initialiser la waveform
       onMounted(() => {
+        //
         if (props.track.src) {
           initializeWaveform();
           player.value.volume = props.track.volume;
@@ -140,7 +142,7 @@
           }
         }
       );
-
+      
       expose({
         play,
         pause,
@@ -149,6 +151,7 @@
         player,
         canvas,
         isPlaying,
+        isLooping,
         togglePlay,
         toggleLoop,
         updateVolume,
