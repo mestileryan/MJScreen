@@ -3,67 +3,47 @@
   <br />
   <!-- On référence le composant enfant FilesList -->
   <FilesList ref="filesList" @play="handlePlay" />
-
-  <button @click="toggleAutoplay">Autoplay {{ autoPlayMode ? 'ON' : 'OFF'}}</button>
-  <div v-for="track in tracks" :key="track.id">
-    <Track :src="track.src" :autoPlay="track.autoPlay" @remove="removeTrack(track)" />
-  </div>
+  <TracksPlayer :autoPlayMode="autoPlayMode"
+                @update:autoplayMode="autoPlayMode = $event"
+                ref="tracksPlayer" />
 </template>
 
 <script lang="ts">
   import { defineComponent, ref } from 'vue';
   import Uploader from './Uploader.vue';
-  import TrackComponent from './Track.vue';
   import FilesList from './FilesList.vue';
-  import Track from '../models/Track'; // La classe Track
+  import TracksPlayer from './TracksPlayer.vue';
 
   export default defineComponent({
     name: 'HelloWorld',
     components: {
       Uploader,
-      Track: TrackComponent,
-      FilesList
+      FilesList,
+      TracksPlayer,
     },
     setup() {
       const filesList = ref<InstanceType<typeof FilesList> | null>(null);
-      const tracks = ref<Track[]>([]);
+      const tracksPlayer = ref<InstanceType<typeof TracksPlayer> | null>(null);
       const autoPlayMode = ref(false);
 
-      /**
-     * Handle file selection from Uploader
-     */
       const handleFileSelected = (file: File) => {
         if (filesList.value) {
           filesList.value.addFiles(file); // Ajoute le fichier à la liste
         }
       };
-      /**
-     * Handle "play" event from FilesList
-     */
-      const handlePlay = (file: File) => {
-        const track = new Track(file, autoPlayMode.value); // Crée une nouvelle instance de Track
-        tracks.value.push(track); // Ajoute la piste à la liste
 
-      };
-
-      const removeTrack = (track: Track) => {
-        // Supprime la piste de la liste
-        tracks.value = tracks.value.filter((t) => t.id !== track.id);
-        track.revokeUrl(); // Révoque l'URL Blob associée
-      };
-      const toggleAutoplay = () => {
-
-        autoPlayMode.value = !autoPlayMode.value;
+      const handlePlay = (file: File, volume: number) => {
+        if (tracksPlayer.value) {
+          tracksPlayer.value.addTrack(file, volume); // Passe les données au composant TracksPlayer
+        }
       };
 
       return {
         filesList,
-        tracks,
+        tracksPlayer,
         autoPlayMode,
         handleFileSelected,
         handlePlay,
-        removeTrack,
-        toggleAutoplay,
       };
     },
   });

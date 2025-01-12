@@ -1,12 +1,19 @@
 <template>
   <div>
-    <div v-if="files.length">
+    <div v-if="trackFiles.length">
       <h3>Fichiers uploadés :</h3>
       <ul>
-        <li v-for="(file, index) in files" :key="index">
-          {{ file.name }} ({{ (file.size / 1024).toFixed(2) }} Ko)
+        <li v-for="(trackFile, index) in trackFiles" :key="index">
+          {{ trackFile.file.name }} ({{ (trackFile.file.size / 1024 / 1024).toFixed(2) }} Mo)
+          <input class="volume-slider"
+                 type="range"
+                 min="0"
+                 max="1"
+                 step="0.01"
+                 v-model.number="trackFile.initialVolume" />
           <button @click="removeFile(index)">X</button>
-          <button @click="play(index)">Play</button>
+          <button @click="play(index)">▶️</button>
+
         </li>
       </ul>
     </div>
@@ -18,40 +25,45 @@
 
 <script lang="ts">
   import { defineComponent, ref } from 'vue';
+  import FileTrack from '../models/FileTrack';
 
   export default defineComponent({
     name: 'FilesList',
     emits: ['play'], // Déclare l'événement "play"
     setup(_props, { expose, emit }) {
-      const files = ref<File[]>([]);
+      const trackFiles = ref<FileTrack[]>([]);
+      const volume = ref(1);
 
       function addFile(newFile: File) {
-        files.value.push(newFile);
+        trackFiles.value.push(new FileTrack(newFile));
       }
 
       function addFiles(newFiles: File | File[]) {
         if (!Array.isArray(newFiles)) {
           newFiles = [newFiles];
         }
-        files.value = [...files.value, ...newFiles];
+        trackFiles.value = [
+          ...trackFiles.value,
+          ...newFiles.map(file => new FileTrack(file))
+        ];
       }
 
       function removeFile(index: number) {
-        files.value.splice(index, 1);
+        trackFiles.value.splice(index, 1);
       }
 
       function clearFiles() {
-        files.value = [];
+        trackFiles.value = [];
       }
 
       /**
        * Joue un fichier et émet un événement "play" avec les informations du fichier
        */
       function play(index: number) {
-        const file = files.value[index];
-        if (file) {
+        const trackFile = trackFiles.value[index];
+        if (trackFile) {
           // Émet l'événement "play" avec le fichier comme payload
-          emit('play', file);
+          emit('play', trackFile.file, trackFile.initialVolume);
         }
       }
 
@@ -64,7 +76,8 @@
       });
 
       return {
-        files,
+        trackFiles,
+        volume,
         addFile,
         addFiles,
         removeFile,

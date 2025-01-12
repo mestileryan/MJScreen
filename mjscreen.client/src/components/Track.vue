@@ -35,7 +35,7 @@
   import { useAVWaveform } from 'vue-audio-visual';
 
   export default defineComponent({
-    name: 'AudioPlayer',
+    name: 'Track',
     props: {
       src: {
         type: String,
@@ -45,6 +45,10 @@
         type: Boolean,
         default: false,
       },
+      initialVolume: {
+        type: Number,
+        default: 0.8,
+      }
     },
     emits: ['remove'], // Déclare l'événement "remove"
     setup(props, { emit }) {
@@ -107,6 +111,12 @@
           useAVWaveform(player, canvas, {
             src: props.src,
             playtimeWithMs: false,
+            canvHeight: 25,
+            playedLineWidth: 1,
+            playedLineColor: "#AAA",
+            noplayedLineWidth: 1,
+            noplayedLineColor: "#0EE",
+            playtimeFontColor: "#000",
           });
         } else {
           console.error('Player ou Canvas non initialisé.');
@@ -117,6 +127,8 @@
       onMounted(() => {
         if (props.src) {
           initializeWaveform();
+          volume.value = props.initialVolume;
+          player.value.volume = volume.value;
         }
         if (props.autoPlay && player.value) {
           player.value.play().catch((err) => {
