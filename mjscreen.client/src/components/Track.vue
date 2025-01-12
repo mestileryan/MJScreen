@@ -51,7 +51,7 @@
       }
     },
     emits: ['remove'], // Déclare l'événement "remove"
-    setup(props, { emit }) {
+    setup(props, { expose, emit }) {
       // Références vers nos éléments HTML
       const player = ref<HTMLAudioElement | null>(null);
       const canvas = ref<HTMLCanvasElement | null>(null);
@@ -73,6 +73,17 @@
           player.value.play().catch((err) => {
             console.error('Erreur lors de la lecture audio :', err);
           });
+        }
+      }
+
+      function play() {
+        if (!isPlaying.value) {
+          player.value.play();
+        }
+      }
+      function pause() {
+        if (isPlaying.value) {
+          player.value.pause();
         }
       }
 
@@ -154,6 +165,11 @@
         }
       );
 
+      expose({
+        play,
+        pause,
+      });
+
       // On retourne les propriétés et fonctions qu'on veut utiliser dans le template
       return {
         player,
@@ -166,6 +182,8 @@
         updateVolume,
         removeTrack,
         handleTrackEnd,
+        play,
+        pause,
       };
     }
   });

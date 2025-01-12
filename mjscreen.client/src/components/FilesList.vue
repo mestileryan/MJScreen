@@ -11,7 +11,7 @@
                  max="1"
                  step="0.01"
                  v-model.number="trackFile.initialVolume" />
-          <button @click="removeFile(index)">X</button>
+          <button @click="removeFile(index)">🗑️</button>
           <button @click="play(index)">▶️</button>
 
         </li>
