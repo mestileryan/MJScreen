@@ -116,7 +116,6 @@
 
       // Attendre que le composant soit monté pour initialiser la waveform
       onMounted(() => {
-        //
         if (props.track.src) {
           initializeWaveform();
           player.value.volume = props.track.volume;
@@ -125,12 +124,6 @@
           player.value.play().catch((err) => {
             console.error('Erreur de lecture automatique :', err);
           });
-        }
-      });
-
-      onUnmounted(() => {
-        if (props.track.src) {
-          URL.revokeObjectURL(props.track.src);
         }
       });
 

@@ -6,6 +6,8 @@
   <TracksPlayer :autoPlayMode="autoPlayMode"
                 @update:autoplayMode="autoPlayMode = $event"
                 ref="tracksPlayer" />
+
+
 </template>
 
 <script lang="ts">
