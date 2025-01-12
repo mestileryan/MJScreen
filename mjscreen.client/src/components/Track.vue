@@ -1,11 +1,11 @@
 <template>
   <!-- Player audio -->
   <audio ref="player"
-         :src="src"
+         :src="track.src"
          @play="isPlaying = true"
          @pause="isPlaying = false"
          @ended="handleTrackEnd"
-         :loop="isLooping" />
+         :loop="track.isLooping" />
 
   <!-- Boutons Play/Pause et Boucler -->
   <div class="controls">
@@ -20,7 +20,7 @@
            min="0"
            max="1"
            step="0.01"
-           v-model.number="volume"
+           v-model.number="track.volume"
            @input="updateVolume" />
     <button class="btn-remove" @click="removeTrack">
       🗑️
@@ -30,6 +30,7 @@
   <!-- Canvas pour la waveform -->
   <canvas ref="canvas" class="waveform"></canvas>
 </template>
+
 <script lang="ts">
   import { defineComponent, ref, watch, onMounted, onUnmounted } from 'vue';
   import { useAVWaveform } from 'vue-audio-visual';
@@ -37,43 +38,24 @@
   export default defineComponent({
     name: 'Track',
     props: {
-      src: {
-        type: String,
-        required: true
+      track: {
+        type: Object,
+        required: true,
       },
       autoPlay: {
         type: Boolean,
         default: false,
       },
-      initialVolume: {
-        type: Number,
-        default: 0.8,
-      }
     },
-    emits: ['remove'], // Déclare l'événement "remove"
+    emits: ['update', 'remove'],
     setup(props, { expose, emit }) {
-      // Références vers nos éléments HTML
       const player = ref<HTMLAudioElement | null>(null);
       const canvas = ref<HTMLCanvasElement | null>(null);
-
-      // States réactifs
       const isPlaying = ref(false);
-      const isLooping = ref(false);
-      const volume = ref(1);
 
-      // Fonctions
       function togglePlay() {
-        if (!player.value) {
-          console.error('Player non initialisé.');
-          return;
-        }
-        if (isPlaying.value) {
-          player.value.pause();
-        } else {
-          player.value.play().catch((err) => {
-            console.error('Erreur lors de la lecture audio :', err);
-          });
-        }
+        if (!player.value) return;
+        isPlaying.value ? player.value.pause() : player.value.play();
       }
 
       function play() {
@@ -86,14 +68,10 @@
           player.value.pause();
         }
       }
-
       function toggleLoop() {
-        if (!player.value) {
-          console.error('Player non initialisé.');
-          return;
-        }
-        isLooping.value = !isLooping.value;
-        player.value.loop = isLooping.value;
+        if (!player.value) return;
+        props.track.loop = !props.track.loop;
+        emit('update', props.track); // Notifie le parent
       }
 
       function updateVolume() {
@@ -101,7 +79,8 @@
           console.error('Player non initialisé.');
           return;
         }
-        player.value.volume = volume.value;
+        player.value.volume = props.track.volume;
+        emit('update', props.track); // Notifie le parent
       }
 
       // Fonction pour supprimer la track
@@ -120,7 +99,7 @@
       function initializeWaveform() {
         if (player.value && canvas.value) {
           useAVWaveform(player, canvas, {
-            src: props.src,
+            src: props.track.src,
             playtimeWithMs: false,
             canvHeight: 25,
             playedLineWidth: 1,
@@ -136,10 +115,9 @@
 
       // Attendre que le composant soit monté pour initialiser la waveform
       onMounted(() => {
-        if (props.src) {
+        if (props.track.src) {
           initializeWaveform();
-          volume.value = props.initialVolume;
-          player.value.volume = volume.value;
+          player.value.volume = props.track.volume;
         }
         if (props.autoPlay && player.value) {
           player.value.play().catch((err) => {
@@ -148,16 +126,14 @@
         }
       });
 
-      // Révoque l'URL Blob lorsque le composant est détruit
       onUnmounted(() => {
-        if (props.src) {
-          URL.revokeObjectURL(props.src);
+        if (props.track.src) {
+          URL.revokeObjectURL(props.track.src);
         }
       });
 
-      // Surveiller les changements de la prop src
       watch(
-        () => props.src,
+        () => props.track.src,
         (newSrc) => {
           if (newSrc) {
             initializeWaveform();
@@ -169,14 +145,10 @@
         play,
         pause,
       });
-
-      // On retourne les propriétés et fonctions qu'on veut utiliser dans le template
       return {
         player,
         canvas,
         isPlaying,
-        isLooping,
-        volume,
         togglePlay,
         toggleLoop,
         updateVolume,
@@ -188,8 +160,3 @@
     }
   });
 </script>
-
-
-<style scoped>
-  /* Vos styles éventuels */
-</style>
