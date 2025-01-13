@@ -7,7 +7,6 @@ import HelloWorld from './components/HelloWorld.vue'
     <div class="wrapper">
       <HelloWorld />
     </div>
-    <div class="bg-blue-500">Hello</div>
   </header>
 
 </template>

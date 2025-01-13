@@ -108,6 +108,7 @@
             noplayedLineWidth: 1,
             noplayedLineColor: "#0EE",
             playtimeFontColor: "#000",
+            playtimeSliderColor: "#F87171"
           });
         } else {
           console.error('Player ou Canvas non initialisé.');

@@ -1,18 +1,29 @@
 
 <template>
-  <div>
-    <button @click="toggleAutoplay">Autoplay {{ autoPlayMode ? 'ON' : 'OFF' }}</button>
-    <button @click="playAll">▶️ all</button>
-    <button @click="pauseAll">⏸️ all</button>
-    <button @click="removeAllTracks">🗑️ all</button>
-    <div v-for="(track, index) in tracks" :key="track.id">
-      <Track ref="trackRefs"
-             :track="track"
-             :autoPlay="autoPlayMode"
-             @update="updateTrack(index, $event)"
-             @remove="removeTrack(track)" />
-    </div>
+  <div class="flex items-center justify-center gap-6">
+    <button @click="toggleAutoplay">
+      <SquareMousePointer class="w-8 h-8 text-purple-400" v-if="autoPlayMode" />
+      <SquareDashedMousePointer class="w-8 h-8 text-gray-600"  v-if="!autoPlayMode" />
+    </button>
+    <button @click="playAll">
+      <CirclePlay class="w-8 h-8 text-green-400" />
+    </button>
+    <button @click="pauseAll">
+      <CirclePause class="w-8 h-8 text-white" />
+    </button>
+    <button @click="removeAllTracks">
+      <Bomb class="w-8 h-8 text-red-400" />
+    </button>
   </div>
+
+  <div v-for="(track, index) in tracks" :key="track.id">
+    <Track ref="trackRefs"
+            :track="track"
+            :autoPlay="autoPlayMode"
+            @update="updateTrack(index, $event)"
+            @remove="removeTrack(track)" />
+  </div>
+
 </template>
 
 <script lang="ts">

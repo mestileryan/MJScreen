@@ -1,12 +1,21 @@
 <template>
-  <Uploader @file-selected="handleFileSelected" />
-  <br />
-  <!-- On référence le composant enfant FilesList -->
-  <FilesList ref="filesList" @play="handlePlay" />
-  <TracksPlayer :autoPlayMode="autoPlayMode"
-                @update:autoplayMode="autoPlayMode = $event"
-                ref="tracksPlayer" />
+  <div className="min-h-screen bg-gray-900 flex">
+    <div className="flex-1 p-8 overflow-auto">
+      <h1 className="text-3xl font-bold text-purple-400 mb-8">MJ Screen</h1>
+      <Uploader @file-selected="handleFileSelected" />
 
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <FilesList ref="filesList" @play="handlePlay" />
+      </div>
+    </div>
+
+    <div className="w-96 bg-gray-800 p-6 flex flex-col justify-start border-l border-gray-700">
+      <TracksPlayer :autoPlayMode="autoPlayMode"
+                    @update:autoplayMode="autoPlayMode = $event"
+                    ref="tracksPlayer" />
+
+    </div>
+  </div>
 
 </template>
 

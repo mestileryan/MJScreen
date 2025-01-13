@@ -1,24 +1,38 @@
 <template>
-  <div>
-    <div v-if="trackFiles.length">
-      <h3>Fichiers uploadés :</h3>
+  <div class="w-full max-w-2xl bg-gray-800 rounded-lg p-4">
+    <h2 class="text-xl font-semibold text-white mb-4">Bibliothèque</h2>
+    <div class="space-y-2" v-if="trackFiles.length">
       <ul>
-        <li v-for="(trackFile, index) in trackFiles" :key="index">
-          {{ trackFile.file.name }} ({{ (trackFile.file.size / 1024 / 1024).toFixed(2) }} Mo)
+        <li class="flex items-center justify-between p-3 rounded-lg bg-gray-700 hover:bg-gray-600" v-for="(trackFile, index) in trackFiles" :key="index">
+          <Music class="w-5 h-5 text-purple-400 mr-3" />
+          <div>
+            <p class="text-white font-medium">
+              {{ trackFile.file.name }}
+            </p>
+            <p class="text-gray-400 text-sm">
+              ({{ (trackFile.file.size / 1024 / 1024).toFixed(2) }} Mo)
+            </p>
+          </div>
           <input class="volume-slider"
                  type="range"
                  min="0"
                  max="1"
                  step="0.01"
                  v-model.number="trackFile.initialVolume" />
-          <button @click="removeFile(index)">🗑️</button>
-          <button @click="play(index)">▶️</button>
+          <div class="flex items-center gap-1 ml-2">
+            <button class="p-2 rounded-full hover:bg-purple-700/20 transition-colors" @click="play(index)">
+              <Play class="w-5 h-5 text-green-400" />
+            </button>
+            <button @click="removeFile(index)" class="p-2 hover:bg-red-700/20 rounded-full transition-colors">
+              <Trash2 class="w-5 h-5 text-red-400" />
+            </button>
+          </div>
 
         </li>
       </ul>
     </div>
     <div v-else>
-      <p>Aucun fichier pour le moment.</p>
+      <p class="text-gray-400 italic">Aucun fichier pour le moment.</p>
     </div>
   </div>
 </template>
@@ -26,6 +40,7 @@
 <script lang="ts">
   import { defineComponent, ref } from 'vue';
   import FileTrack from '../models/FileTrack';
+  import * as lucide from 'lucide-vue-next'
 
   export default defineComponent({
     name: 'FilesList',
