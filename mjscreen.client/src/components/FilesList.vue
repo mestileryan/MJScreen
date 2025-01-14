@@ -40,6 +40,7 @@
 <script lang="ts">
   import { defineComponent, ref } from 'vue';
   import FileTrack from '../models/FileTrack';
+  import saveTrackToDB from '../persistance/SaveTrackService'
   import * as lucide from 'lucide-vue-next'
 
   export default defineComponent({
@@ -50,7 +51,11 @@
       const volume = ref(1);
 
       function addFile(newFile: File) {
-        trackFiles.value.push(new FileTrack(newFile));
+        const ft = new FileTrack(newFile);
+        trackFiles.value.push(ft);
+
+        // Sauvegarde immédiatement dans Dexie
+        // const id = await saveTrackToDB(ft); // TODO
       }
 
       function addFiles(newFiles: File | File[]) {
