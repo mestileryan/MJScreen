@@ -20,7 +20,7 @@
                  step="0.01"
                  v-model.number="trackFile.initialVolume" />
           <div class="flex items-center gap-1 ml-2">
-            <button class="p-2 rounded-full hover:bg-purple-700/20 transition-colors" @click="play(index)">
+            <button class="p-2 rounded-full hover:bg-green-400/20 transition-colors" @click="play(index)">
               <Play class="w-5 h-5 text-green-400" />
             </button>
             <button @click="removeFile(index)" class="p-2 hover:bg-red-700/20 rounded-full transition-colors">

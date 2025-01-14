@@ -1,4 +1,5 @@
 <template>
+  <p class="text-white text-xs mb-1">{{ track.name }}</p>
   <!-- Player audio -->
   <audio ref="player"
          :src="track.src"
@@ -7,28 +8,32 @@
          @ended="handleTrackEnd"
          :loop="isLooping" />
 
+  <!-- Canvas pour la waveform -->
+  <canvas ref="canvas" class="rounded bg-gray-700 mb-1" />
+
   <!-- Boutons Play/Pause et Boucler -->
   <div class="controls">
-    <button class="btn-play" @click="togglePlay">
-      {{ isPlaying ? '⏸️' : '▶️' }}
+    <button class="rounded-full hover:bg-red-400/20 transition-colors" @click="removeTrack">
+      <Trash2 class="w-5 h-5 text-red-400" />
     </button>
-    <button class="btn-loop" @click="toggleLoop">
-      {{ isLooping ? '🔁' : '—' }}
+    <button class="ml-1 rounded-full hover:bg-gray-400/20 transition-colors" @click="togglePlay">
+      <Pause v-if="isPlaying" class="w-5 h-5 text-gray-400" />
+      <Play v-if="!isPlaying" class="w-5 h-5 text-green-400" />
     </button>
-    <input class="volume-slider"
+    <button class="ml-1 rounded-full hover:bg-gray-400/20 transition-colors" @click="toggleLoop">
+      <Repeat1 v-if="isLooping" class="w-5 h-5 text-purple-400" />
+      <Repeat1 v-if="!isLooping" class="w-5 h-5 text-gray-400" />
+    </button>
+
+    <input class="ml-2 w-20"
            type="range"
            min="0"
            max="1"
            step="0.01"
            v-model.number="track.volume"
            @input="updateVolume" />
-    <button class="btn-remove" @click="removeTrack">
-      🗑️
-    </button>
-  </div>
 
-  <!-- Canvas pour la waveform -->
-  <canvas ref="canvas" class="waveform"></canvas>
+  </div>
 </template>
 
 <script lang="ts">
@@ -103,11 +108,12 @@
             src: props.track.src,
             playtimeWithMs: false,
             canvHeight: 25,
+            canvWidth: 300,
             playedLineWidth: 1,
-            playedLineColor: "#AAA",
+            playedLineColor: "#777",
             noplayedLineWidth: 1,
-            noplayedLineColor: "#0EE",
-            playtimeFontColor: "#000",
+            noplayedLineColor: "#077",
+            playtimeFontColor: "#fff",
             playtimeSliderColor: "#F87171"
           });
         } else {
@@ -141,6 +147,7 @@
         play,
         pause,
       });
+
       return {
         player,
         canvas,
