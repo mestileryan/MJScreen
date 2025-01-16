@@ -18,4 +18,4 @@ export class TrackLibrary extends Dexie {
 }
 
 // On exporte une instance unique de la DB
-export const TrackLibraryDB= new TrackLibrary();
+export const TrackLibraryDB = new TrackLibrary();

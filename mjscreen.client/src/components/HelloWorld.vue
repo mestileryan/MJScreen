@@ -39,7 +39,7 @@
 
       const handleFileSelected = (file: File) => {
         if (filesList.value) {
-          filesList.value.addFiles(file); // Ajoute le fichier à la liste
+          filesList.value.addFile(file); // Ajoute le fichier à la liste
         }
       };
 

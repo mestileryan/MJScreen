@@ -1,6 +1,7 @@
 export default class FileTrack {
+  id?: number;             // Identifiant pour IndexedDB
   file: File;
-  initialVolume: Number;
+  initialVolume: number;
 
   constructor(file: File, initialVolume = 0.8) {
     this.file = file; // Génère un ID unique basé sur le timestamp

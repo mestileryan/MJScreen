@@ -18,7 +18,8 @@
                  min="0"
                  max="1"
                  step="0.01"
-                 v-model.number="trackFile.initialVolume" />
+                 v-model.number="trackFile.initialVolume" 
+                 @change="handleVolumeChange(index)"/>
           <div class="flex items-center gap-1 ml-2">
             <button class="p-2 rounded-full hover:bg-green-400/20 transition-colors" @click="play(index)">
               <Play class="w-5 h-5 text-green-400" />
@@ -38,9 +39,14 @@
 </template>
 
 <script lang="ts">
-  import { defineComponent, ref } from 'vue';
+  import { defineComponent, ref, onMounted } from 'vue';
   import FileTrack from '../models/FileTrack';
-  import saveTrackToDB from '../persistance/SaveTrackService'
+  import {
+    saveTrackToDB,
+    removeTrackFromDB,
+    updateTrackVolumeInDB,
+    loadTracksFromDB,
+  } from '../persistance/SaveTrackService';
   import * as lucide from 'lucide-vue-next'
 
   export default defineComponent({
@@ -50,8 +56,17 @@
       const trackFiles = ref<FileTrack[]>([]);
       const volume = ref(1);
 
+      onMounted(async () => {
+        // On récupère les tracks depuis IndexedDB
+        const loadedTracks = await loadTracksFromDB();
+        // On les stocke dans notre state local
+        trackFiles.value = loadedTracks;
+        console.log('Tracks chargés depuis la DB :', loadedTracks);
+      });
+
       function addFile(newFile: File) {
         const ft = new FileTrack(newFile);
+        ft.id = saveTrackToDB(ft);
         trackFiles.value.push(ft);
 
         // Sauvegarde immédiatement dans Dexie
@@ -66,10 +81,22 @@
           ...trackFiles.value,
           ...newFiles.map(file => new FileTrack(file))
         ];
+        
       }
 
       function removeFile(index: number) {
+        const track = trackFiles.value[index];
+        // On retire localement
         trackFiles.value.splice(index, 1);
+        // On retire côté DB
+        removeTrackFromDB(track);
+      }
+
+      function handleVolumeChange(index: number) {
+        const track = trackFiles.value[index];
+        // On enregistre la nouvelle valeur (déjà mise à jour par v-model)
+        // dans Dexie :
+        updateTrackVolumeInDB(track);
       }
 
       function clearFiles() {
@@ -101,6 +128,7 @@
         addFile,
         addFiles,
         removeFile,
+        handleVolumeChange,
         clearFiles,
         play
       };

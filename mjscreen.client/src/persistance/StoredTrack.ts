@@ -4,7 +4,7 @@
 export interface StoredTrack {
   id?: number; // clé primaire auto-incrémentée
   name: string;
-  initialVolume: Number;
+  initialVolume: number;
   blob: Blob;  // On stocke le contenu en blob (ou File)
 }
 
