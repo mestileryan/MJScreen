@@ -43,8 +43,8 @@
       const trackRefs = ref<(InstanceType<typeof TrackComponent> | null)[]>([]);
       const autoPlayMode = ref(false); // Contrôle global de l'autoplay
 
-      const addTrack = (file: File, volume: number) => {
-        const track = new Track(file, volume);
+      const addTrack = (file: File, name: string, volume: number) => {
+        const track = new Track(file, name, volume);
         tracks.value.push(track);
       };
 

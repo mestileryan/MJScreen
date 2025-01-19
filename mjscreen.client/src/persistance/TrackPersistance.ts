@@ -1,12 +1,12 @@
 // db.ts
 import Dexie from 'dexie';
 import type { Table } from 'dexie';
-import type { StoredTrack } from './StoredTrack';
+import type { TrackDB } from './TrackDB';
 
 
 export class TrackLibrary extends Dexie {
   // Table "tracks", type = StoredTrack
-  tracks!: Table<StoredTrack>;
+  tracks!: Table<TrackDB>;
 
   constructor() {
     super('TrackLibrary'); // nom de la base

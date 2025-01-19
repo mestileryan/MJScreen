@@ -9,7 +9,7 @@
          :loop="isLooping" />
 
   <!-- Canvas pour la waveform -->
-  <canvas ref="canvas" class="rounded bg-gray-700 mb-1" />
+  <canvas ref="canvas" class="rounded bg-gray-600 mb-1" />
 
   <!-- Boutons Play/Pause et Boucler -->
   <div class="controls">
@@ -113,8 +113,8 @@
             playedLineColor: "#777",
             noplayedLineWidth: 1,
             noplayedLineColor: "#077",
-            playtimeFontColor: "#fff",
-            playtimeSliderColor: "#F87171"
+            playtimeFontColor: "#aaa",
+            playtimeSliderColor: "#F77"
           });
         } else {
           console.error('Player ou Canvas non initialisé.');

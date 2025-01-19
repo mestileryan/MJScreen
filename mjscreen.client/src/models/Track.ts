@@ -6,13 +6,13 @@ export default class Track {
   loop: boolean;
   name: string;
 
-  constructor(file: File, volume = 1, autoPlay = false) {
+  constructor(file: File, name: string, volume = 1, autoPlay = false) {
     this.id = Date.now(); // Génère un ID unique basé sur le timestamp
     this.src = URL.createObjectURL(file); // Crée une URL unique pour le fichier
     this.autoPlay = autoPlay;
     this.volume = volume;
     this.loop = false;
-    this.name = file.name;
+    this.name = name;
   }
 
   revokeUrl() {

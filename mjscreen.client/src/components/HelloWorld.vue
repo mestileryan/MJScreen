@@ -4,8 +4,8 @@
       <h1 className="text-3xl font-bold text-purple-400 mb-8">MJ Screen</h1>
       <Uploader @file-selected="handleFileSelected" />
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <FilesList ref="filesList" @play="handlePlay" />
+      <div>
+        <Library ref="library" @play="handlePlay" />
       </div>
     </div>
 
@@ -22,35 +22,36 @@
 <script lang="ts">
   import { defineComponent, ref } from 'vue';
   import Uploader from './Uploader.vue';
-  import FilesList from './FilesList.vue';
+  import Library from './Library.vue';
   import TracksPlayer from './TracksPlayer.vue';
+  import FileTrack from '../models/FileTrack'
 
   export default defineComponent({
     name: 'HelloWorld',
     components: {
       Uploader,
-      FilesList,
+      Library,
       TracksPlayer,
     },
     setup() {
-      const filesList = ref<InstanceType<typeof FilesList> | null>(null);
+      const library = ref<InstanceType<typeof Library> | null>(null);
       const tracksPlayer = ref<InstanceType<typeof TracksPlayer> | null>(null);
       const autoPlayMode = ref(false);
 
       const handleFileSelected = (file: File) => {
-        if (filesList.value) {
-          filesList.value.addFile(file); // Ajoute le fichier à la liste
+        if (library.value) {
+          library.value.addFile(file); // Ajoute le fichier à la liste
         }
       };
 
-      const handlePlay = (file: File, volume: number) => {
+      const handlePlay = (track: FileTrack, volume: number) => {
         if (tracksPlayer.value) {
-          tracksPlayer.value.addTrack(file, volume); // Passe les données au composant TracksPlayer
+          tracksPlayer.value.addTrack(track.file, track.name, track.initialVolume); // Passe les données au composant TracksPlayer
         }
       };
 
       return {
-        filesList,
+        library,
         tracksPlayer,
         autoPlayMode,
         handleFileSelected,
