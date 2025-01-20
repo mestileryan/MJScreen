@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import HelloWorld from './components/HelloWorld.vue'
+  import Screen from './components/Screen.vue'
 </script>
 
 <template>
   <header>
     <div class="wrapper">
-      <HelloWorld />
+      <Screen />
     </div>
   </header>
 

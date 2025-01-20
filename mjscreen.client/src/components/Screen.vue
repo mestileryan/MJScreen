@@ -2,7 +2,6 @@
   <div className="min-h-screen bg-gray-900 flex">
     <div className="flex-1 p-8 overflow-auto">
       <h1 className="text-3xl font-bold text-purple-400 mb-8">MJ Screen</h1>
-      <Uploader @file-selected="handleFileSelected" />
 
       <div>
         <Library ref="library" @play="handlePlay" />
@@ -21,15 +20,13 @@
 
 <script lang="ts">
   import { defineComponent, ref } from 'vue';
-  import Uploader from './Uploader.vue';
   import Library from './Library.vue';
   import TracksPlayer from './TracksPlayer.vue';
   import FileTrack from '../models/FileTrack'
 
   export default defineComponent({
-    name: 'HelloWorld',
+    name: 'Screen',
     components: {
-      Uploader,
       Library,
       TracksPlayer,
     },
@@ -37,12 +34,6 @@
       const library = ref<InstanceType<typeof Library> | null>(null);
       const tracksPlayer = ref<InstanceType<typeof TracksPlayer> | null>(null);
       const autoPlayMode = ref(false);
-
-      const handleFileSelected = (file: File) => {
-        if (library.value) {
-          library.value.addFile(file); // Ajoute le fichier à la liste
-        }
-      };
 
       const handlePlay = (track: FileTrack, volume: number) => {
         if (tracksPlayer.value) {
@@ -54,7 +45,6 @@
         library,
         tracksPlayer,
         autoPlayMode,
-        handleFileSelected,
         handlePlay,
       };
     },
