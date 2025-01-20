@@ -12,20 +12,27 @@
   <canvas ref="canvas" class="rounded bg-gray-600 mb-1" />
 
   <!-- Boutons Play/Pause et Boucler -->
-  <div class="controls">
+  <div class="flex gap-1">
     <button class="rounded-full hover:bg-red-400/20 transition-colors" @click="removeTrack">
       <Trash2 class="w-5 h-5 text-red-400" />
     </button>
-    <button class="ml-1 rounded-full hover:bg-gray-400/20 transition-colors" @click="togglePlay">
+    <button class="rounded-full hover:bg-gray-400/20 transition-colors" @click="togglePlay">
       <Pause v-if="isPlaying" class="w-5 h-5 text-gray-400" />
       <Play v-if="!isPlaying" class="w-5 h-5 text-green-400" />
     </button>
-    <button class="ml-1 rounded-full hover:bg-gray-400/20 transition-colors" @click="toggleLoop">
+    <button class="rounded-full hover:bg-gray-400/20 transition-colors" @click="toggleLoop">
       <Repeat1 v-if="isLooping" class="w-5 h-5 text-purple-400" />
       <Repeat1 v-if="!isLooping" class="w-5 h-5 text-gray-400" />
     </button>
 
-    <input class="ml-2 w-20"
+    <div class="ml-1 mr-1">
+      <VolumeOff v-if="track.volume == 0" class="w-5 h-5 text-red-400"></VolumeOff>
+      <Volume v-if="track.volume > 0 && track.volume <= 0.33" class="w-5 h-5 text-purple-400"></Volume>
+      <Volume1 v-if="track.volume > 0.33 && track.volume <= 0.66" class="w-5 h-5 text-purple-400"></Volume1>
+      <Volume2 v-if="track.volume > 0.66 && track.volume <= 1" class="w-5 h-5 text-purple-400"></Volume2>
+    </div>
+
+    <input class="w-20"
            type="range"
            min="0"
            max="1"

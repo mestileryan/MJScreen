@@ -24,16 +24,20 @@
       </div>
     </div>
 
-    <!-- Slider volume -->
-    <input
-      class="volume-slider"
-      type="range"
-      min="0"
-      max="1"
-      step="0.01"
-      v-model.number="trackFile.initialVolume"
-      @change="handleVolumeChange"
-    />
+    <div class="flex">
+      <VolumeOff v-if="trackFile.initialVolume == 0" class="w-5 h-5 text-red-400 mr-3"></VolumeOff>
+      <Volume v-if="trackFile.initialVolume > 0 && trackFile.initialVolume <= 0.33" class="w-5 h-5 text-purple-400 mr-3"></Volume>
+      <Volume1 v-if="trackFile.initialVolume > 0.33 && trackFile.initialVolume <= 0.66" class="w-5 h-5 text-purple-400 mr-3"></Volume1>
+      <Volume2 v-if="trackFile.initialVolume > 0.66 && trackFile.initialVolume <= 1" class="w-5 h-5 text-purple-400 mr-3"></Volume2>
+      <!-- Slider volume -->
+      <input class="volume-slider"
+             type="range"
+             min="0"
+             max="1"
+             step="0.01"
+             v-model.number="trackFile.initialVolume"
+             @change="handleVolumeChange" />
+    </div>
 
     <!-- Boutons d’action -->
     <div class="flex items-center gap-1 ml-2">
