@@ -2,7 +2,7 @@
     <label className="w-8 cursor-pointer bg-purple-500 hover:bg-purple-600 px-2 py-1
             rounded-lg flex items-center gap-2 transition-colors justify-center">
 
-      <Upload/>
+      <Plus/>
       <input type="file"
               accept="audio/*"
               @change="handleFileChange"
