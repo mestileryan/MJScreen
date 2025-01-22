@@ -5,39 +5,8 @@
         <div class="flex items-center">
           <h2 class="text-xl font-bold text-white mr-2">Bibliothèque</h2>
           <Uploader @file-selected="handleFileSelected" />
-
         </div>
-
-        <!-- Groupe arrondi -->
-        <div class="inline-flex items-center bg-gray-700 p-1 rounded-full">
-          <!-- Bouton "Liste" -->
-          <button class="
-            px-3 py-2
-            rounded-l-full
-            flex items-center justify-center
-            transition-colors
-          "
-                  :class="isListView
-            ? 'bg-purple-600 text-white'
-            : 'text-gray-200 hover:bg-gray-600'"
-                  @click="isListView = true">
-            <List class="w-5 h-5" />
-          </button>
-
-          <!-- Bouton "Grille" -->
-          <button class="
-            px-3 py-2
-            rounded-r-full
-            flex items-center justify-center
-            transition-colors
-          "
-            :class="!isListView
-            ? 'bg-purple-600 text-white'
-            : 'text-gray-200 hover:bg-gray-600'"
-                  @click="isListView = false">
-            <Grid3x3 class="w-5 h-5" />
-          </button>
-        </div>
+        <ViewModePlayerToggle v-model:isListView="isListView" />
       </div>
 
       <!-- 1) Mode Liste -->
@@ -90,13 +59,15 @@
   import LibraryTrack from './LibraryTrack.vue';
   import Uploader from './Uploader.vue';
   import DragOverlay from './DragOverlay.vue';
+  import ViewModePlayerToggle from './ViewModePlayerToggle.vue';
 
   export default defineComponent({
     name: 'Library',
     components: {
       LibraryTrack,
       Uploader,
-      DragOverlay
+      DragOverlay,
+      ViewModePlayerToggle
     },
     setup(props, { emit }) {
       const trackFiles = ref<FileTrack[]>([]);
@@ -144,11 +115,6 @@
         addFiles(files);
       }
 
-      /** Alterner entre mode liste et launchpad. */
-      function toggleViewMode() {
-        isListView.value = !isListView.value;
-      }
-
       return {
         trackFiles,
         isListView,
@@ -157,8 +123,7 @@
         removeFile,
         playTrack,
         handleFileSelected,
-        handleFilesDropped,
-        toggleViewMode
+        handleFilesDropped
       };
     }
   });
