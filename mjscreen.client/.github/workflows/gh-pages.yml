@@ -4,6 +4,8 @@ on:
   push:
     branches: [ "master" ]  # ou main, selon ta branche par défaut
 
+  workflow_dispatch:
+  
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
