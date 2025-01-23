@@ -10,7 +10,8 @@ export async function DB_AddTrack(track: FileTrack): Promise<number> {
   const stored: TrackDB = {
     name: track.file.name,
     initialVolume: track.initialVolume,
-    blob: track.file
+    blob: track.file,
+    iconName: track.iconName,
   };
 
   // Dexie renvoie l'ID nouvellement inséré
@@ -30,7 +31,8 @@ export async function DB_UpdateTrack(track: FileTrack): Promise<void> {
   }
   await TrackLibraryDB.tracks.update(track.id, {
     initialVolume: track.initialVolume,
-    name: track.name
+    name: track.name,
+    iconName: track.iconName,
   });
 }
 
@@ -60,6 +62,7 @@ export async function DB_GetTracks(): Promise<FileTrack[]> {
     // b) On instancie un FileTrack avec le volume initial
     const ft = new FileTrack(file, st.name, st.initialVolume);
     ft.id = st.id;
+    ft.iconName = st.iconName;
     // (Optionnel) Si vous stockez un id, vous pourriez l’attacher également à FileTrack
     // ft.id = st.id; // par ex., si FileTrack a un champ id
 

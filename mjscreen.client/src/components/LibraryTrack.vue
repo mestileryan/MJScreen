@@ -1,7 +1,7 @@
 <template>
   <li class="flex items-center p-3 rounded-lg bg-gray-700 hover:bg-gray-600 mb-1 shrink-0">
     <!-- Icône musique -->
-    <div class="mr-3 cursor-pointer" @click="isSelectingIcon = true">
+    <div class="mr-3 cursor-pointer hover:bg-purple-400/20 rounded-full p-1" @click="isSelectingIcon = true">
       <!-- Si trackFile.iconName est défini, on affiche cette icône dynamique -->
       <component v-if="trackFile.iconName"
                  :is="resolveIconComponent(trackFile.iconName)"
@@ -11,7 +11,7 @@
     </div>
 
     <!-- Zone d'affichage / édition du nom -->
-    <div class="w-96 min-w-24">
+    <div class="w-full min-w-24">
       <div v-if="isEditing" class="flex items-center gap-2">
         <input type="text"
                class="font-medium bg-gray-600 text-white p-1 rounded w-full"
