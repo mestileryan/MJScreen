@@ -11,5 +11,5 @@ export default class FileTrack {
     this.name = name;
     this.iconName = ''; // par défaut vide
   }
-
+   
 }
