@@ -43,10 +43,11 @@ export default defineConfig({
   plugins: [plugin(),
     svgLoader()
   ],
-    resolve: {
-        alias: {
-            '@': fileURLToPath(new URL('./src', import.meta.url))
-        }
+  base: '/MJScreen/', // Remplace "nom-du-repo" par le nom de ton dépôt GitHub
+  resolve: {
+      alias: {
+          '@': fileURLToPath(new URL('./src', import.meta.url))
+      }
   },
   css: {
     postcss: './postcss.config.js', // Assure-toi que le chemin est correct
