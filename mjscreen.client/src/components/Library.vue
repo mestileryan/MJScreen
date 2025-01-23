@@ -9,7 +9,7 @@
         <ViewModePlayerToggle v-model:isListView="isListView" />
       </div>
 
-      <div v-if="trackFiles.length" :class="isListView ? 'space-y-2' : 'grid grid-cols-4 gap-4'">
+      <div v-if="trackFiles.length" class="clearfix">
         <LibraryTrack v-for="(trackFile, index) in trackFiles"
                       :key="index"
                       :trackFile="trackFile"
@@ -24,6 +24,14 @@
     </div>
   </DragOverlay>
 </template>
+
+<style scoped>
+  .clearfix::after {
+    content: "";
+    display: table;
+    clear: both;
+  }
+</style>
 
 <script lang="ts">
   import { defineComponent, ref, onMounted } from 'vue';
@@ -58,11 +66,7 @@
       }
 
       function addFiles(newFiles: File[]) {
-        newFiles.forEach((file) => {
-          const ft = new FileTrack(file, file.name);
-          ft.id = DB_AddTrack(ft);
-          trackFiles.value.push(ft);
-        });
+        newFiles.forEach(file => addFile(file));
       }
 
       function removeFile(index: number) {

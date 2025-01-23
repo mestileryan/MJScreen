@@ -25,6 +25,17 @@
     </div>
   </li>
 
+  <div v-else
+       class="bg-gray-700 text-white rounded float-left w-20 m-1 h-20 
+       flex flex-col items-center justify-center cursor-pointer hover:bg-gray-600
+       transition-colors relative"
+       @click="onPlay"
+       :title="trackFile.name">
+    <component v-if="trackFile.iconName" :is="resolveIconComponent(trackFile.iconName)" class="w-8 h-8 text-purple-400 mb-1" />
+    <Music v-else class="w-8 h-8 text-purple-400" />
+    <p class="text-xs mt-1 text-center">{{ trackFile.name.length > 10 ? trackFile.name.substring(0, 10) + '...' : trackFile.name }}</p>
+  </div>
+
   <!-- Modal de sélection d’icône, si isSelectingIcon est true -->
   <div v-if="isSelectingIcon"
        class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
