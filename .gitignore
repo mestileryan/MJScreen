@@ -31,3 +31,4 @@ coverage
 /.vs
 /.vscode
 /obj/Debug
+/mjscreen.client.esproj.user
