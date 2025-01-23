@@ -1,7 +1,7 @@
 <template>
   <div className="min-h-screen bg-gray-900 flex">
     <div className="flex-1 p-8 overflow-auto">
-      <h1 className="text-3xl font-bold text-purple-400 mb-8">MJ Screen</h1>
+      <h1 className="text-3xl font-bold text-purple-400 mb-8">MJ Screen Jukebox</h1>
 
       <div>
         <Library ref="library" @play="handlePlay" />
