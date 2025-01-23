@@ -1,33 +1,36 @@
-name: Deploy Vue App to GitHub Pages
+name: Deploy Vue App
 
-# Déclencher l'action sur un push dans la branche master
 on:
   push:
-    branches: [ "master" ]
+    branches: [ "master" ]  # ou main, selon ta branche par défaut
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-    
     steps:
       - name: Checkout
         uses: actions/checkout@v2
-      
+
       - name: Setup Node
         uses: actions/setup-node@v2
         with:
           node-version: '16'
-      
+
       - name: Install dependencies
-        run: npm install
+        run: |
+          cd mjscreen.client
+          npm install
         # ou: yarn install
-      
+
       - name: Build
-        run: npm run build
+        run: |
+          cd mjscreen.client
+          npm run build
         # ou: yarn build
-      
+
       - name: Deploy
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./dist
+          # On publie le dossier dist qui est généré dans mjscreen.client
+          publish_dir: mjscreen.client/dist
