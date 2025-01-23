@@ -48,7 +48,6 @@
 
 <script lang="ts">
   import { defineComponent, defineAsyncComponent, ref, computed } from 'vue';
-  import * as lucide from 'lucide-vue-next';
   import FileTrack from '@/models/FileTrack';
   import { DB_UpdateTrack } from '@/persistance/TrackService';
   import IconSelector from './IconSelector.vue';
@@ -62,9 +61,8 @@
   });
 
   export default defineComponent({
-    name: 'LibraryTrack',
+    //name: 'LibraryTrack',
     components: {
-      ...lucide,
       IconSelector
     },
     props: {

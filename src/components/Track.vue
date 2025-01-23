@@ -73,12 +73,12 @@
 
       function play() {
         if (!isPlaying.value) {
-          player.value.play();
+          player.value?.play();
         }
       }
       function pause() {
         if (isPlaying.value) {
-          player.value.pause();
+          player.value?.pause();
         }
       }
       function toggleLoop() {
@@ -132,7 +132,9 @@
       onMounted(() => {
         if (props.track.src) {
           initializeWaveform();
-          player.value.volume = props.track.volume;
+          if (player.value) {
+            player.value.volume = props.track.volume;
+          }
         }
         if (props.autoPlay && player.value) {
           player.value.play().catch((err) => {

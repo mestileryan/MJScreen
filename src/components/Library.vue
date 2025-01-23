@@ -59,14 +59,16 @@
         trackFiles.value = loadedTracks;
       });
 
-      function addFile(newFile: File) {
+      async function addFile(newFile: File) {
         const ft = new FileTrack(newFile, newFile.name);
-        ft.id = DB_AddTrack(ft);
+        ft.id = await DB_AddTrack(ft);
         trackFiles.value.push(ft);
       }
 
-      function addFiles(newFiles: File[]) {
-        newFiles.forEach(file => addFile(file));
+      async function addFiles(newFiles: File[]) {
+        for (const file of newFiles) {
+          await addFile(file);
+        }
       }
 
       function removeFile(index: number) {
