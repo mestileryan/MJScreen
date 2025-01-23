@@ -1,0 +1,1 @@
+import{c as o,a as r,o as t}from"./index-BCvdMMNF.js";const l={xmlns:"http://www.w3.org/2000/svg",viewBox:"0 0 512 512"};function n(s,e){return t(),o("svg",l,e[0]||(e[0]=[r("path",{fill:"currentColor",d:"M41 73v304.563L88.697 151H423v-30H185.514l-16-48zm62.303 96L43.092 455h381.605l60.211-286z"},null,-1)]))}const c={render:n};export{c as default,n as render};
