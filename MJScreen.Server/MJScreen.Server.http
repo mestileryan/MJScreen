@@ -1,6 +1,0 @@
-@MJScreen.Server_HostAddress = http://localhost:5145
-
-GET {{MJScreen.Server_HostAddress}}/weatherforecast/
-Accept: application/json
-
-###
