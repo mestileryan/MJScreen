@@ -9,40 +9,17 @@
         <ViewModePlayerToggle v-model:isListView="isListView" />
       </div>
 
-      <!-- 1) Mode Liste -->
-      <div v-if="isListView">
-        <div v-if="trackFiles.length" class="space-y-2">
-          <ul>
-            <LibraryTrack v-for="(trackFile, index) in trackFiles"
-                          :key="index"
-                          :trackFile="trackFile"
-                          :index="index"
-                          @remove-file="removeFile"
-                          @play="playTrack" />
-          </ul>
-        </div>
-        <div v-else>
-          <p class="text-gray-400 italic">Aucun fichier pour le moment.</p>
-        </div>
+      <div v-if="trackFiles.length" :class="isListView ? 'space-y-2' : 'grid grid-cols-4 gap-4'">
+        <LibraryTrack v-for="(trackFile, index) in trackFiles"
+                      :key="index"
+                      :trackFile="trackFile"
+                      :index="index"
+                      :isListView="isListView"
+                      @remove-file="removeFile"
+                      @play="playTrack" />
       </div>
-
-      <!-- 2) Mode Launchpad (Grille) -->
       <div v-else>
-        <!-- Grille de tuiles -->
-        <div v-if="trackFiles.length" class="grid grid-cols-4 gap-4">
-          <div v-for="(trackFile, index) in trackFiles"
-               :key="index"
-               class="bg-gray-700 text-white rounded flex items-center justify-center
-                   h-16 cursor-pointer hover:bg-gray-600 transition-colors relative"
-               @click="playTrack(index)"
-               :title="trackFile.name">
-            <!-- Icône "Music" (Font Awesome, Material Icons, etc.) -->
-            <i class="fas fa-music text-lg"></i>
-          </div>
-        </div>
-        <div v-else>
-          <p class="text-gray-400 italic">Aucun fichier pour le moment.</p>
-        </div>
+        <p class="text-gray-400 italic">Aucun fichier pour le moment.</p>
       </div>
     </div>
   </DragOverlay>
@@ -51,11 +28,7 @@
 <script lang="ts">
   import { defineComponent, ref, onMounted } from 'vue';
   import FileTrack from '@/models/FileTrack';
-  import {
-    DB_AddTrack,
-    DB_RemoveTrack,
-    DB_GetTracks
-  } from '@/persistance/TrackService';
+  import { DB_AddTrack, DB_RemoveTrack, DB_GetTracks } from '@/persistance/TrackService';
   import LibraryTrack from './LibraryTrack.vue';
   import Uploader from './Uploader.vue';
   import DragOverlay from './DragOverlay.vue';
@@ -71,10 +44,9 @@
     },
     setup(props, { emit }) {
       const trackFiles = ref<FileTrack[]>([]);
-      const isListView = ref(true); // Par défaut : mode liste
+      const isListView = ref(true);
 
       onMounted(async () => {
-        // Charger depuis la DB
         const loadedTracks = await DB_GetTracks();
         trackFiles.value = loadedTracks;
       });
@@ -95,9 +67,7 @@
 
       function removeFile(index: number) {
         const track = trackFiles.value[index];
-        // Retirer de la liste
         trackFiles.value.splice(index, 1);
-        // Retirer côté DB
         DB_RemoveTrack(track);
       }
 
