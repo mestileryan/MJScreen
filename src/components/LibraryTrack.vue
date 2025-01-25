@@ -1,5 +1,9 @@
 <template>
-  <li v-if="isListView" class="flex items-center p-3 rounded-lg bg-gray-700 hover:bg-gray-600 mb-1 shrink-0">
+  <li v-if="isListView"
+      class="flex items-center p-3 rounded-lg bg-gray-700 hover:bg-gray-600 mb-1 shrink-0"
+      draggable="true"
+      @dragstart="onDragStart"
+      >
     <div class="mr-3 cursor-pointer hover:bg-purple-400/20 rounded-full p-1" @click="isSelectingIcon = true">
       <component v-if="trackFile.iconName" :is="resolveIconComponent(trackFile.iconName)" class="w-5 h-5 text-purple-400" />
       <Music v-else class="w-5 h-5 text-purple-400" />
@@ -85,6 +89,7 @@
       const isSelectingIcon = ref(false);
       const fileSizeInMB = computed(() => (props.trackFile.file.size / 1024 / 1024).toFixed(2));
 
+
       async function saveName() {
         await DB_UpdateTrack(props.trackFile);
         isEditing.value = false;
@@ -114,6 +119,12 @@
         await DB_UpdateTrack(props.trackFile);
       }
 
+      function onDragStart(e: DragEvent) {
+        if (!e.dataTransfer) return;
+        // On met la track en JSON
+        e.dataTransfer.setData('application/json', JSON.stringify(props.trackFile));
+      }
+
       return {
         isEditing,
         isSelectingIcon,
@@ -124,6 +135,7 @@
         onPlay,
         onIconChosen,
         resolveIconComponent,
+        onDragStart,
       };
     }
   });

@@ -8,6 +8,9 @@
       </div>
     </div>
 
+    <!-- Le gestionnaire de playlists -->
+    <PlaylistManager />
+
     <div className="w-96 bg-gray-800 p-6 flex flex-col justify-start border-l border-gray-700">
       <TracksPlayer :autoPlayMode="autoPlayMode"
                     @update:autoplayMode="autoPlayMode = $event"
@@ -23,12 +26,14 @@
   import Library from './Library.vue';
   import TracksPlayer from './TracksPlayer.vue';
   import FileTrack from '../models/FileTrack'
+  import PlaylistManager from './PlaylistManager.vue';
 
   export default defineComponent({
     name: 'Screen',
     components: {
       Library,
       TracksPlayer,
+      PlaylistManager,
     },
     setup() {
       const library = ref<InstanceType<typeof Library> | null>(null);
