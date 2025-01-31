@@ -8,23 +8,24 @@
     </h3>
 
     <!-- Liste des tracks de la playlist -->
-    <ul v-if="playlist.tracks.length" class="space-y-1">
+    <LibraryTrack v-for="(trackFile, index) in playlist.tracks"
+                  :key="index"
+                  :trackFile="trackFile"
+                  :index="index"
+                  :isListView="true"
+                  @remove-file="removeFile"
+                  @play="playTrack" />
+    <!--<ul v-if="playlist.tracks.length" class="space-y-1">
       <li v-for="(track, idx) in playlist.tracks"
           :key="track.id"
           class="bg-gray-600 p-2 rounded">
-        <LibraryTrack v-for="(trackFile, index) in trackFiles"
-                      :key="index"
-                      :trackFile="trackFile"
-                      :index="index"
-                      :isListView="true"
-                      @remove-file="removeFile"
-                      @play="playTrack" />
-      </li>
-    </ul>
 
-    <div v-else class="text-gray-400 italic">
+      </li>
+    </ul>-->
+
+    <!--<div v-else class="text-gray-400 italic">
       Aucun track dans cette playlist.
-    </div>
+    </div>-->
 
     <!-- Bouton de suppression de la playlist -->
     <button class="absolute top-2 right-2 text-red-400 hover:text-red-600"
@@ -38,6 +39,7 @@
 import { defineComponent } from 'vue';
 import Playlist from '@/models/Playlist';
 import FileTrack from '@/models/FileTrack';
+import { DB_AddTrack, DB_RemoveTrack, DB_GetTracks } from '@/persistance/TrackService';
 
 export default defineComponent({
   name: 'Playlist',
@@ -47,7 +49,7 @@ export default defineComponent({
       required: true
     }
   },
-  emits: ['delete-playlist'],
+  emits: ['delete-playlist', 'play'],
   setup(props, { emit }) {
     function onDragOver() {
       // Permet le drop
@@ -72,13 +74,13 @@ export default defineComponent({
     }
 
     function removeFile(index: number) {
-      const track = trackFiles.value[index];
-      trackFiles.value.splice(index, 1);
+      const track = props.playlist.tracks[index];
+      props.playlist.tracks.splice(index, 1);
       DB_RemoveTrack(track);
     }
 
     function playTrack(index: number) {
-      const track = trackFiles.value[index];
+      const track = props.playlist.tracks[index];
       if (!track) return;
       emit('play', track);
     }

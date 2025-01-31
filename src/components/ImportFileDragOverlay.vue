@@ -13,9 +13,9 @@
 
     <!-- Overlay semi-transparent (s'affiche uniquement si `isDragOver`) -->
     <div v-if="isDragOver"
-         class="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center
+         class="absolute inset-0 flex justify-center
              transition-all duration-300">
-      <div class="border-4 border-dashed border-white rounded-lg p-8 text-white text-xl font-semibold text-center">
+      <div class="border-4 border-dashed bg-black bg-opacity-75 w-[80vw] h-[80vh] border-white rounded-lg p-10 text-white text-xl font-semibold text-center">
         Déposez votre fichier ici
       </div>
     </div>
@@ -26,37 +26,39 @@
 import { defineComponent, ref } from 'vue';
 
 export default defineComponent({
-  name: 'DragOverlay',
+  name: 'ImportFileDragOverlay',
   // On émet un événement lorsqu'on drop des fichiers
   emits: ['files-dropped'],
   setup(props, { emit }) {
     const isDragOver = ref(false);
     const dragCounter = ref(0);
 
-    function onDragEnter() {
-      dragCounter.value++;
-      isDragOver.value = true;
+    function onDragEnter(event: DragEvent) {
+      if (event.dataTransfer?.items && Array.from(event.dataTransfer.items).some(item => item.kind === "file")) {
+        dragCounter.value++; // Augmente le compteur
+        isDragOver.value = true;
+      }
     }
 
-    function onDragOver() {
-      // On peut forcer isDragOver = true ici,
-      // mais en général on s'appuie sur onDragEnter().
+    function onDragOver(event: DragEvent) {
+      if (event.dataTransfer?.items && !Array.from(event.dataTransfer.items).some(item => item.kind === "file")) {
+        return;
+      }
+      event.preventDefault(); // Permet de conserver le drag actif
     }
 
-    function onDragLeave() {
-      dragCounter.value--;
+    function onDragLeave(event: DragEvent) {
+      dragCounter.value--; // Décrémente le compteur
       if (dragCounter.value === 0) {
-        isDragOver.value = false;
+        isDragOver.value = false; // Cache l'overlay uniquement si on quitte complètement la zone
       }
     }
 
     function onDrop(event: DragEvent) {
-      dragCounter.value = 0;
+      dragCounter.value = 0; // Reset du compteur
       isDragOver.value = false;
 
-      // Récupérer les fichiers déposés
       if (event.dataTransfer?.files?.length) {
-        // On émet un tableau de fichiers
         emit('files-dropped', Array.from(event.dataTransfer.files));
       }
     }
