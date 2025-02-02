@@ -7,5 +7,6 @@ export interface TrackDB {
   initialVolume: number;
   blob: Blob;  // On stocke le contenu en blob (ou File)
   iconName?: string;
+  order: number;
 }
 

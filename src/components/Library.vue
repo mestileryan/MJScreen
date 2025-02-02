@@ -9,36 +9,28 @@
         </div>
         <ViewModePlayerToggle v-model:isListView="isListView" />
       </div>
-
-      <div v-if="unsortedTrackFiles.length" class="clearfix">
-        <LibraryTrack v-for="(trackFile, index) in unsortedTrackFiles"
-                      :key="index"
-                      :trackFile="trackFile"
-                      :index="index"
-                      :isListView="isListView"
-                      @remove-file="removeFile"
-                      @play="playTrack" />
-      </div>
+      <draggable v-if="unsortedTrackFiles.length"
+                 v-model="unsortedTrackFiles"
+                 group="tracks"
+                 item-key="index"
+                 class="clearfix"
+                 @start="dragStart"
+                 @end="saveNewOrder"
+                 ghost-class="bg-gray-700">
+        <template #item="{ element, index }">
+          <div class="cursor-move">
+            <LibraryTrack :trackFile="element"
+                          :index="index"
+                          :isListView="isListView"
+                          @remove-file="removeFile"
+                          @play="playTrack" />
+            </div>
+        </template>
+      </draggable>
       <div v-else>
         <p class="text-gray-400 italic">Aucun fichier pour le moment.</p>
       </div>
-      
-      <!--<div class="bg-gray-800 p-4 rounded-lg">
 
-        <h2 class="text-xl font-bold text-white mb-4">Playlists</h2>
-           Zone de création d'une playlist par drag&drop 
-        <div class="bg-gray-700 p-3 rounded mb-4 border-2 border-dashed border-gray-600 text-gray-300 text-center cursor-pointer"
-           @dragover.prevent="onDragOverNewPlaylist"
-           @drop.prevent="onDropNewPlaylist">
-          Glisser un track ici pour créer une nouvelle playlist
-        </div>
-        Liste des playlists existantes 
-        <Playlist v-for="(pl, index) in playlists"
-                  :key="pl.id || index"
-                  :playlist="pl"
-                  @delete-playlist="removePlaylist"
-                  @play="playTrack" />
-      </div>-->
 
     </ImportFileDragOverlay>
   </div>
@@ -54,8 +46,10 @@
 
 <script lang="ts">
   import { defineComponent, ref, onMounted } from 'vue';
+  import draggable from 'vuedraggable';
+
+  import { DB_AddTrack, DB_RemoveTrack, DB_UpdateTrack, DB_GetTracks } from '@/persistance/TrackService';
   import FileTrack from '@/models/FileTrack';
-  import { DB_AddTrack, DB_RemoveTrack, DB_GetTracks } from '@/persistance/TrackService';
   import LibraryTrack from './LibraryTrack.vue';
   import Uploader from './Uploader.vue';
   import ImportFileDragOverlay from './ImportFileDragOverlay.vue';
@@ -70,7 +64,8 @@
       Uploader,
       ImportFileDragOverlay,
       ViewModePlayerToggle,
-      Playlist: PlaylistComp
+      Playlist: PlaylistComp,
+      draggable
     },
     setup(props, { emit }) {
       const unsortedTrackFiles = ref<FileTrack[]>([]);
@@ -80,11 +75,21 @@
 
       onMounted(async () => {
         const loadedTracks = await DB_GetTracks();
-        unsortedTrackFiles.value = loadedTracks;
+        unsortedTrackFiles.value = loadedTracks.sort((a, b) => a.order - b.order);
+
+        for (const [index, track] of unsortedTrackFiles.value.entries()) {
+          if (track.order !== index) {
+
+            track.order = index; // Mise à jour de l'ordre
+            await DB_UpdateTrack(track); // Sauvegarde en base
+          }
+          console.log(index + "-" + track.order)
+        }
       });
 
       async function addFile(newFile: File) {
         const ft = new FileTrack(newFile, newFile.name);
+        ft.order = unsortedTrackFiles.value.length;
         ft.id = await DB_AddTrack(ft);
         unsortedTrackFiles.value.push(ft);
       }
@@ -115,31 +120,19 @@
         addFiles(files);
       }
 
-      /** Drag & drop sur la zone "new playlist" */
-      function onDragOverNewPlaylist() {
-        // Juste pour autoriser le drop
+      async function dragStart() {
+        console.log("test4")
       }
+      async function saveNewOrder() {
 
-      function onDropNewPlaylist(e: DragEvent) {
-        if (!e.dataTransfer) return;
-        const data = e.dataTransfer.getData('application/json');
-        if (!data) return;
-        const trackObj = JSON.parse(data) as FileTrack;
+        for (const [index, track] of unsortedTrackFiles.value.entries()) {
+          console.log(index + "-" + track.order)
+          if (track.order !== index) {
+            console.log("Updated track")
 
-        // Créer une nouvelle playlist + y ajouter le track
-        const newPl = new Playlist('Nouvelle playlist');
-        newPl.id = Date.now(); // ou un GUID/ID auto
-        newPl.tracks.push(trackObj);
-
-        playlists.value.push(newPl);
-      }
-
-      /** Supprime la playlist si on clique sur "supprimer" ou si elle est vide */
-      function removePlaylist(playlist: Playlist) {
-        // Retirer la playlist du tableau
-        const idx = playlists.value.indexOf(playlist);
-        if (idx !== -1) {
-          playlists.value.splice(idx, 1);
+            track.order = index; // Mise à jour de l'ordre
+            await DB_UpdateTrack(track); // Sauvegarde en base
+          }
         }
       }
       return {
@@ -152,9 +145,8 @@
         handleFileSelected,
         handleFilesDropped,
         playlists,
-        onDragOverNewPlaylist,
-        onDropNewPlaylist,
-        removePlaylist
+        dragStart,
+        saveNewOrder,
       };
     }
   });
