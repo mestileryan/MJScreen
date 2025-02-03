@@ -12,7 +12,7 @@ export class PlaylistLibrary extends Dexie {
     super('PlaylistLibrary'); // nom de la base
     this.version(1).stores({
       // "++id" = champ auto-incrémenté, vous pouvez aussi utiliser un "uuid"
-      tracks: '++id,name'
+      playlists: '++id,name'
     });
   }
 }
