@@ -74,10 +74,6 @@
         type: Object as () => FileTrack,
         required: true
       },
-      index: {
-        type: Number,
-        required: true
-      },
       isListView: {
         type: Boolean,
         required: true
@@ -100,11 +96,11 @@
       }
 
       function onRemove() {
-        emit('remove-file', props.index);
+        emit('remove-file', props.trackFile.id);
       }
 
       function onPlay() {
-        emit('play', props.index);
+        emit('play', props.trackFile.id);
       }
 
       function resolveIconComponent(iconName: string) {

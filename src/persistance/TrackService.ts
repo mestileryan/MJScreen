@@ -13,6 +13,7 @@ export async function DB_AddTrack(track: FileTrack): Promise<number> {
     blob: track.file,
     iconName: track.iconName,
     order: track.order,
+    playlistId: track.playlistId,
   };
 
   // Dexie renvoie l'ID nouvellement inséré
@@ -35,6 +36,7 @@ export async function DB_UpdateTrack(track: FileTrack): Promise<void> {
     name: track.name,
     iconName: track.iconName,
     order: track.order,
+    playlistId: track.playlistId,
   });
 }
 
@@ -67,8 +69,7 @@ export async function DB_GetTracks(): Promise<FileTrack[]> {
     ft.id = st.id;
     ft.iconName = st.iconName;
     ft.order = st.order;
-    // (Optionnel) Si vous stockez un id, vous pourriez l’attacher également à FileTrack
-    // ft.id = st.id; // par ex., si FileTrack a un champ id
+    ft.playlistId = st.playlistId;
 
     return ft;
   });

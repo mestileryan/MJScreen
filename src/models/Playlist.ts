@@ -1,7 +1,7 @@
 import FileTrack from './FileTrack';
 
 export default class Playlist {
-  id: number | null = null;
+  id?: number;
   name: string;
   tracks: FileTrack[];
 

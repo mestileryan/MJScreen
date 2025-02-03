@@ -1,6 +1,4 @@
 
-
-// Définition du type qu'on stocke en BDD
 export interface TrackDB {
   id?: number; // clé primaire auto-incrémentée
   name: string;
@@ -8,5 +6,6 @@ export interface TrackDB {
   blob: Blob;  // On stocke le contenu en blob (ou File)
   iconName?: string;
   order: number;
+  playlistId?: number;
 }
 
