@@ -31,6 +31,8 @@ export async function DB_UpdateTrack(track: FileTrack): Promise<void> {
   if (track.id == null) {
     return;
   }
+  console.log("Track saved " + track.name + ": " + track.order);
+
   await TrackLibraryDB.tracks.update(track.id, {
     initialVolume: track.initialVolume,
     name: track.name,

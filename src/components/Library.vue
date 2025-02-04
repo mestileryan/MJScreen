@@ -60,7 +60,8 @@
                       item-key="id"
                       animation="200"
                       @change="updateTrackOrder($event, playlist)"
-                      ghost-class="bg-gray-500">
+                      ghost-class="bg-gray-500"
+                     class="clearfix">
             <template #item="{ element, index }">
               <div class="cursor-move">
                 <LibraryTrack :trackFile="element"
@@ -129,26 +130,12 @@
             if (playlist) {
               playlist.tracks.push(track);
             }
-            else {
-              console.warn(`Playlist of track ${track.id} with playlistId ${track.playlistId} was not found`)
-            }
           }
         });
 
-        for (const [index, track] of unsortedTrackFiles.value.entries()) {
-          if (track.order !== index) {
-            track.order = index; // Mise à jour de l'ordre
-            await DB_UpdateTrack(track); // Sauvegarde en base
-          }
-        }
-        for (const playlist of playlists.value) {
-          for (const [index, track] of playlist.tracks.entries()) {
-            if (track.order !== index) {
-              track.order = index; // Mise à jour de l'ordre
-              await DB_UpdateTrack(track); // Sauvegarde en base
-            }
-          }
-        }
+        playlists.value.forEach(playlist => {
+          playlist.tracks.sort((a, b) => a.order - b.order)
+        })
 
       });
 
@@ -203,47 +190,23 @@
       }
 
       async function updateTrackOrder(event: any, targetPlaylist: Playlist | undefined) {
-        console.log("Événement reçu :", event);
-       
-        if (event.moved) {
-          // Cas où l'élément a été déplacé à l'intérieur de la même liste
-          const { element, oldIndex, newIndex } = event.moved;
 
-          const targetList = targetPlaylist ? targetPlaylist.tracks : unsortedTrackFiles.value;
+        const targetList = targetPlaylist ? targetPlaylist.tracks : unsortedTrackFiles.value;
 
-          // Réorganiser les ordres
-          if (oldIndex < newIndex) {
-            // L'élément a été déplacé vers le bas
-            for (let i = oldIndex; i <= newIndex; i++) {
-              targetList[i].order = i;
-              await DB_UpdateTrack(targetList[i]);
-            }
-          } else {
-            // L'élément a été déplacé vers le haut
-            for (let i = newIndex; i <= oldIndex; i++) {
-              targetList[i].order = i;
-              await DB_UpdateTrack(targetList[i]);
-            }
-          }
-        }
-       
         if (event.added) {
           // Cas où un élément a été ajouté depuis une autre liste
           const { element, newIndex } = event.added;
        
-          if (!element) return console.warn("Élément invalide :", event);
-       
-          element.order = newIndex;
+          element.order = targetList.length - 1;
           element.playlistId = targetPlaylist ? targetPlaylist.id : undefined; // Met à jour la playlistId
           await DB_UpdateTrack(element);
-          console.log(`Track ajouté à la playlist "${targetPlaylist?.name || "Bibliothèque"}" : ${element.name} -> Ordre: ${newIndex}`);
         }
-       
-        if (event.removed) {
-          // Cas où un élément a été retiré de la liste
-          console.log(`Track retiré de la liste précédente :`, event.removed);
-          // Pas besoin de mise à jour ici, car il est géré par `added`
+
+        for (let i = 0; i < targetList.length; i++) {
+          targetList[i].order = i;
+          await DB_UpdateTrack(targetList[i]);
         }
+
       }
 
 
