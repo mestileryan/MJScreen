@@ -9,8 +9,7 @@
         </div>
         <ViewModePlayerToggle v-model:isListView="isListView" />
       </div>
-      <draggable v-if="unsortedTrackFiles.length"
-                 v-model="unsortedTrackFiles"
+      <draggable v-model="unsortedTrackFiles"
                  group="tracks"
                  item-key="index"
                  class="clearfix"
@@ -24,10 +23,13 @@
                           @play="playTrack" />
           </div>
         </template>
+
+        <template #footer>
+          <div v-if="unsortedTrackFiles.length === 0">
+            <p class="text-gray-400 italic">Tout est rangé ! 🎉</p>
+          </div>
+        </template>
       </draggable>
-      <div v-else>
-        <p class="text-gray-400 italic">Aucun fichier dans la bibliothèque !</p>
-      </div>
 
       <hr class="h-px my-6 bg-purple-800 border-0 dark:bg-gray-700" />
       <div class="flex items-center">
@@ -73,11 +75,11 @@
           </div>
 
           <draggable v-model="playlist.tracks"
-                      group="tracks"
-                      item-key="id"
-                      animation="200"
-                      @change="updateTrackOrder($event, playlist)"
-                      ghost-class="bg-gray-500"
+                     group="tracks"
+                     item-key="id"
+                     animation="200"
+                     @change="updateTrackOrder($event, playlist)"
+                     ghost-class="bg-gray-500"
                      class="clearfix">
             <template #item="{ element, index }">
               <div class="cursor-move">
@@ -85,6 +87,11 @@
                               :isListView="isListView"
                               @remove-file="removeFromPlaylist(pIndex, index)"
                               @play="playTrack" />
+              </div>
+            </template>
+            <template #footer>
+              <div v-if="playlist.tracks.length === 0">
+                <p class="text-gray-400 italic">C'est vide ! 👀🕸️</p>
               </div>
             </template>
           </draggable>
