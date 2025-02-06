@@ -48,7 +48,24 @@
         <div v-for="(playlist, pIndex) in playlists" :key="playlist.id"
               class="bg-gray-700/25 p-3 rounded mt-1 mb-1">
           <div class="flex justify-between items-center">
-            <h4 class="text-white font-semibold mb-2">{{ playlist.name }}</h4>
+
+            <!--<h4 class="text-white font-semibold mb-2">{{ playlist.name }}</h4>-->
+
+            <div class="flex-1">
+              <p v-if="!playlist.isEditing"
+                 class="text-white font-semibold mb-2 cursor-pointer"
+                 @click="startEditingPlaylist(playlist)">
+                {{ playlist.name }}
+              </p>
+
+              <input v-else
+                     v-model="playlist.name"
+                     class="bg-gray-600 text-white px-2 py-1 rounded w-full focus:outline-none"
+                     ref="playlistNameInput"
+                     @blur="savePlaylistName(playlist)"
+                     @keyup.enter="savePlaylistName(playlist)" />
+            </div>
+
             <button v-if="playlist.tracks.length === 0"
                     class="p-2 hover:bg-red-700/20 rounded-full transition-colors" @click="removePlaylist(pIndex)">
               <Trash2 class="w-5 h-5 text-red-400" />
@@ -87,7 +104,7 @@
 </style>
 
 <script lang="ts">
-  import { defineComponent, ref, onMounted } from 'vue';
+  import { defineComponent, ref, onMounted, nextTick } from 'vue';
   import draggable from 'vuedraggable';
 
   import { DB_AddTrack, DB_RemoveTrack, DB_UpdateTrack, DB_GetTracks } from '@/persistance/TrackService';
@@ -114,7 +131,7 @@
       const unsortedTrackFiles = ref<FileTrack[]>([]);
       const playlists = ref<Playlist[]>([]);
       const isListView = ref(true);
-
+      const playlistNameInput = ref<HTMLInputElement | null>(null);
 
       onMounted(async () => {
         playlists.value = await DB_GetPlaylists();
@@ -138,6 +155,22 @@
         })
 
       });
+      // Permet de basculer en mode édition pour une playlist
+      function startEditingPlaylist(playlist: Playlist) {
+        playlist.isEditing = true;
+        nextTick(() => {
+          playlistNameInput.value?.focus();
+        });
+      }
+
+      // Sauvegarde le nom de la playlist
+      async function savePlaylistName(playlist: Playlist) {
+        if (!playlist.name.trim()) {
+          playlist.name = "Nouvelle Playlist";
+        }
+        playlist.isEditing = false;
+        await DB_UpdatePlaylist(playlist);
+      }
 
       async function addFile(newFile: File) {
         const ft = new FileTrack(newFile, newFile.name);
@@ -238,6 +271,8 @@
         updateTrackOrder,
         addPlaylist,
         removePlaylist,
+        startEditingPlaylist,
+        savePlaylistName
       };
     }
   });
