@@ -1,12 +1,22 @@
 <template>
-  <li v-if="isListView" class="flex items-center p-3 rounded-lg bg-gray-700 hover:bg-gray-600 mb-1 shrink-0">
+  <li v-if="isListView"
+      class="flex items-center p-3 rounded-lg bg-gray-700 hover:bg-gray-600 mb-1 shrink-0"
+      draggable="true"
+      @dragstart="onDragStart"
+      >
     <div class="mr-3 cursor-pointer hover:bg-purple-400/20 rounded-full p-1" @click="isSelectingIcon = true">
       <component v-if="trackFile.iconName" :is="resolveIconComponent(trackFile.iconName)" class="w-5 h-5 text-purple-400" />
       <Music v-else class="w-5 h-5 text-purple-400" />
     </div>
-    <div class="w-full min-w-24" @click="isEditing = true">
-      <p class="text-white font-medium" :title="trackFile.file.name">{{ trackFile.name }}</p>
-      <p class="text-gray-400 text-sm">({{ fileSizeInMB }} Mo)</p>
+    <div class="w-full min-w-24 mr-5" @click="isEditing = true">
+      <p v-if="!isEditing" class="text-white font-medium" :title="trackFile.file.name">{{ trackFile.name }}</p>
+      <p v-if="!isEditing" class="text-gray-400 text-sm">({{ fileSizeInMB }} Mo)</p>
+      <input v-if="isEditing"
+             v-model="trackFile.name"
+             class="bg-gray-500 text-white px-2 py-1 rounded w-full focus:outline-none"
+             @blur="saveName"
+             @keyup.enter="saveName"
+             ref="nameInput" />
     </div>
     <div class="flex">
       <VolumeOff v-if="trackFile.initialVolume == 0" class="w-5 h-5 text-red-400 mr-3"></VolumeOff>
@@ -47,7 +57,7 @@
 </template>
 
 <script lang="ts">
-  import { defineComponent, defineAsyncComponent, ref, computed } from 'vue';
+  import { defineComponent, defineAsyncComponent, ref, computed, nextTick } from 'vue';
   import FileTrack from '@/models/FileTrack';
   import { DB_UpdateTrack } from '@/persistance/TrackService';
   import IconSelector from './IconSelector.vue';
@@ -70,10 +80,6 @@
         type: Object as () => FileTrack,
         required: true
       },
-      index: {
-        type: Number,
-        required: true
-      },
       isListView: {
         type: Boolean,
         required: true
@@ -85,6 +91,15 @@
       const isSelectingIcon = ref(false);
       const fileSizeInMB = computed(() => (props.trackFile.file.size / 1024 / 1024).toFixed(2));
 
+      const nameInput = ref<HTMLInputElement | null>(null);
+
+      function startEditing() {
+        isEditing.value = true;
+        nextTick(() => {
+          nameInput.value?.focus();
+        });
+      }
+
       async function saveName() {
         await DB_UpdateTrack(props.trackFile);
         isEditing.value = false;
@@ -95,11 +110,11 @@
       }
 
       function onRemove() {
-        emit('remove-file', props.index);
+        emit('remove-file', props.trackFile);
       }
 
       function onPlay() {
-        emit('play', props.index);
+        emit('play', props.trackFile);
       }
 
       function resolveIconComponent(iconName: string) {
@@ -114,7 +129,14 @@
         await DB_UpdateTrack(props.trackFile);
       }
 
+      function onDragStart(e: DragEvent) {
+        if (!e.dataTransfer) return;
+        // On met la track en JSON
+        e.dataTransfer.setData('application/json', JSON.stringify(props.trackFile));
+      }
+
       return {
+        startEditing,
         isEditing,
         isSelectingIcon,
         fileSizeInMB,
@@ -124,6 +146,7 @@
         onPlay,
         onIconChosen,
         resolveIconComponent,
+        onDragStart,
       };
     }
   });

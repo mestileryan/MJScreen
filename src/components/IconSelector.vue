@@ -35,7 +35,7 @@
 </template>
 
 <script setup lang="ts">
-  import { ref, computed, onMounted, watch, defineEmits  } from 'vue';
+  import { ref, computed, onMounted, watch  } from 'vue';
   import LazyIcon from './LazyIcon.vue';
 
   const emit = defineEmits<{

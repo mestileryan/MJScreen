@@ -4,11 +4,14 @@ export default class FileTrack {
   initialVolume: number;
   name: string;
   iconName?: string; // <-- permet de stocker l'icône choisie
+  order: number;           // <-- Ajout de l'ordre des tracks
+  playlistId?: number;
 
-  constructor(file: File, name : string, initialVolume = 0.8) {
+  constructor(file: File, name: string) {
     this.file = file; // Génère un ID unique basé sur le timestamp
-    this.initialVolume = initialVolume; // Crée une URL unique pour le fichier
+    this.initialVolume = 0.8; // Crée une URL unique pour le fichier
     this.name = name;
     this.iconName = ''; // par défaut vide
+    this.order = 0;
   }
 }

@@ -8,10 +8,9 @@
       </div>
     </div>
 
+
     <div className="w-96 bg-gray-800 p-6 flex flex-col justify-start border-l border-gray-700">
-      <TracksPlayer :autoPlayMode="autoPlayMode"
-                    @update:autoplayMode="autoPlayMode = $event"
-                    ref="tracksPlayer" />
+      <TracksPlayer ref="tracksPlayer" />
 
     </div>
   </div>
@@ -33,7 +32,6 @@
     setup() {
       const library = ref<InstanceType<typeof Library> | null>(null);
       const tracksPlayer = ref<InstanceType<typeof TracksPlayer> | null>(null);
-      const autoPlayMode = ref(false);
 
       const handlePlay = (track: FileTrack, volume: number) => {
         if (tracksPlayer.value) {
@@ -44,7 +42,6 @@
       return {
         library,
         tracksPlayer,
-        autoPlayMode,
         handlePlay,
       };
     },

@@ -5,7 +5,7 @@ import type { TrackDB } from './TrackDB';
 
 
 export class TrackLibrary extends Dexie {
-  // Table "tracks", type = StoredTrack
+  // Table "tracks", type = TrackDB
   tracks!: Table<TrackDB>;
 
   constructor() {
