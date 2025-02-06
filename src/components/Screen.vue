@@ -1,5 +1,8 @@
 <template>
   <div className="min-h-screen bg-gray-900 flex">
+    <div>
+      <BackupButtons/>
+    </div>
     <div className="flex-1 p-8 overflow-auto">
       <h1 className="text-3xl font-bold text-purple-400 mb-8">MJ Screen Jukebox</h1>
 
@@ -11,7 +14,6 @@
 
     <div className="w-96 bg-gray-800 p-6 flex flex-col justify-start border-l border-gray-700">
       <TracksPlayer ref="tracksPlayer" />
-
     </div>
   </div>
 
@@ -22,12 +24,14 @@
   import Library from './Library.vue';
   import TracksPlayer from './TracksPlayer.vue';
   import FileTrack from '../models/FileTrack'
+  import BackupButtons from './BackupButtons.vue'
 
   export default defineComponent({
     name: 'Screen',
     components: {
       Library,
       TracksPlayer,
+      BackupButtons,
     },
     setup() {
       const library = ref<InstanceType<typeof Library> | null>(null);

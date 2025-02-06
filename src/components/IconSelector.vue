@@ -147,7 +147,3 @@
     emit('icon-chosen', iconName);
   }
 </script>
-
-<style scoped>
-  /* Styles minimaux */
-</style>

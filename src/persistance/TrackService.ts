@@ -1,3 +1,5 @@
+
+import 'dexie-export-import';
 import { TrackLibraryDB } from './TrackPersistance';
 import FileTrack from '../models/FileTrack'; // ou le bon chemin
 import type { TrackDB } from './TrackDB';
@@ -78,4 +80,15 @@ export async function DB_GetTracks(): Promise<FileTrack[]> {
 
   // 3) Retourne la liste des FileTrack
   return fileTracks;
+}
+export function DB_ExportTracks(): Promise<Blob> {
+  return TrackLibraryDB.export();
+}
+
+export function DB_ImportTracks(tracks: Blob): Promise<void> {
+  return TrackLibraryDB.import(tracks);
+}
+
+export function DB_ClearTracks(): Promise<void> {
+  return TrackLibraryDB.tracks.clear();
 }

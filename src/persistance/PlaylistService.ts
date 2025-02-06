@@ -1,4 +1,6 @@
-import { PlaylistLibraryDB } from './PlaylistPersistance';
+
+import 'dexie-export-import';
+import { PlaylistLibrary, PlaylistLibraryDB } from './PlaylistPersistance';
 import Playlist from '../models/Playlist'; // ou le bon chemin
 import type { PlaylistDB } from './PlaylistDB';
 
@@ -61,4 +63,16 @@ export async function DB_GetPlaylists(): Promise<Playlist[]> {
 
   // 3) Retourne la liste des FileTrack
   return playlists;
+}
+
+export function DB_ExportPlaylists(): Promise<Blob> {
+  return PlaylistLibraryDB.export();
+}
+
+export function DB_ImportPlaylists(playlists: Blob): Promise<void> {
+  return PlaylistLibraryDB.import(playlists);
+}
+
+export function DB_ClearPlaylists(): Promise<void> {
+  return PlaylistLibraryDB.playlists.clear();
 }
