@@ -1,6 +1,6 @@
 <template>
   <div className="min-h-screen bg-gray-900 flex">
-    <div className="flex-1 p-8 overflow-auto">
+    <div className="flex-1 p-8 overflow-auto mr-96 min-w-[522px]">
       <h1 className="text-3xl font-bold text-purple-400 mb-8">MJ Screen Jukebox</h1>
 
       <div>
@@ -8,13 +8,10 @@
       </div>
     </div>
 
-
-    <div className="w-96 bg-gray-800 p-6 flex flex-col justify-start border-l border-gray-700">
+    <div className="w-96 bg-gray-800 p-6 flex flex-col justify-start border-l border-gray-700 fixed right-0 top-0 h-full">
       <TracksPlayer ref="tracksPlayer" />
-
     </div>
   </div>
-
 </template>
 
 <script lang="ts">
