@@ -58,6 +58,10 @@
         type: Boolean,
         default: false,
       },
+      sinkId: {
+        type: String,
+        required: true,
+      }
     },
     emits: ['update', 'remove'],
     setup(props, { expose, emit }) {
@@ -68,11 +72,12 @@
 
       function togglePlay() {
         if (!player.value) return;
-        isPlaying.value ? player.value.pause() : player.value.play();
+        isPlaying.value ? player.value.pause() : play();
       }
 
       function play() {
         if (!isPlaying.value) {
+          player.value?.setSinkId(props.sinkId)
           player.value?.play();
         }
       }
@@ -137,9 +142,7 @@
           }
         }
         if (props.autoPlay && player.value) {
-          player.value.play().catch((err) => {
-            console.error('Erreur de lecture automatique :', err);
-          });
+          play();
         }
       });
 
@@ -148,6 +151,19 @@
         (newSrc) => {
           if (newSrc) {
             initializeWaveform();
+          }
+        }
+      );
+
+      watch(
+        () => props.sinkId,
+        (newSinkId) => {
+          if (player.value && newSinkId) {
+            player.value
+              .setSinkId(newSinkId)
+              .catch((err: Error) => {
+                console.error("Erreur lors de la mise à jour du sinkId :", err);
+              });
           }
         }
       );
