@@ -213,7 +213,8 @@
       }
       
       function removeFromPlaylist(pIndex: number, index: number) {
-        playlists.value[pIndex].tracks.splice(index, 1);
+        removeFile(playlists.value[pIndex].tracks[index]);
+
       }
       
 
