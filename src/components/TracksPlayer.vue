@@ -1,6 +1,5 @@
 <template>
   <div class="flex flex-col items-center justify-center gap-6 h-full">
-
     <div class="flex items-center justify-center gap-6">
       <button @click="toggleAutoplay" class="rounded-full hover:bg-gray-600/20 transition-colors">
         <SquareMousePointer class="w-8 h-8 text-purple-400" v-if="autoPlayMode" />
@@ -55,7 +54,7 @@
     setup() {
       const tracks = ref<Track[]>([]);
       const trackRefs = ref<(InstanceType<typeof TrackComponent> | null)[]>([]);
-      const autoPlayMode = ref(false); // Contrôle global de l'autoplay
+      const autoPlayMode = ref(false);
 
       const outputChannels = ref<MediaDeviceInfo[]>([]);
       const selectedOutputChannel = ref('');
@@ -66,7 +65,6 @@
           const devices = await navigator.mediaDevices.enumerateDevices();
           outputChannels.value = devices.filter(device => device.kind === 'audiooutput');
           if (outputChannels.value.length > 0) {
-            // Sélectionne par défaut le premier canal de sortie
             selectedOutputChannel.value = outputChannels.value[0].deviceId;
           }
         } catch (error) {
@@ -124,11 +122,9 @@
         toggleAutoplay,
         playAll,
         pauseAll,
-
         outputChannels,
         selectedOutputChannel,
       };
     },
   });
-
 </script>

@@ -1,7 +1,6 @@
 <template>
-  <div class="w-full bg-gray-800 rounded-lg p-4 pt-2">
+  <div class="w-full bg-gray-800 rounded-lg p-4 pt-2 h-full overflow-auto">
     <ImportFileDragOverlay @files-dropped="handleFilesDropped">
-
       <div class="flex items-center justify-between mb-4">
         <div class="flex items-center">
           <h2 class="text-xl font-bold text-purple-300 mr-2">Bibliothèque</h2>
@@ -33,11 +32,7 @@
 
       <hr class="h-px my-6 bg-purple-800 border-0 dark:bg-gray-700" />
       <div class="flex items-center">
-        <!-- Playlists -->
         <h2 class="text-xl font-bold text-purple-300 mr-2">Playlists</h2>
-
-
-        <!-- Bouton + pour ajouter une playlist -->
         <div class="w-8 cursor-pointer bg-purple-500 hover:bg-purple-600 px-2 py-1
             rounded-lg flex items-center gap-2 transition-colors justify-center"
              @click="addPlaylist" >
@@ -45,14 +40,10 @@
         </div>
       </div>
 
-      <!-- Liste des playlists dynamiques -->
       <div>
         <div v-for="(playlist, pIndex) in playlists" :key="playlist.id"
               class="bg-gray-700/25 p-3 rounded mt-1 mb-1">
           <div class="flex justify-between items-center">
-
-            <!--<h4 class="text-white font-semibold mb-2">{{ playlist.name }}</h4>-->
-
             <div class="flex-1">
               <p v-if="!playlist.isEditing"
                  class="text-white font-semibold mb-2 cursor-pointer"
@@ -97,17 +88,16 @@
           </draggable>
         </div>
       </div>
-
     </ImportFileDragOverlay>
   </div>
 </template>
 
 <style scoped>
-  .clearfix::after {
-    content: "";
-    display: table;
-    clear: both;
-  }
+.clearfix::after {
+  content: "";
+  display: table;
+  clear: both;
+}
 </style>
 
 <script lang="ts">
@@ -160,9 +150,8 @@
         playlists.value.forEach(playlist => {
           playlist.tracks.sort((a, b) => a.order - b.order)
         })
-
       });
-      // Permet de basculer en mode édition pour une playlist
+
       function startEditingPlaylist(playlist: Playlist) {
         playlist.isEditing = true;
         nextTick(() => {
@@ -170,7 +159,6 @@
         });
       }
 
-      // Sauvegarde le nom de la playlist
       async function savePlaylistName(playlist: Playlist) {
         if (!playlist.name.trim()) {
           playlist.name = "Nouvelle Playlist";
@@ -193,7 +181,6 @@
       }
 
       function removeFile(track: FileTrack) {
-        // Supprimer le track s'il est dans la bibliothèque principale
         const libraryIndex = unsortedTrackFiles.value.findIndex(t => t.id === track.id);
         if (libraryIndex !== -1) {
           unsortedTrackFiles.value.splice(libraryIndex, 1);
@@ -201,7 +188,6 @@
           return;
         }
         
-        // Sinon, chercher dans les playlists et le supprimer de la bonne
         for (const playlist of playlists.value) {
           const trackIndex = playlist.tracks.findIndex(t => t.id === track.id);
           if (trackIndex !== -1) {
@@ -214,9 +200,7 @@
       
       function removeFromPlaylist(pIndex: number, index: number) {
         removeFile(playlists.value[pIndex].tracks[index]);
-
       }
-      
 
       function playTrack(track: FileTrack) {
         emit('play', track);
@@ -231,15 +215,13 @@
       }
 
       async function updateTrackOrder(event: any, targetPlaylist: Playlist | undefined) {
-
         const targetList = targetPlaylist ? targetPlaylist.tracks : unsortedTrackFiles.value;
 
         if (event.added) {
-          // Cas où un élément a été ajouté depuis une autre liste
           const { element, newIndex } = event.added;
        
           element.order = targetList.length - 1;
-          element.playlistId = targetPlaylist ? targetPlaylist.id : undefined; // Met à jour la playlistId
+          element.playlistId = targetPlaylist ? targetPlaylist.id : undefined;
           await DB_UpdateTrack(element);
         }
 
@@ -247,18 +229,14 @@
           targetList[i].order = i;
           await DB_UpdateTrack(targetList[i]);
         }
-
       }
 
-
-      // Ajouter une playlist vide
       async function addPlaylist() {
         var playlist = new Playlist(`Playlist ${playlists.value.length + 1}`);
         await DB_AddPlaylist(playlist);
         playlists.value.push(playlist);
       }
      
-      // Supprimer une playlist
       async function removePlaylist(index: number) {
         var playlist = playlists.value[index];
         await DB_RemovePlaylist(playlist);
