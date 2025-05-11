@@ -102,7 +102,7 @@
 </template>
 
 <script lang="ts">
-  import { defineComponent, ref, onMounted } from 'vue';
+  import { defineComponent, ref, onMounted, watch } from 'vue';
   import draggable from 'vuedraggable';
   import {
     DB_AddTrack,
@@ -123,6 +123,7 @@
   import ImportFileDragOverlay from './ImportFileDragOverlay.vue';
   import ViewModePlayerToggle from './ViewModePlayerToggle.vue';
   import { GripVertical } from 'lucide-vue-next'
+  import Cookies from 'js-cookie';
 
   // Directive autofocus
   const focus = {
@@ -140,8 +141,20 @@
     directives: { focus },
     setup(_, { emit }) {
       const playlists = ref<Playlist[]>([]);
-      const isListView = ref(true);
+      const isListView = ref(
+        Cookies.get('viewMode') === 'soundboard'   // si cookie « soundboard », sinon list
+          ? false
+          : true
+      );
       const playlistNameInput = ref<HTMLInputElement | null>(null);
+
+      watch(isListView, (list) => {
+        Cookies.set(
+          'viewMode',
+          list ? 'list' : 'soundboard',
+          { expires: 365, path: '/' }
+        );
+      });
 
       onMounted(async () => {
         playlists.value = await DB_GetPlaylists();
