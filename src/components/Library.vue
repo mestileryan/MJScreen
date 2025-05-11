@@ -123,7 +123,7 @@
   import ImportFileDragOverlay from './ImportFileDragOverlay.vue';
   import ViewModePlayerToggle from './ViewModePlayerToggle.vue';
   import { GripVertical } from 'lucide-vue-next'
-  import Cookies from 'js-cookie';
+  import { Cookies } from '@/models/Cookies';
 
   // Directive autofocus
   const focus = {
@@ -141,18 +141,15 @@
     directives: { focus },
     setup(_, { emit }) {
       const playlists = ref<Playlist[]>([]);
-      const isListView = ref(
-        Cookies.get('viewMode') === 'soundboard'   // si cookie « soundboard », sinon list
-          ? false
-          : true
-      );
+      const isListView = ref(Cookies.get('viewMode') !== 'soundboard');
       const playlistNameInput = ref<HTMLInputElement | null>(null);
 
-      watch(isListView, (list) => {
+      watch(isListView, newVal => {
         Cookies.set(
           'viewMode',
-          list ? 'list' : 'soundboard',
-          { expires: 365, path: '/' }
+          newVal ? 'list' : 'soundboard',
+          365,
+          '/'
         );
       });
 
