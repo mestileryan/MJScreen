@@ -4,7 +4,7 @@ import { createApp } from 'vue'
 import App from './App.vue'
 
 import * as lucide from 'lucide-vue-next'
-
+import 'tippy.js/dist/tippy.css';
 
 const app = createApp(App)
 

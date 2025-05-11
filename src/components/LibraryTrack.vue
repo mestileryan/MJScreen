@@ -9,7 +9,7 @@
       <Music v-else class="w-5 h-5 text-purple-400" />
     </div>
     <div class="w-full min-w-24 mr-5" @click="isEditing = true">
-      <p v-if="!isEditing" class="text-white font-medium" :title="trackFile.file.name">{{ trackFile.name }}</p>
+      <p v-if="!isEditing" class="text-white font-medium">{{ trackFile.name }}</p>
       <p v-if="!isEditing" class="text-gray-400 text-sm">({{ fileSizeInMB }} Mo)</p>
       <input v-if="isEditing"
              v-model="trackFile.name"
@@ -36,14 +36,13 @@
   </li>
 
   <div v-else
-       class="bg-gray-700 text-white rounded float-left w-20 ml-[2px] mb-[1px] h-20 
+       class="bg-gray-700 text-white rounded float-left w-12 ml-[2px] mb-[1px] h-12 
        flex flex-col items-center justify-center cursor-pointer hover:bg-gray-600
        transition-colors relative"
        @click="onPlay"
-       :title="trackFile.name">
-    <component v-if="trackFile.iconName" :is="resolveIconComponent(trackFile.iconName)" class="w-8 h-8 text-purple-400 mb-1" />
-    <Music v-else class="w-8 h-8 text-purple-400" />
-    <p class="text-xs mt-1 text-center">{{ trackFile.name.length > 10 ? trackFile.name.substring(0, 10) + '...' : trackFile.name }}</p>
+       v-tooltip="trackFile.name">
+    <component v-if="trackFile.iconName" :is="resolveIconComponent(trackFile.iconName)" class="w-10 h-10 text-purple-400 mb-1" />
+    <Music v-else class="w-10 h-10 text-purple-400" />
   </div>
 
   <!-- Modal de sélection d’icône, si isSelectingIcon est true -->
@@ -61,6 +60,7 @@
   import FileTrack from '@/models/FileTrack';
   import { DB_UpdateTrack } from '@/persistance/TrackService';
   import IconSelector from './IconSelector.vue';
+  import tooltip from '@/directives/tooltip';
   const iconsModules = import.meta.glob('@/assets/game-icons/**/*.svg');
   const iconsMap: Record<string, () => Promise<any>> = {};
   Object.keys(iconsModules).forEach((fullPath) => {
@@ -86,6 +86,7 @@
       }
     },
     emits: ['remove-file', 'play'],
+    directives: { tooltip },
     setup(props, { emit }) {
       const isEditing = ref(false);
       const isSelectingIcon = ref(false);
