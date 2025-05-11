@@ -12,9 +12,12 @@
       <draggable v-model="unsortedTrackFiles"
                  group="tracks"
                  item-key="index"
-                 class="clearfix"
-                 @change="updateTrackOrder($event, undefined)"
-                 ghost-class="bg-gray-700">
+                 tag="div"
+                 animation="700"
+                 :class="isListView
+                   ? 'flex flex-col space-y-1'
+                   : 'flex flex-wrap justify-start'"
+                 @change="updateTrackOrder">
         <template #item="{ element, index }">
           <div class="cursor-move">
             <LibraryTrack :trackFile="element"
@@ -77,10 +80,12 @@
           <draggable v-model="playlist.tracks"
                      group="tracks"
                      item-key="id"
-                     animation="200"
-                     @change="updateTrackOrder($event, playlist)"
-                     ghost-class="bg-gray-500"
-                     class="clearfix">
+                     animation="700"
+                     tag="div"
+                     :class="isListView
+                       ? 'flex flex-col space-y-1'
+                       : 'flex flex-wrap justify-start'"
+                     @change="updateTrackOrder">
             <template #item="{ element, index }">
               <div class="cursor-move">
                 <LibraryTrack :trackFile="element"
@@ -234,11 +239,19 @@
 
         const targetList = targetPlaylist ? targetPlaylist.tracks : unsortedTrackFiles.value;
 
+        // Si on déplace DANS le même conteneur
+        if (event.moved) {
+          const { element, newIndex } = event.moved;
+          element.order = newIndex;
+          // pas de changement de playlistId ici
+          await DB_UpdateTrack(element);
+        }
+
         if (event.added) {
           // Cas où un élément a été ajouté depuis une autre liste
           const { element, newIndex } = event.added;
        
-          element.order = targetList.length - 1;
+          element.order = event.added.newIndex;
           element.playlistId = targetPlaylist ? targetPlaylist.id : undefined; // Met à jour la playlistId
           await DB_UpdateTrack(element);
         }

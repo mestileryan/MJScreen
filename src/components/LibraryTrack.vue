@@ -36,7 +36,7 @@
   </li>
 
   <div v-else
-       class="bg-gray-700 text-white rounded float-left w-20 m-1 h-20 
+       class="bg-gray-700 text-white rounded float-left w-20 ml-[2px] mb-[1px] h-20 
        flex flex-col items-center justify-center cursor-pointer hover:bg-gray-600
        transition-colors relative"
        @click="onPlay"
