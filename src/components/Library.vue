@@ -10,59 +10,83 @@
         <ViewModePlayerToggle v-model:isListView="isListView" />
       </div>
 
-      <div>
-        <div v-for="(playlist) in playlists"
-             :key="playlist.id"
-             class="bg-gray-700/25 p-3 rounded mt-1 mb-1">
-          <div class="flex justify-between items-center mb-2">
-            <div class="flex-1">
-              <p v-if="!playlist.isEditing"
-                 class="text-white font-semibold mb-2 cursor-pointer"
-                 @click="playlist.isEditing = true">
-                {{ playlist.name }}
-              </p>
-              <input v-else
-                     v-model="playlist.name"
-                     v-focus
-                     class="bg-gray-600 text-white px-2 py-1 rounded w-full focus:outline-none"
-                     @blur="savePlaylistName(playlist)"
-                     @keyup.enter="savePlaylistName(playlist)" />
+      <draggable
+        v-model="playlists"
+        item-key="id"
+        animation="700"
+        handle=".playlist-handle"
+        tag="div"
+      >
+        <template #item="{ element: playlist }">
+          <div class="bg-gray-700/25 p-3 rounded mt-1 mb-1 flex flex-col">
+           <!-- ——— HEADER : poignée + titre + poubelle ——— -->
+           <div class="flex items-center mb-2">
+               <!-- 1) Poignée -->
+               <div class="playlist-handle cursor-move p-1 mr-3 rounded hover:bg-gray-800/25"
+                    title="Déplacer la playlist"
+               >
+                   <GripVertical class="w-5 h-5 text-gray-400" />
 
+              </div>
+
+               <!-- 2) Titre éditable -->
+               <div class="flex-1">
+                   <p v-if="!playlist.isEditing"
+                      class="text-white font-semibold cursor-pointer"
+                      @click="playlist.isEditing = true"
+                    >
+                       {{ playlist.name }}
+                </p>
+                   <input v-else
+                          v-model="playlist.name"
+                          v-focus
+                          class="bg-gray-600 text-white px-2 py-1 rounded w-full focus:outline-none"
+                          @blur="savePlaylistName(playlist)"
+                          @keyup.enter="savePlaylistName(playlist)"
+                   />
+              </div>
+
+               <!-- 3) Bouton poubelle -->
+               <button v-if="playlist.tracks.length === 0"
+                       class="p-2 hover:bg-red-700/20 rounded-full transition-colors ml-3"
+                       @click="removePlaylist(playlist)"
+               >
+                   <Trash2 class="w-5 h-5 text-red-400" />
+              </button>
             </div>
 
-            <button v-if="playlist.tracks.length === 0"
-                    class="p-2 hover:bg-red-700/20 rounded-full transition-colors" @click="removePlaylist(playlist)">
-              <Trash2 class="w-5 h-5 text-red-400" />
-            </button>
+            <draggable v-model="playlist.tracks"
+                       group="tracks"
+                       item-key="id"
+                       animation="700"
+                       tag="div"
+                       :class="isListView
+                          ? 'flex flex-col space-y-1'
+                          : 'flex flex-wrap justify-start'"
+                       @change="e => updateTrackOrder(playlist, e)">
+              <template #item="{ element }">
+                <div class="cursor-move">
+                  <LibraryTrack :trackFile="element"
+                                :isListView="isListView"
+                                @remove-file="() => removeTrack(playlist, element)"
+                                @play="playTrack" />
+                </div>
+              </template>
+              <template #footer>
+                <div v-if="playlist.tracks.length === 0">
+                  <p class="text-gray-400 italic">
+                    C'est vide ! 👀🕸️
+                  </p>
+                </div>
+              </template>
+            </draggable>
+
+
+
           </div>
 
-          <draggable v-model="playlist.tracks"
-                     group="tracks"
-                     item-key="id"
-                     animation="700"
-                     tag="div"
-                     :class="isListView
-              ? 'flex flex-col space-y-1'
-              : 'flex flex-wrap justify-start'"
-                     @change="updateTrackOrder(playlist)">
-            <template #item="{ element }">
-              <div class="cursor-move">
-                <LibraryTrack :trackFile="element"
-                              :isListView="isListView"
-                              @remove-file="() => removeTrack(playlist, element)"
-                              @play="playTrack" />
-              </div>
-            </template>
-            <template #footer>
-              <div v-if="playlist.tracks.length === 0">
-                <p class="text-gray-400 italic">
-                  C'est vide ! 👀🕸️
-                </p>
-              </div>
-            </template>
-          </draggable>
-        </div>
-      </div>
+        </template>
+      </draggable>
 
       <div class="bg-gray-700/25 p-3 rounded mt-1 mb-1
          border-2 border-dashed border-gray-400
@@ -98,6 +122,7 @@
   import Uploader from './Uploader.vue';
   import ImportFileDragOverlay from './ImportFileDragOverlay.vue';
   import ViewModePlayerToggle from './ViewModePlayerToggle.vue';
+  import { GripVertical } from 'lucide-vue-next'
 
   // Directive autofocus
   const focus = {
@@ -108,7 +133,10 @@
 
   export default defineComponent({
     name: 'Library',
-    components: { LibraryTrack, Uploader, ImportFileDragOverlay, ViewModePlayerToggle, draggable },
+    components: {
+      LibraryTrack, Uploader, ImportFileDragOverlay,
+      ViewModePlayerToggle, draggable, GripVertical
+    },
     directives: { focus },
     setup(_, { emit }) {
       const playlists = ref<Playlist[]>([]);
@@ -178,10 +206,19 @@
         }
       }
 
-      async function updateTrackOrder(targetPlaylist: Playlist) {
-        for (let i = 0; i < targetPlaylist.tracks.length; i++) {
-          targetPlaylist.tracks[i].order = i;
-          await DB_UpdateTrack(targetPlaylist.tracks[i]);
+      async function updateTrackOrder(pl: Playlist, event: any) {
+        // Si on drop une track depuis une autre playlist ou la bibliothèque
+        if (event.added) {
+          const { element, newIndex } = event.added;
+          // On l’assigne à la bonne playlist
+          element.playlistId = pl.id;
+          element.order = newIndex;
+          await DB_UpdateTrack(element);
+        }
+        // Puis on ré‐numérote tout
+        for (let i = 0; i < pl.tracks.length; i++) {
+          pl.tracks[i].order = i;
+          await DB_UpdateTrack(pl.tracks[i]);
         }
       }
 
