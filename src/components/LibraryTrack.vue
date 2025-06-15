@@ -5,7 +5,9 @@
       @dragstart="onDragStart"
       >
     <div class="mr-3 cursor-pointer hover:bg-purple-400/20 rounded-full p-1" @click="isSelectingIcon = true">
-      <component v-if="trackFile.iconName" :is="resolveIconComponent(trackFile.iconName)" class="w-5 h-5 text-purple-400" />
+      <svg v-if="trackFile.iconName" class="w-5 h-5 text-purple-400">
+        <use :href="`#${trackFile.iconName}`" />
+      </svg>
       <Music v-else class="w-5 h-5 text-purple-400" />
     </div>
     <div class="w-full min-w-24 mr-5" @click="isEditing = true">
@@ -36,12 +38,14 @@
   </li>
 
   <div v-else
-       class="bg-gray-700 text-white rounded float-left w-12 ml-[2px] mb-[1px] h-12 
+       class="bg-gray-700 text-white rounded float-left w-12 ml-[2px] mb-[1px] h-12
        flex flex-col items-center justify-center cursor-pointer hover:bg-gray-600
        transition-colors relative"
        @click="onPlay"
        v-tooltip="trackFile.name">
-    <component v-if="trackFile.iconName" :is="resolveIconComponent(trackFile.iconName)" class="w-10 h-10 text-purple-400 mb-1" />
+    <svg v-if="trackFile.iconName" class="w-10 h-10 text-purple-400 mb-1">
+      <use :href="`#${trackFile.iconName}`" />
+    </svg>
     <Music v-else class="w-10 h-10 text-purple-400" />
   </div>
 
@@ -61,14 +65,7 @@
   import { DB_UpdateTrack } from '@/persistance/TrackService';
   import IconSelector from './IconSelector.vue';
   import tooltip from '@/directives/tooltip';
-  const iconsModules = import.meta.glob('@/assets/game-icons/**/*.svg');
-  const iconsMap: Record<string, () => Promise<any>> = {};
-  Object.keys(iconsModules).forEach((fullPath) => {
-    const baseName = fullPath.split('/').pop()?.replace('.svg', '');
-    if (baseName) {
-      iconsMap[baseName] = iconsModules[fullPath];
-    }
-  });
+
 
   export default defineComponent({
     //name: 'LibraryTrack',
@@ -88,6 +85,7 @@
     emits: ['remove-file', 'play'],
     directives: { tooltip },
     setup(props, { emit }) {
+      const spriteHref = new URL('@/assets/icon-sprite.svg', import.meta.url).href;
       const isEditing = ref(false);
       const isSelectingIcon = ref(false);
       const fileSizeInMB = computed(() => (props.trackFile.file.size / 1024 / 1024).toFixed(2));
@@ -118,12 +116,6 @@
         emit('play', props.trackFile);
       }
 
-      function resolveIconComponent(iconName: string) {
-        const loader = iconsMap[iconName];
-        if (!loader) return null;
-        return defineAsyncComponent(() => loader().then(mod => mod.default));
-      }
-
       async function onIconChosen(iconName: string) {
         props.trackFile.iconName = iconName;
         isSelectingIcon.value = false;
@@ -146,8 +138,8 @@
         onRemove,
         onPlay,
         onIconChosen,
-        resolveIconComponent,
         onDragStart,
+        spriteHref,
       };
     }
   });
