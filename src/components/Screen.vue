@@ -1,11 +1,8 @@
 <template>
-  <div class="min-h-screen bg-gray-900 grid" :class="showFeaturePanel ? 'grid-cols-[1fr_24rem_24rem]' : 'grid-cols-[1fr_24rem]'">
+  <div class="min-h-screen bg-gray-900 grid" :class="isPlayerCollapsed ? 'grid-cols-[1fr_1.5rem]' : 'grid-cols-[1fr_24rem]'">
     <div class="p-8 overflow-auto min-w-[522px]">
       <div class="flex items-center justify-between">
         <h1 class="text-3xl font-bold text-purple-400 mb-8">MJ Screen Jukebox</h1>
-        <button @click="toggleFeaturePanel" class="text-sm text-purple-300 hover:underline ml-4">
-          {{ showFeaturePanel ? 'Masquer' : 'Afficher' }} le panneau
-        </button>
       </div>
 
       <div>
@@ -13,13 +10,13 @@
       </div>
     </div>
 
-    <div class="w-96 bg-gray-800 p-6 flex flex-col justify-start border-l border-gray-700">
+    <div v-if="!isPlayerCollapsed" class="relative w-96 bg-gray-800 p-6 flex flex-col justify-start border-l border-gray-700">
+      <button @click="togglePlayer" class="absolute right-2 top-2 text-purple-300 hover:text-purple-400">&gt;</button>
       <TracksPlayer ref="tracksPlayer" />
     </div>
 
-    <div v-if="showFeaturePanel" class="w-96 bg-gray-700 p-6 flex flex-col justify-start border-l border-gray-700">
-      <p class="text-purple-300 font-semibold mb-2">Nouveau panneau</p>
-      <p class="text-gray-300">Placez ici votre future fonctionnalité.</p>
+    <div v-else class="flex items-start border-l border-gray-700 relative">
+      <button @click="togglePlayer" class="text-purple-300 hover:text-purple-400 m-2">&lt;</button>
     </div>
   </div>
 </template>
@@ -41,13 +38,13 @@
       const library = ref<InstanceType<typeof Library> | null>(null);
       const tracksPlayer = ref<InstanceType<typeof TracksPlayer> | null>(null);
 
-      const showFeaturePanel = ref(Cookies.get('showFeaturePanel') !== 'false');
-      watch(showFeaturePanel, val => {
-        Cookies.set('showFeaturePanel', val ? 'true' : 'false');
+      const isPlayerCollapsed = ref(Cookies.get('playerCollapsed') === 'true');
+      watch(isPlayerCollapsed, val => {
+        Cookies.set('playerCollapsed', val ? 'true' : 'false');
       });
 
-      function toggleFeaturePanel() {
-        showFeaturePanel.value = !showFeaturePanel.value;
+      function togglePlayer() {
+        isPlayerCollapsed.value = !isPlayerCollapsed.value;
       }
 
       const handlePlay = (track: FileTrack, volume: number) => {
@@ -60,8 +57,8 @@
         library,
         tracksPlayer,
         handlePlay,
-        showFeaturePanel,
-        toggleFeaturePanel,
+        isPlayerCollapsed,
+        togglePlayer,
       };
     },
   });
