@@ -27,7 +27,9 @@
            :key="icon.path"
            class="flex flex-col items-center cursor-pointer text-gray-400 hover:text-purple-300"
            @click="chooseIcon(icon.name)">
-        <LazyIcon :icon="icon" class="w-8 h-8" />
+        <svg class="w-8 h-8 text-purple-400">
+          <use :href="`#${icon.name}`" />
+        </svg>
         <span class="text-xs mt-1 text-gray-300">{{ icon.name }}</span>
       </div>
     </div>
@@ -36,8 +38,9 @@
 
 <script setup lang="ts">
   import { ref, computed, onMounted, watch  } from 'vue';
-  import LazyIcon from './LazyIcon.vue';
+  import iconList from '@/assets/icon-list.json';
 
+  const spriteHref = new URL('@/assets/icon-sprite.svg', import.meta.url).href;
   const emit = defineEmits<{
     (e: 'icon-chosen', iconName: string): void;
     (e: 'close'): void;
@@ -50,28 +53,16 @@
   interface IconMeta {
     path: string;
     name: string;
-    loader: () => Promise<any>;
-    component: any | null;
   }
 
   // 1) On scanne tous les fichiers .svg en lazy (sans eager:true)
-  const iconsModules = import.meta.glob('@/assets/game-icons/**/*.svg');
+  //const iconsModules = import.meta.glob('@/assets/game-icons/**/*.svg');
 
   // 2) On construit un tableau initial complet
-  const iconsArray: IconMeta[] = Object.keys(iconsModules).map((path) => {
-    const loader = iconsModules[path];
-    const fileName = path
-      .split('/')
-      .pop()
-      ?.replace('.svg', '') // enlever l'extension
-      || 'Unnamed';
-    return {
-      path,
-      name: fileName,
-      loader,
-      component: null
-    };
-  });
+  const iconsArray: IconMeta[] = iconList.map((name) => ({
+    path: `/src/assets/game-icons/${name}.svg`,
+    name
+  }));
 
   /** Barre de recherche */
   const searchTerm = ref('');
@@ -96,8 +87,11 @@
   /** Au changement de `filteredIcons` ou du `searchTerm`, on ré-initialise la pagination */
   function resetPagination() {
     currentPage.value = 1;
-    // On prend les premiers 20 icônes filtrés
     visibleIcons.value = filteredIcons.value.slice(0, iconsPerPage);
+    // Recharge si la scrollbox est trop courte
+    if (scrollContainer.value && scrollContainer.value.scrollHeight <= scrollContainer.value.clientHeight + 50) {
+      loadMoreIcons();
+    }
   }
 
   /** Fonction pour charger la “page suivante” (infinite scroll) */

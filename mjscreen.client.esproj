@@ -7,7 +7,7 @@
     <ShouldRunBuildScript>true</ShouldRunBuildScript>
     <!-- Folder where production build objects will be placed -->
     <BuildOutputFolder>$(MSBuildProjectDirectory)\dist</BuildOutputFolder>
-    <BuildCommand>npm run build</BuildCommand>
+    <BuildCommand>npm run build-no-icons</BuildCommand>
   </PropertyGroup>
   <ItemGroup>
     <Folder Include="src\assets\game-icons\" />

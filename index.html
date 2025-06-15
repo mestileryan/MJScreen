@@ -1,13 +1,18 @@
 <!DOCTYPE html>
 <html lang="">
-  <head>
+<head>
     <meta charset="UTF-8">
-    <link rel="icon" href="/favicon.svg">
+    <link rel="preload" href="/src/assets/icon-sprite.svg" as="image" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Jukebox</title>
-  </head>
-  <body>
+</head>
+<body>
     <div id="app"></div>
+
     <script type="module" src="/src/main.ts"></script>
-  </body>
+    <script type="module">
+        import sprite from '/src/assets/icon-sprite.svg?raw'
+        document.body.insertAdjacentHTML('beforeend', sprite)
+    </script>
+</body>
 </html>
