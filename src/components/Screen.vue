@@ -11,12 +11,22 @@
     </div>
 
     <div v-if="!isPlayerCollapsed" class="relative w-96 bg-gray-800 p-6 flex flex-col justify-start border-l border-gray-700">
-      <button @click="togglePlayer" class="absolute right-2 top-2 text-purple-300 hover:text-purple-400">&gt;</button>
+      <button
+        @click="togglePlayer"
+        class="absolute right-2 top-2 rounded-full p-1 text-purple-300 hover:text-purple-400 hover:bg-gray-600/40 transition-colors"
+      >
+        <ChevronRight class="w-4 h-4" />
+      </button>
       <TracksPlayer ref="tracksPlayer" />
     </div>
 
-    <div v-else class="flex items-start border-l border-gray-700 relative">
-      <button @click="togglePlayer" class="text-purple-300 hover:text-purple-400 m-2">&lt;</button>
+    <div v-else class="flex items-center justify-center border-l border-gray-700">
+      <button
+        @click="togglePlayer"
+        class="rounded-full p-1 text-purple-300 hover:text-purple-400 hover:bg-gray-600/40 transition-colors"
+      >
+        <ChevronLeft class="w-4 h-4" />
+      </button>
     </div>
   </div>
 </template>
