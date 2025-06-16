@@ -89,7 +89,9 @@
       function toggleLoop() {
         if (!player.value) return;
         isLooping.value = !isLooping.value;
-        emit('update', { ...props.track, loop: isLooping.value }); // Notifie le parent avec une copie modifiée de l'objet track
+        props.track.loop = isLooping.value;
+        props.track.fileTrack.loop = isLooping.value;
+        emit('update', props.track);
       }
 
       function updateVolume() {
@@ -98,7 +100,8 @@
           return;
         }
         player.value.volume = props.track.volume;
-        emit('update', props.track); // Notifie le parent
+        props.track.fileTrack.initialVolume = props.track.volume;
+        emit('update', props.track);
       }
 
       // Fonction pour supprimer la track

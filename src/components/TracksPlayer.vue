@@ -46,6 +46,8 @@
   import { defineComponent, ref, onMounted } from 'vue';
   import TrackComponent from './Track.vue';
   import Track from '../models/Track';
+  import FileTrack from '../models/FileTrack';
+  import { DB_UpdateTrack } from '@/persistance/TrackService';
 
   export default defineComponent({
     name: 'TracksPlayer',
@@ -74,13 +76,17 @@
         }
       };
 
-      const addTrack = (file: File, name: string, volume: number) => {
-        const track = new Track(file, name, volume);
+      const addTrack = (fileTrack: FileTrack) => {
+        const track = new Track(fileTrack);
         tracks.value.push(track);
       };
 
-      const updateTrack = (index: number, updatedTrack: Track) => {
+      const updateTrack = async (index: number, updatedTrack: Track) => {
         tracks.value[index] = updatedTrack;
+        const ft = updatedTrack.fileTrack;
+        ft.initialVolume = updatedTrack.volume;
+        ft.loop = updatedTrack.loop;
+        if (ft.id != null) await DB_UpdateTrack(ft);
       };
 
       const removeTrack = (track: Track) => {

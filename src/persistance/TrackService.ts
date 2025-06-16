@@ -14,6 +14,7 @@ export async function DB_AddTrack(track: FileTrack): Promise<number> {
     iconName: track.iconName,
     order: track.order,
     playlistId: track.playlistId,
+    loop: track.loop,
   };
 
   // Dexie renvoie l'ID nouvellement inséré
@@ -39,6 +40,7 @@ export async function DB_UpdateTrack(track: FileTrack): Promise<void> {
     iconName: track.iconName,
     order: track.order,
     playlistId: track.playlistId,
+    loop: track.loop,
   });
 }
 
@@ -72,6 +74,7 @@ export async function DB_GetTracks(): Promise<FileTrack[]> {
     ft.iconName = st.iconName;
     ft.order = st.order;
     ft.playlistId = st.playlistId;
+    ft.loop = st.loop ?? false;
 
     return ft;
   });

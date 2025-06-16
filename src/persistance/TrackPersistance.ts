@@ -14,6 +14,14 @@ export class TrackLibrary extends Dexie {
       // "++id" = champ auto-incrémenté, vous pouvez aussi utiliser un "uuid"
       tracks: '++id,name'
     });
+
+    this.version(2).stores({
+      tracks: '++id,name,loop'
+    }).upgrade(tx => {
+      return tx.table('tracks').toCollection().modify(tr => {
+        if (tr.loop === undefined) tr.loop = false;
+      });
+    });
   }
 }
 
