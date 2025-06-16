@@ -14,6 +14,15 @@ export class PlaylistLibrary extends Dexie {
       // "++id" = champ auto-incrémenté, vous pouvez aussi utiliser un "uuid"
       playlists: '++id,name'
     });
+
+    // Ajout du champ "width" en version 2
+    this.version(2).stores({
+      playlists: '++id,name,width'
+    }).upgrade(tx => {
+      return tx.table('playlists').toCollection().modify(pl => {
+        if (pl.width === undefined) pl.width = null;
+      });
+    });
   }
 }
 
