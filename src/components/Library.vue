@@ -20,12 +20,12 @@
         <template #item="{ element: playlist }">
           <div
             class="bg-gray-700/25 p-3 rounded mt-1 mb-1 flex flex-col relative"
-            :class="!isListView ? 'float-left mr-2' : ''"
+            :class="!isListView ? 'float-left mr-2 border-r-[3px] border-purple-600' : ''"
             :style="!isListView ? { width: playlist.width ? playlist.width + 'px' : '100%' } : {}"
           >
             <div
               v-if="!isListView"
-              class="absolute top-0 right-0 w-1 h-full cursor-col-resize"
+              class="absolute top-0 right-0 w-[10px] h-full cursor-col-resize"
               @mousedown="e => startResize(e, playlist)"
             />
            <!-- ——— HEADER : poignée + titre + poubelle ——— -->
