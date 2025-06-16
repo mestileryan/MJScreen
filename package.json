@@ -7,7 +7,7 @@
     "dev": "vite",
     "build-icons": "node scripts/build-icon-sprite.mjs",
     "build": "npm run build-icons && run-p type-check \"build-only {@}\" --",
-	"build-no-icons": "run-p type-check \"build-only {@}\" --",
+    "build-no-icons": "run-p type-check \"build-only {@}\" --",
     "preview": "vite preview",
     "build-only": "vite build",
     "type-check": "vue-tsc --build",
@@ -16,6 +16,8 @@
   "dependencies": {
     "dexie": "^4.0.10",
     "lucide-vue-next": "^0.471.0",
+    "quill": "^2.0.3",
+    "quill-mention": "^6.1.1",
     "svgstore": "^3.0.1",
     "tippy.js": "^6.3.7",
     "vite-svg-loader": "^5.1.0",
