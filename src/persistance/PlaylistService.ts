@@ -9,6 +9,7 @@ export async function DB_AddPlaylist(playlist: Playlist): Promise<number> {
   // On construit l'objet qu'on veut stocker
   const stored: PlaylistDB = {
     name: playlist.name,
+    width: playlist.width,
   };
 
   // Dexie renvoie l'ID nouvellement inséré
@@ -28,6 +29,7 @@ export async function DB_UpdatePlaylist(playlist: Playlist): Promise<void> {
   }
   await PlaylistLibraryDB.playlists.update(playlist.id, {
     name: playlist.name,
+    width: playlist.width,
   });
 }
 
@@ -55,6 +57,7 @@ export async function DB_GetPlaylists(): Promise<Playlist[]> {
     // b) On instancie un FileTrack avec le volume initial
     const ft = new Playlist(st.name);
     ft.id = st.id;
+    ft.width = st.width ?? undefined;
 
     return ft;
   });

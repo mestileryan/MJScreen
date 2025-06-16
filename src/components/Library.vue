@@ -18,7 +18,16 @@
         tag="div"
       >
         <template #item="{ element: playlist }">
-          <div class="bg-gray-700/25 p-3 rounded mt-1 mb-1 flex flex-col">
+          <div
+            class="bg-gray-700/25 p-3 rounded mt-1 mb-1 flex flex-col relative"
+            :class="!isListView ? 'float-left mr-2' : ''"
+            :style="!isListView ? { width: playlist.width ? playlist.width + 'px' : '100%' } : {}"
+          >
+            <div
+              v-if="!isListView"
+              class="absolute top-0 right-0 w-1 h-full cursor-col-resize"
+              @mousedown="e => startResize(e, playlist)"
+            />
            <!-- ——— HEADER : poignée + titre + poubelle ——— -->
            <div class="flex items-center mb-2">
                <!-- 1) Poignée -->
@@ -87,6 +96,7 @@
 
         </template>
       </draggable>
+      <div class="clear-both"></div>
 
       <div class="bg-gray-700/25 p-3 rounded mt-1 mb-1
          border-2 border-dashed border-gray-400
@@ -143,6 +153,9 @@
       const playlists = ref<Playlist[]>([]);
       const isListView = ref(Cookies.get('viewMode') !== 'soundboard');
       const playlistNameInput = ref<HTMLInputElement | null>(null);
+      const resizing = ref<Playlist | null>(null);
+      let startX = 0;
+      let startWidth = 0;
 
       watch(isListView, newVal => {
         Cookies.set(
@@ -232,6 +245,30 @@
         }
       }
 
+      function startResize(e: MouseEvent, pl: Playlist) {
+        resizing.value = pl;
+        startX = e.clientX;
+        startWidth = pl.width ??
+          ((e.currentTarget as HTMLElement).parentElement?.clientWidth || 0);
+        document.addEventListener('mousemove', onResizing);
+        document.addEventListener('mouseup', stopResize);
+      }
+
+      function onResizing(e: MouseEvent) {
+        if (!resizing.value) return;
+        const newWidth = Math.max(150, startWidth + e.clientX - startX);
+        resizing.value.width = newWidth;
+      }
+
+      async function stopResize() {
+        if (resizing.value) {
+          await DB_UpdatePlaylist(resizing.value);
+        }
+        document.removeEventListener('mousemove', onResizing);
+        document.removeEventListener('mouseup', stopResize);
+        resizing.value = null;
+      }
+
       return {
         playlists,
         isListView,
@@ -244,6 +281,7 @@
         updateTrackOrder,
         playTrack,
         removeTrack,
+        startResize,
       };
     }
   });
