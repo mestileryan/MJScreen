@@ -170,6 +170,24 @@
           }
         }
       );
+
+      // Reflect volume changes made on the FileTrack (e.g. in the Library)
+      watch(
+        () => props.track.fileTrack.initialVolume,
+        (newVolume) => {
+          if (player.value) player.value.volume = newVolume;
+          props.track.volume = newVolume;
+        }
+      );
+
+      // Keep loop state in sync with the FileTrack
+      watch(
+        () => props.track.fileTrack.loop,
+        (newLoop) => {
+          isLooping.value = newLoop;
+          props.track.loop = newLoop;
+        }
+      );
       
       expose({
         play,
