@@ -1,9 +1,12 @@
 <template>
   <li v-if="isListView"
-      class="flex items-center p-3 rounded-lg bg-gray-700 hover:bg-gray-600 mb-1 shrink-0"
-      draggable="true"
-      @dragstart="onDragStart"
-      >
+      class="flex items-center p-3 rounded-lg bg-gray-700 hover:bg-gray-600 mb-1 shrink-0">
+    <div class="track-drag-handle cursor-move p-1 mr-2 rounded hover:bg-gray-600/25"
+         draggable="true"
+         @dragstart="onDragStart"
+         title="Déplacer le titre">
+      <GripVertical class="w-4 h-4 text-gray-400" />
+    </div>
     <div class="mr-3 cursor-pointer hover:bg-purple-400/20 rounded-full p-1" @click="isSelectingIcon = true">
       <svg v-if="trackFile.iconName" class="w-5 h-5 text-purple-400">
         <use :href="`#${trackFile.iconName}`" />
@@ -61,6 +64,7 @@
 
 <script lang="ts">
   import { defineComponent, defineAsyncComponent, ref, computed, nextTick } from 'vue';
+  import { GripVertical } from 'lucide-vue-next';
   import FileTrack from '@/models/FileTrack';
   import { DB_UpdateTrack } from '@/persistance/TrackService';
   import IconSelector from './IconSelector.vue';
@@ -70,7 +74,8 @@
   export default defineComponent({
     //name: 'LibraryTrack',
     components: {
-      IconSelector
+      IconSelector,
+      GripVertical,
     },
     props: {
       trackFile: {

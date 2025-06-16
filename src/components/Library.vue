@@ -69,6 +69,7 @@
                        group="tracks"
                        item-key="id"
                        animation="700"
+                       handle=".track-drag-handle"
                        tag="div"
                        :class="isListView
                           ? 'flex flex-col space-y-1'
