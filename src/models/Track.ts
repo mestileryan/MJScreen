@@ -1,3 +1,5 @@
+import FileTrack from './FileTrack';
+
 export default class Track {
   id: number;
   src: string;
@@ -5,14 +7,16 @@ export default class Track {
   volume: number;
   loop: boolean;
   name: string;
+  fileTrack: FileTrack;
 
-  constructor(file: File, name: string, volume = 1, autoPlay = false) {
-    this.id = Date.now(); // Génère un ID unique basé sur le timestamp
-    this.src = URL.createObjectURL(file); // Crée une URL unique pour le fichier
+  constructor(fileTrack: FileTrack, autoPlay = false) {
+    this.id = Date.now();
+    this.src = URL.createObjectURL(fileTrack.file);
     this.autoPlay = autoPlay;
-    this.volume = volume;
-    this.loop = false;
-    this.name = name;
+    this.volume = fileTrack.initialVolume;
+    this.loop = fileTrack.loop;
+    this.name = fileTrack.name;
+    this.fileTrack = fileTrack;
   }
 
   revokeUrl() {

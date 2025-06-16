@@ -7,5 +7,6 @@ export interface TrackDB {
   iconName?: string;
   order: number;
   playlistId?: number;
+  loop?: boolean;
 }
 

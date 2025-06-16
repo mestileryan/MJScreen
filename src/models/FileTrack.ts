@@ -6,6 +6,8 @@ export default class FileTrack {
   iconName?: string; // <-- permet de stocker l'icône choisie
   order: number;           // <-- Ajout de l'ordre des tracks
   playlistId?: number;
+  /** Etat boucle par defaut lors de la lecture */
+  loop: boolean;
 
   constructor(file: File, name: string) {
     this.file = file; // Génère un ID unique basé sur le timestamp
@@ -13,5 +15,6 @@ export default class FileTrack {
     this.name = name;
     this.iconName = ''; // par défaut vide
     this.order = 0;
+    this.loop = false;
   }
 }

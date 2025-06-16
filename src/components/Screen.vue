@@ -54,9 +54,9 @@
         isPlayerCollapsed.value = !isPlayerCollapsed.value;
       }
 
-      const handlePlay = (track: FileTrack, volume: number) => {
+      const handlePlay = (track: FileTrack) => {
         if (tracksPlayer.value) {
-          tracksPlayer.value.addTrack(track.file, track.name, track.initialVolume);
+          tracksPlayer.value.addTrack(track);
         }
       };
 
