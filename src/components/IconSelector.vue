@@ -40,7 +40,8 @@
 
 <script setup lang="ts">
   import { ref, computed, onMounted, watch  } from 'vue';
-import iconList from '@/assets/icon-list.json';
+  import iconList from '@/assets/icon-list.json';
+  import { Cookies } from '@/models/Cookies';
   const emit = defineEmits<{
     (e: 'icon-chosen', payload: { iconName: string; color: string }): void;
     (e: 'close'): void;
@@ -55,7 +56,7 @@ import iconList from '@/assets/icon-list.json';
     name: string;
   }
 
-  const selectedColor = ref('#c084fc');
+  const selectedColor = ref<string>(Cookies.get('lastColor') ?? '#c084fc');
 
   // 1) On scanne tous les fichiers .svg en lazy (sans eager:true)
   //const iconsModules = import.meta.glob('@/assets/game-icons/**/*.svg');
@@ -137,6 +138,10 @@ import iconList from '@/assets/icon-list.json';
   watch(filteredIcons, () => {
     resetPagination();
   });
+
+  watch(selectedColor, (val) => {
+    Cookies.set('lastColor', val)
+  })
 
   /** Émission vers le parent quand on choisit une icône */
   function chooseIcon(iconName: string) {
