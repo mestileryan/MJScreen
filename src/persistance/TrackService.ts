@@ -7,15 +7,16 @@ import type { TrackDB } from './TrackDB';
  */
 export async function DB_AddTrack(track: FileTrack): Promise<number> {
   // On construit l'objet qu'on veut stocker
-  const stored: TrackDB = {
-    name: track.file.name,
-    initialVolume: track.initialVolume,
-    blob: track.file,
-    iconName: track.iconName,
-    order: track.order,
-    playlistId: track.playlistId,
-    loop: track.loop,
-  };
+    const stored: TrackDB = {
+      name: track.file.name,
+      initialVolume: track.initialVolume,
+      blob: track.file,
+      iconName: track.iconName,
+      iconColor: track.iconColor,
+      order: track.order,
+      playlistId: track.playlistId,
+      loop: track.loop,
+    };
 
   // Dexie renvoie l'ID nouvellement inséré
   const newId = await TrackLibraryDB.tracks.add(stored);
@@ -34,14 +35,15 @@ export async function DB_UpdateTrack(track: FileTrack): Promise<void> {
   }
   console.log("Track saved " + track.name + ": " + track.order);
 
-  await TrackLibraryDB.tracks.update(track.id, {
-    initialVolume: track.initialVolume,
-    name: track.name,
-    iconName: track.iconName,
-    order: track.order,
-    playlistId: track.playlistId,
-    loop: track.loop,
-  });
+    await TrackLibraryDB.tracks.update(track.id, {
+      initialVolume: track.initialVolume,
+      name: track.name,
+      iconName: track.iconName,
+      iconColor: track.iconColor,
+      order: track.order,
+      playlistId: track.playlistId,
+      loop: track.loop,
+    });
 }
 
 /**
@@ -68,13 +70,14 @@ export async function DB_GetTracks(): Promise<FileTrack[]> {
     const file = new File([st.blob], st.name, { type: st.blob.type });
 
     // b) On instancie un FileTrack avec le volume initial
-    const ft = new FileTrack(file, st.name);
-    ft.initialVolume = st.initialVolume;
-    ft.id = st.id;
-    ft.iconName = st.iconName;
-    ft.order = st.order;
-    ft.playlistId = st.playlistId;
-    ft.loop = st.loop ?? false;
+      const ft = new FileTrack(file, st.name);
+      ft.initialVolume = st.initialVolume;
+      ft.id = st.id;
+      ft.iconName = st.iconName;
+      ft.iconColor = st.iconColor ?? '#c084fc';
+      ft.order = st.order;
+      ft.playlistId = st.playlistId;
+      ft.loop = st.loop ?? false;
 
     return ft;
   });

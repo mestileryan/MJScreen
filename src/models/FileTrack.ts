@@ -4,6 +4,8 @@ export default class FileTrack {
   initialVolume: number;
   name: string;
   iconName?: string; // <-- permet de stocker l'icône choisie
+  /** Couleur personnalisée de l'icône */
+  iconColor?: string;
   order: number;           // <-- Ajout de l'ordre des tracks
   playlistId?: number;
   /** Etat boucle par defaut lors de la lecture */
@@ -14,6 +16,7 @@ export default class FileTrack {
     this.initialVolume = 0.8; // Crée une URL unique pour le fichier
     this.name = name;
     this.iconName = ''; // par défaut vide
+    this.iconColor = '#c084fc';
     this.order = 0;
     this.loop = false;
   }

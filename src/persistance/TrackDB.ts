@@ -5,6 +5,7 @@ export interface TrackDB {
   initialVolume: number;
   blob: Blob;  // On stocke le contenu en blob (ou File)
   iconName?: string;
+  iconColor?: string;
   order: number;
   playlistId?: number;
   loop?: boolean;

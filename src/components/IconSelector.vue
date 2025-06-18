@@ -8,9 +8,11 @@
       <div class="flex items-center gap-2">
         <input type="text"
                v-model="searchTerm"
-               class="p-2 rounded bg-gray-700 text-white mr-10"
+               class="p-2 rounded bg-gray-700 text-white mr-4"
                placeholder="Rechercher une icône..." />
-
+        <input type="color"
+               v-model="selectedColor"
+               class="w-8 h-8 p-0 border-0 bg-transparent mr-6" />
         <button class="text-white hover:text-red-400 transition-colors"
                 @click="handleClose">
           <CircleX />
@@ -38,11 +40,9 @@
 
 <script setup lang="ts">
   import { ref, computed, onMounted, watch  } from 'vue';
-  import iconList from '@/assets/icon-list.json';
-
-  const spriteHref = new URL('@/assets/icon-sprite.svg', import.meta.url).href;
+import iconList from '@/assets/icon-list.json';
   const emit = defineEmits<{
-    (e: 'icon-chosen', iconName: string): void;
+    (e: 'icon-chosen', payload: { iconName: string; color: string }): void;
     (e: 'close'): void;
   }>();
 
@@ -54,6 +54,8 @@
     path: string;
     name: string;
   }
+
+  const selectedColor = ref('#c084fc');
 
   // 1) On scanne tous les fichiers .svg en lazy (sans eager:true)
   //const iconsModules = import.meta.glob('@/assets/game-icons/**/*.svg');
@@ -138,7 +140,7 @@
 
   /** Émission vers le parent quand on choisit une icône */
   function chooseIcon(iconName: string) {
-    emit('icon-chosen', iconName);
+    emit('icon-chosen', { iconName, color: selectedColor.value });
   }
 </script>
 
