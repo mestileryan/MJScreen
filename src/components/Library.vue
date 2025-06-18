@@ -32,9 +32,7 @@
            <!-- ——— HEADER : poignée + titre + poubelle ——— -->
            <div class="flex items-center mb-2">
                <!-- 1) Poignée -->
-               <div class="playlist-handle cursor-move p-1 mr-3 rounded hover:bg-gray-800/25"
-                    title="Déplacer la playlist"
-               >
+               <div class="playlist-handle cursor-move p-1 mr-3 rounded hover:bg-gray-800/25">
                    <GripVertical class="w-5 h-5 text-gray-400" />
 
               </div>
@@ -69,13 +67,14 @@
                        group="tracks"
                        item-key="id"
                        animation="700"
+                       handle=".track-drag-handle"
                        tag="div"
                        :class="isListView
                           ? 'flex flex-col space-y-1'
                           : 'flex flex-wrap justify-start'"
                        @change="e => updateTrackOrder(playlist, e)">
               <template #item="{ element }">
-                <div class="cursor-move">
+                <div>
                   <LibraryTrack :trackFile="element"
                                 :isListView="isListView"
                                 @remove-file="() => removeTrack(playlist, element)"
