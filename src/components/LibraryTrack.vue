@@ -7,10 +7,10 @@
       <GripVertical class="w-4 h-4 text-gray-400" />
     </div>
     <div class="mr-3 cursor-pointer hover:bg-purple-400/20 rounded-full p-1" @click="isSelectingIcon = true">
-      <svg v-if="trackFile.iconName" class="w-5 h-5 text-purple-400">
+      <svg v-if="trackFile.iconName" class="w-5 h-5" :style="{ color: trackFile.iconColor }">
         <use :href="`#${trackFile.iconName}`" />
       </svg>
-      <Music v-else class="w-5 h-5 text-purple-400" />
+      <Music v-else class="w-5 h-5" :style="{ color: trackFile.iconColor }" />
     </div>
     <div class="w-full min-w-24 mr-5" @click="isEditing = true">
       <p v-if="!isEditing" class="text-white font-medium cursor-pointer">
@@ -52,10 +52,10 @@
        transition-colors relative"
        @click="onPlay"
        v-tooltip="trackFile.name">
-    <svg v-if="trackFile.iconName" class="w-10 h-10 text-purple-400 mb-1">
+    <svg v-if="trackFile.iconName" class="w-10 h-10 mb-1" :style="{ color: trackFile.iconColor }">
       <use :href="`#${trackFile.iconName}`" />
     </svg>
-    <Music v-else class="w-10 h-10 text-purple-400" />
+    <Music v-else class="w-10 h-10" :style="{ color: trackFile.iconColor }" />
   </div>
 
   <!-- Modal de sélection d’icône, si isSelectingIcon est true -->
@@ -127,8 +127,9 @@
         emit('play', props.trackFile);
       }
 
-      async function onIconChosen(iconName: string) {
-        props.trackFile.iconName = iconName;
+      async function onIconChosen(payload: { iconName: string; color: string }) {
+        props.trackFile.iconName = payload.iconName;
+        props.trackFile.iconColor = payload.color;
         isSelectingIcon.value = false;
         await DB_UpdateTrack(props.trackFile);
       }
