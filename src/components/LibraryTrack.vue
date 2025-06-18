@@ -1,10 +1,9 @@
 <template>
   <li v-if="isListView"
-      class="flex items-center p-3 rounded-lg bg-gray-700 hover:bg-gray-600 mb-1 shrink-0">
+      class="flex items-center ml-5 rounded-lg bg-gray-700 hover:bg-gray-600 mb-1 shrink-0">
     <div class="track-drag-handle cursor-move p-1 mr-2 rounded hover:bg-gray-600/25"
          draggable="true"
-         @dragstart="onDragStart"
-         title="Déplacer le titre">
+         @dragstart="onDragStart">
       <GripVertical class="w-4 h-4 text-gray-400" />
     </div>
     <div class="mr-3 cursor-pointer hover:bg-purple-400/20 rounded-full p-1" @click="isSelectingIcon = true">
@@ -14,8 +13,10 @@
       <Music v-else class="w-5 h-5 text-purple-400" />
     </div>
     <div class="w-full min-w-24 mr-5" @click="isEditing = true">
-      <p v-if="!isEditing" class="text-white font-medium">{{ trackFile.name }}</p>
-      <p v-if="!isEditing" class="text-gray-400 text-sm">({{ fileSizeInMB }} Mo)</p>
+      <p v-if="!isEditing" class="text-white font-medium cursor-pointer">
+        {{ trackFile.name }}
+        <span v-if="!isEditing" class="text-gray-400 text-sm">({{ fileSizeInMB }} Mo)</span>
+      </p>
       <input v-if="isEditing"
              v-model="trackFile.name"
              class="bg-gray-500 text-white px-2 py-1 rounded w-full focus:outline-none"
@@ -31,10 +32,15 @@
       <input class="volume-slider" type="range" min="0" max="1" step="0.01" v-model.number="trackFile.initialVolume" @change="handleVolumeChange" />
     </div>
     <div class="flex items-center gap-1 ml-2">
-      <button class="p-2 rounded-full hover:bg-green-400/20 transition-colors" @click="onPlay">
+      <button class="p-1 rounded-full hover:bg-green-400/20 transition-colors" @click="onPlay">
         <Play class="w-5 h-5 text-green-400" />
       </button>
-      <button @click="onRemove" class="p-2 hover:bg-red-700/20 rounded-full transition-colors">
+      <button class="p-1 rounded-full hover:bg-blue-400/20 transition-colors"
+              @click="toggleLoop">
+        <Repeat1 v-if="trackFile.loop" class="w-5 h-5 text-purple-400" />
+        <Repeat1 v-if="!trackFile.loop" class="w-5 h-5 text-gray-400" />
+      </button>
+      <button @click="onRemove" class="p-1 hover:bg-red-700/20 rounded-full transition-colors">
         <Trash2 class="w-5 h-5 text-red-400" />
       </button>
     </div>
@@ -133,6 +139,11 @@
         e.dataTransfer.setData('application/json', JSON.stringify(props.trackFile));
       }
 
+      async function toggleLoop() {
+        props.trackFile.loop = !props.trackFile.loop;
+        await DB_UpdateTrack(props.trackFile);
+      }
+
       return {
         startEditing,
         isEditing,
@@ -145,6 +156,7 @@
         onIconChosen,
         onDragStart,
         spriteHref,
+        toggleLoop,
       };
     }
   });
