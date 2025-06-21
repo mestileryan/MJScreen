@@ -7,7 +7,7 @@
           <h2 class="text-xl font-bold text-purple-300 mr-2">Bibliothèque</h2>
           <Uploader @file-selected="handleFileSelected" />
           <HelpCircle
-            class="w-4 h-4 text-purple-300 ml-1 cursor-help"
+            class="w-5 text-gray-400 ml-1 cursor-help"
             v-tooltip="helpText"
           />
         </div>
@@ -97,17 +97,13 @@
               </template>
               <template #footer>
                 <div v-if="visibleTracks(playlist).length === 0">
-                  <p class="text-gray-400 italic">
-                    C'est vide ! 👀🕸️
+                  <p class="text-gray-400 text-xl">
+                    🕸️🕸️🕸
                   </p>
                 </div>
               </template>
             </draggable>
-
-
-
           </div>
-
         </template>
       </draggable>
       <div class="clear-both"></div>
