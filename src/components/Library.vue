@@ -208,13 +208,16 @@
 
         let target: Playlist | undefined;
         if (playlistName) {
-          target = playlists.value.find(
+          const idx = playlists.value.findIndex(
             p => p.name.toLowerCase() === playlistName.toLowerCase()
           );
-          if (!target) {
-            target = new Playlist(playlistName);
-            target.id = await DB_AddPlaylist(target);
-            playlists.value.push(target);
+          if (idx !== -1) {
+            target = playlists.value[idx];
+          } else {
+            const newPl = new Playlist(playlistName);
+            newPl.id = await DB_AddPlaylist(newPl);
+            playlists.value.push(newPl);
+            target = playlists.value[playlists.value.length - 1];
           }
         } else {
           target = playlists.value[0];
