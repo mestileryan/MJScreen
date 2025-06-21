@@ -7,7 +7,9 @@
       <!-- Groupement de la barre de recherche et du bouton à droite -->
       <div class="flex items-center gap-2">
         <input type="text"
+               ref="searchInput"
                v-model="searchTerm"
+               @focus="selectAllSearch"
                class="p-2 rounded bg-gray-700 text-white mr-4"
                placeholder="Rechercher une icône..." />
         <input type="color"
@@ -29,19 +31,20 @@
            :key="icon.path"
            class="flex flex-col items-center cursor-pointer text-gray-400 hover:text-purple-300"
            @click="chooseIcon(icon.name)">
-        <svg class="w-8 h-8 text-purple-400">
+        <svg class="w-8 h-8 text-purple-400"
+             :style="{ color: selectedColor }">
           <use :href="`#${icon.name}`" />
         </svg>
-        <span class="text-xs mt-1 text-gray-300">{{ icon.name }}</span>
+        <span class="text-xs text-gray-300">{{ icon.name }}</span>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-  import { ref, computed, onMounted, watch  } from 'vue';
+  import { ref, computed, onMounted, watch, nextTick } from 'vue';
   import iconList from '@/assets/icon-list.json';
-  import { Cookies } from '@/models/Cookies';
+  const props = defineProps<{ initialSearch?: string, initialColor?: string }>();
   const emit = defineEmits<{
     (e: 'icon-chosen', payload: { iconName: string; color: string }): void;
     (e: 'close'): void;
@@ -56,7 +59,7 @@
     name: string;
   }
 
-  const selectedColor = ref<string>(Cookies.get('lastColor') ?? '#c084fc');
+  const selectedColor = ref<string>();
 
   // 1) On scanne tous les fichiers .svg en lazy (sans eager:true)
   //const iconsModules = import.meta.glob('@/assets/game-icons/**/*.svg');
@@ -69,6 +72,7 @@
 
   /** Barre de recherche */
   const searchTerm = ref('');
+  const searchInput = ref<HTMLInputElement | null>(null);
   /** Nombre d’icônes qu’on affiche par “page” */
   const iconsPerPage = 20;
   const currentPage = ref(1);
@@ -125,6 +129,8 @@
 
   /** Gérer l'événement "scroll" manuellement */
   onMounted(() => {
+    searchTerm.value = props.initialSearch ?? '';
+    selectedColor.value = props.initialColor ?? '#c084fc';
     // Initialiser la pagination
     resetPagination();
 
@@ -132,6 +138,11 @@
     if (scrollContainer.value) {
       scrollContainer.value.addEventListener('scroll', handleScroll);
     }
+
+    nextTick(() => {
+      searchInput.value?.focus();
+      searchInput.value?.select();
+    });
   });
 
   /** A chaque changement du champ de recherche, on reset la pagination */
@@ -139,13 +150,15 @@
     resetPagination();
   });
 
-  watch(selectedColor, (val) => {
-    Cookies.set('lastColor', val)
-  })
+  function selectAllSearch() {
+    nextTick(() => {
+      searchInput.value?.select();
+    });
+  }
 
   /** Émission vers le parent quand on choisit une icône */
   function chooseIcon(iconName: string) {
-    emit('icon-chosen', { iconName, color: selectedColor.value });
+    emit('icon-chosen', { iconName, color: selectedColor.value ?? '#c084fc' });
   }
 </script>
 

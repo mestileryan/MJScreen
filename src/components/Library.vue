@@ -86,6 +86,7 @@
                 <div v-if="trackMatchesSearch(element)">
                   <LibraryTrack :trackFile="element"
                                 :isListView="isListView"
+                                :dragDisabled="searchTerm !== ''"
                                 @remove-file="() => removeTrack(playlist, element)"
                                 @play="playTrack" />
                 </div>
