@@ -15,6 +15,10 @@
               class="absolute -left-3 top-2 rounded-full p-1 text-purple-300 hover:text-purple-400 hover:bg-gray-700 transition-colors bg-gray-800 border border-gray-600 shadow-md">
         <ChevronRight class="w-4 h-4" />
       </button>
+      <button @click="showSettings = true"
+              class="absolute right-2 top-2 rounded-full p-1 text-purple-300 hover:text-purple-400 hover:bg-gray-700 transition-colors bg-gray-800 border border-gray-600 shadow-md">
+        <Settings class="w-4 h-4" />
+      </button>
 
       <TracksPlayer ref="tracksPlayer" />
     </div>
@@ -24,8 +28,13 @@
               class="absolute -left-3 top-2 rounded-full p-1 text-purple-300 hover:text-purple-400 hover:bg-gray-700 transition-colors bg-gray-800 border border-gray-600 shadow-md">
         <ChevronLeft class="w-4 h-4" />
       </button>
+      <button @click="showSettings = true"
+              class="absolute right-2 top-2 rounded-full p-1 text-purple-300 hover:text-purple-400 hover:bg-gray-700 transition-colors bg-gray-800 border border-gray-600 shadow-md">
+        <Settings class="w-4 h-4" />
+      </button>
     </div>
   </div>
+  <BackendConfigModal v-if="showSettings" @close="showSettings = false" />
 </template>
 
 <script lang="ts">
@@ -34,16 +43,23 @@
   import TracksPlayer from './TracksPlayer.vue';
   import FileTrack from '../models/FileTrack'
   import { Cookies } from '../models/Cookies';
+  import BackendConfigModal from './BackendConfigModal.vue';
+  import { Settings, ChevronRight, ChevronLeft } from 'lucide-vue-next';
 
   export default defineComponent({
     name: 'Screen',
     components: {
       Library,
       TracksPlayer,
+      BackendConfigModal,
+      Settings,
+      ChevronRight,
+      ChevronLeft,
     },
     setup() {
       const library = ref<InstanceType<typeof Library> | null>(null);
       const tracksPlayer = ref<InstanceType<typeof TracksPlayer> | null>(null);
+      const showSettings = ref(false);
 
       const isPlayerCollapsed = ref(Cookies.get('playerCollapsed') === 'true');
       watch(isPlayerCollapsed, val => {
@@ -66,6 +82,7 @@
         handlePlay,
         isPlayerCollapsed,
         togglePlayer,
+        showSettings,
       };
     },
   });
