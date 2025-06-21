@@ -1,10 +1,12 @@
 <template>
   <li v-if="isListView"
       class="flex items-center ml-5 rounded-lg bg-gray-700 hover:bg-gray-600 mb-1 shrink-0">
-    <div class="track-drag-handle cursor-move p-1 mr-2 rounded hover:bg-gray-600/25"
+    <div class="track-drag-handle p-1 mr-2 rounded hover:bg-gray-600/25"
+         :class="dragDisabled ? 'cursor-default' : 'cursor-move'"
          draggable="true"
          @dragstart="onDragStart">
-      <GripVertical class="w-4 h-4 text-gray-400" />
+      <GripVertical class="w-4 h-4"
+                    :class="dragDisabled ? 'text-gray-700' : 'text-gray-400'" />
     </div>
     <div class="mr-3 cursor-pointer hover:bg-purple-400/20 rounded-full p-1" @click="isSelectingIcon = true">
       <svg v-if="trackFile.iconName" class="w-5 h-5" :style="{ color: trackFile.iconColor }">
@@ -47,9 +49,11 @@
   </li>
 
   <div v-else
-       class="bg-gray-700 text-white rounded float-left w-12 ml-[2px] mb-[1px] h-12
+       class="track-drag-handle bg-gray-700 text-white rounded float-left w-12 ml-[2px] mb-[1px] h-12
        flex flex-col items-center justify-center cursor-pointer hover:bg-gray-600
        transition-colors relative"
+       draggable="true"
+       @dragstart="onDragStart"
        @click="onPlay"
        v-tooltip="trackFile.name">
     <svg v-if="trackFile.iconName" class="w-10 h-10 mb-1" :style="{ color: trackFile.iconColor }">
@@ -63,7 +67,8 @@
        class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
     <div class="bg-gray-800 p-4 rounded shadow-lg w-3/4 max-w-2xl">
       <IconSelector @icon-chosen="onIconChosen"
-                    @close="isSelectingIcon = false" />
+                    @close="isSelectingIcon = false"
+                    :initial-search="trackFile.iconName" />
     </div>
   </div>
 </template>
@@ -91,6 +96,10 @@
       isListView: {
         type: Boolean,
         required: true
+      },
+      dragDisabled: {
+        type: Boolean,
+        default: false,
       }
     },
     emits: ['remove-file', 'play'],

@@ -7,7 +7,9 @@
       <!-- Groupement de la barre de recherche et du bouton à droite -->
       <div class="flex items-center gap-2">
         <input type="text"
+               ref="searchInput"
                v-model="searchTerm"
+               @focus="selectAllSearch"
                class="p-2 rounded bg-gray-700 text-white mr-4"
                placeholder="Rechercher une icône..." />
         <input type="color"
@@ -39,9 +41,10 @@
 </template>
 
 <script setup lang="ts">
-  import { ref, computed, onMounted, watch  } from 'vue';
+  import { ref, computed, onMounted, watch, nextTick } from 'vue';
   import iconList from '@/assets/icon-list.json';
   import { Cookies } from '@/models/Cookies';
+  const props = defineProps<{ initialSearch?: string }>();
   const emit = defineEmits<{
     (e: 'icon-chosen', payload: { iconName: string; color: string }): void;
     (e: 'close'): void;
@@ -69,6 +72,7 @@
 
   /** Barre de recherche */
   const searchTerm = ref('');
+  const searchInput = ref<HTMLInputElement | null>(null);
   /** Nombre d’icônes qu’on affiche par “page” */
   const iconsPerPage = 20;
   const currentPage = ref(1);
@@ -125,6 +129,7 @@
 
   /** Gérer l'événement "scroll" manuellement */
   onMounted(() => {
+    searchTerm.value = props.initialSearch ?? '';
     // Initialiser la pagination
     resetPagination();
 
@@ -132,6 +137,11 @@
     if (scrollContainer.value) {
       scrollContainer.value.addEventListener('scroll', handleScroll);
     }
+
+    nextTick(() => {
+      searchInput.value?.focus();
+      searchInput.value?.select();
+    });
   });
 
   /** A chaque changement du champ de recherche, on reset la pagination */
@@ -142,6 +152,12 @@
   watch(selectedColor, (val) => {
     Cookies.set('lastColor', val)
   })
+
+  function selectAllSearch() {
+    nextTick(() => {
+      searchInput.value?.select();
+    });
+  }
 
   /** Émission vers le parent quand on choisit une icône */
   function chooseIcon(iconName: string) {

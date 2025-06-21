@@ -10,7 +10,7 @@
       </div>
     </div>
 
-    <div v-if="!isPlayerCollapsed" class="w-96 bg-gray-800 p-6 flex flex-col justify-start border-l border-gray-700 relative">
+    <div v-show="!isPlayerCollapsed" class="w-96 bg-gray-800 p-6 flex flex-col justify-start border-l border-gray-700 relative">
       <button @click="togglePlayer"
               class="absolute -left-3 top-2 rounded-full p-1 text-purple-300 hover:text-purple-400 hover:bg-gray-700 transition-colors bg-gray-800 border border-gray-600 shadow-md">
         <ChevronRight class="w-4 h-4" />
@@ -19,7 +19,7 @@
       <TracksPlayer ref="tracksPlayer" />
     </div>
 
-    <div v-else class="relative w-6 flex items-center justify-center border-l border-gray-700">
+    <div v-show="isPlayerCollapsed" class="relative w-6 flex items-center justify-center border-l border-gray-700">
       <button @click="togglePlayer"
               class="absolute -left-3 top-2 rounded-full p-1 text-purple-300 hover:text-purple-400 hover:bg-gray-700 transition-colors bg-gray-800 border border-gray-600 shadow-md">
         <ChevronLeft class="w-4 h-4" />
