@@ -6,7 +6,7 @@
          draggable="true"
          @dragstart="onDragStart">
       <GripVertical class="w-4 h-4"
-                    :class="dragDisabled ? 'text-gray-700' : 'text-gray-400'" />
+                    :class="dragDisabled ? 'text-gray-600' : 'text-gray-400'" />
     </div>
     <div class="mr-3 cursor-pointer hover:bg-purple-400/20 rounded-full p-1" @click="isSelectingIcon = true">
       <svg v-if="trackFile.iconName" class="w-5 h-5" :style="{ color: trackFile.iconColor }">
@@ -49,9 +49,10 @@
   </li>
 
   <div v-else
-       class="track-drag-handle bg-gray-700 text-white rounded float-left w-12 ml-[2px] mb-[1px] h-12
+       class="track-drag-handle text-white rounded float-left w-12 ml-[2px] mb-[1px] h-12
        flex flex-col items-center justify-center cursor-pointer hover:bg-gray-600
        transition-colors relative"
+        :class="dragDisabled ? 'bg-gray-700' : ' bg-gray-600'" 
        draggable="true"
        @dragstart="onDragStart"
        @click="onPlay"
