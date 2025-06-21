@@ -16,7 +16,7 @@
         <ChevronRight class="w-4 h-4" />
       </button>
       <button @click="showSettings = true"
-              class="absolute right-2 top-2 rounded-full p-1 text-purple-300 hover:text-purple-400 hover:bg-gray-700 transition-colors bg-gray-800 border border-gray-600 shadow-md">
+              class="absolute -left-3 top-12 rounded-full p-1 text-purple-300 hover:text-purple-400 hover:bg-gray-700 transition-colors bg-gray-800 border border-gray-600 shadow-md">
         <Settings class="w-4 h-4" />
       </button>
 
@@ -29,7 +29,7 @@
         <ChevronLeft class="w-4 h-4" />
       </button>
       <button @click="showSettings = true"
-              class="absolute right-2 top-2 rounded-full p-1 text-purple-300 hover:text-purple-400 hover:bg-gray-700 transition-colors bg-gray-800 border border-gray-600 shadow-md">
+              class="absolute right-2 top-12 rounded-full p-1 text-purple-300 hover:text-purple-400 hover:bg-gray-700 transition-colors bg-gray-800 border border-gray-600 shadow-md">
         <Settings class="w-4 h-4" />
       </button>
     </div>
