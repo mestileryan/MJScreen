@@ -7,7 +7,15 @@
           <h2 class="text-xl font-bold text-purple-300 mr-2">Bibliothèque</h2>
           <Uploader @file-selected="handleFileSelected" />
         </div>
-        <ViewModePlayerToggle v-model:isListView="isListView" />
+        <div class="flex items-center gap-2">
+          <input
+            v-model="searchTerm"
+            type="text"
+            placeholder="Rechercher..."
+            class="bg-gray-700 text-white px-2 py-1 rounded"
+          />
+          <ViewModePlayerToggle v-model:isListView="isListView" />
+        </div>
       </div>
 
       <draggable
@@ -69,12 +77,13 @@
                        animation="700"
                        handle=".track-drag-handle"
                        tag="div"
+                       :disabled="searchTerm !== ''"
                        :class="isListView
                           ? 'flex flex-col space-y-1'
                           : 'flex flex-wrap justify-start'"
                        @change="e => updateTrackOrder(playlist, e)">
               <template #item="{ element }">
-                <div>
+                <div v-if="trackMatchesSearch(element)">
                   <LibraryTrack :trackFile="element"
                                 :isListView="isListView"
                                 @remove-file="() => removeTrack(playlist, element)"
@@ -82,7 +91,7 @@
                 </div>
               </template>
               <template #footer>
-                <div v-if="playlist.tracks.length === 0">
+                <div v-if="visibleTracks(playlist).length === 0">
                   <p class="text-gray-400 italic">
                     C'est vide ! 👀🕸️
                   </p>
@@ -152,6 +161,7 @@
     setup(_, { emit }) {
       const playlists = ref<Playlist[]>([]);
       const isListView = ref(Cookies.get('viewMode') !== 'soundboard');
+      const searchTerm = ref('');
       const playlistNameInput = ref<HTMLInputElement | null>(null);
       const resizing = ref<Playlist | null>(null);
       let startX = 0;
@@ -269,9 +279,19 @@
         resizing.value = null;
       }
 
+      function trackMatchesSearch(track: FileTrack) {
+        if (!searchTerm.value) return true;
+        return track.name.toLowerCase().includes(searchTerm.value.toLowerCase());
+      }
+
+      function visibleTracks(pl: Playlist) {
+        return pl.tracks.filter(t => trackMatchesSearch(t));
+      }
+
       return {
         playlists,
         isListView,
+        searchTerm,
         playlistNameInput,
         handleFileSelected,
         handleFilesDropped,
@@ -282,6 +302,8 @@
         playTrack,
         removeTrack,
         startResize,
+        trackMatchesSearch,
+        visibleTracks,
       };
     }
   });
