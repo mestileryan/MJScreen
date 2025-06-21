@@ -8,7 +8,7 @@ import type { TrackDB } from './TrackDB';
 export async function DB_AddTrack(track: FileTrack): Promise<number> {
   // On construit l'objet qu'on veut stocker
     const stored: TrackDB = {
-      name: track.file.name,
+      name: track.name,
       initialVolume: track.initialVolume,
       blob: track.file,
       iconName: track.iconName,
