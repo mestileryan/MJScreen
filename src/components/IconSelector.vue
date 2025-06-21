@@ -44,7 +44,6 @@
 <script setup lang="ts">
   import { ref, computed, onMounted, watch, nextTick } from 'vue';
   import iconList from '@/assets/icon-list.json';
-  import { Cookies } from '@/models/Cookies';
   const props = defineProps<{ initialSearch?: string, initialColor?: string }>();
   const emit = defineEmits<{
     (e: 'icon-chosen', payload: { iconName: string; color: string }): void;
@@ -159,7 +158,7 @@
 
   /** Émission vers le parent quand on choisit une icône */
   function chooseIcon(iconName: string) {
-    emit('icon-chosen', { iconName, color: selectedColor.value });
+    emit('icon-chosen', { iconName, color: selectedColor.value ?? '#c084fc' });
   }
 </script>
 
