@@ -45,7 +45,7 @@
   import { ref, computed, onMounted, watch, nextTick } from 'vue';
   import iconList from '@/assets/icon-list.json';
   import { Cookies } from '@/models/Cookies';
-  const props = defineProps<{ initialSearch?: string }>();
+  const props = defineProps<{ initialSearch?: string, initialColor?: string }>();
   const emit = defineEmits<{
     (e: 'icon-chosen', payload: { iconName: string; color: string }): void;
     (e: 'close'): void;
@@ -60,7 +60,7 @@
     name: string;
   }
 
-  const selectedColor = ref<string>(Cookies.get('lastColor') ?? '#c084fc');
+  const selectedColor = ref<string>();
 
   // 1) On scanne tous les fichiers .svg en lazy (sans eager:true)
   //const iconsModules = import.meta.glob('@/assets/game-icons/**/*.svg');
@@ -131,6 +131,7 @@
   /** Gérer l'événement "scroll" manuellement */
   onMounted(() => {
     searchTerm.value = props.initialSearch ?? '';
+    selectedColor.value = props.initialColor ?? '#c084fc';
     // Initialiser la pagination
     resetPagination();
 
@@ -149,10 +150,6 @@
   watch(filteredIcons, () => {
     resetPagination();
   });
-
-  watch(selectedColor, (val) => {
-    Cookies.set('lastColor', val)
-  })
 
   function selectAllSearch() {
     nextTick(() => {

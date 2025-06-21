@@ -69,7 +69,8 @@
     <div class="bg-gray-800 p-4 rounded shadow-lg w-3/4 max-w-2xl">
       <IconSelector @icon-chosen="onIconChosen"
                     @close="isSelectingIcon = false"
-                    :initial-search="trackFile.iconName" />
+                    :initial-search="trackFile.iconName" 
+                    :initial-color="trackFile.iconColor" />
     </div>
   </div>
 </template>
