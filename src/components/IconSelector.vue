@@ -31,10 +31,11 @@
            :key="icon.path"
            class="flex flex-col items-center cursor-pointer text-gray-400 hover:text-purple-300"
            @click="chooseIcon(icon.name)">
-        <svg class="w-8 h-8 text-purple-400">
+        <svg class="w-8 h-8 text-purple-400"
+             :style="{ color: selectedColor }">
           <use :href="`#${icon.name}`" />
         </svg>
-        <span class="text-xs mt-1 text-gray-300">{{ icon.name }}</span>
+        <span class="text-xs text-gray-300">{{ icon.name }}</span>
       </div>
     </div>
   </div>
