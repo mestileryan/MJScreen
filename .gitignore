@@ -36,3 +36,5 @@ coverage
 /src/assets/icon-list.json
 /backend/MJScreen.Api/obj
 /backend/MJScreen.Api/MJScreen.Api.csproj.user
+/backend/MJScreen.Api/bin/Debug/net8.0
+/backend/MJScreen.Api/app.db
