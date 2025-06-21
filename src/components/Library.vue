@@ -6,6 +6,10 @@
         <div class="flex items-center">
           <h2 class="text-xl font-bold text-purple-300 mr-2">Bibliothèque</h2>
           <Uploader @file-selected="handleFileSelected" />
+          <HelpCircle
+            class="w-5 text-gray-400 ml-1 cursor-help"
+            v-tooltip="helpText"
+          />
         </div>
         <div class="flex items-center gap-2">
           <input
@@ -93,17 +97,13 @@
               </template>
               <template #footer>
                 <div v-if="visibleTracks(playlist).length === 0">
-                  <p class="text-gray-400 italic">
-                    C'est vide ! 👀🕸️
+                  <p class="text-gray-400 text-xl">
+                    🕸️🕸️🕸
                   </p>
                 </div>
               </template>
             </draggable>
-
-
-
           </div>
-
         </template>
       </draggable>
       <div class="clear-both"></div>
@@ -142,7 +142,8 @@
   import Uploader from './Uploader.vue';
   import ImportFileDragOverlay from './ImportFileDragOverlay.vue';
   import ViewModePlayerToggle from './ViewModePlayerToggle.vue';
-  import { GripVertical } from 'lucide-vue-next'
+  import { GripVertical, HelpCircle } from 'lucide-vue-next'
+  import tooltip from '@/directives/tooltip';
   import { Cookies } from '@/models/Cookies';
 
   // Directive autofocus
@@ -156,14 +157,17 @@
     name: 'Library',
     components: {
       LibraryTrack, Uploader, ImportFileDragOverlay,
-      ViewModePlayerToggle, draggable, GripVertical
+      ViewModePlayerToggle, draggable, GripVertical, HelpCircle
     },
-    directives: { focus },
+    directives: { focus, tooltip },
     setup(_, { emit }) {
       const playlists = ref<Playlist[]>([]);
       const isListView = ref(Cookies.get('viewMode') !== 'soundboard');
       const searchTerm = ref('');
       const playlistNameInput = ref<HTMLInputElement | null>(null);
+      const helpText =
+        'Pour ranger directement votre fichier de musique dans une playlist en particulier, ' +
+        'préfixez son nom par "Nom_Playlist --". Exemple : "MaPlaylist -- MonSon.mp3"';
       const resizing = ref<Playlist | null>(null);
       let startX = 0;
       let startWidth = 0;
@@ -196,12 +200,42 @@
 
       async function addFile(file: File) {
         if (!playlists.value.length) await ensureLibrary();
-        const lib = playlists.value[0];
-        const ft = new FileTrack(file, file.name);
-        ft.playlistId = lib.id;
-        ft.order = lib.tracks.length;
+        const { playlistName, trackName } = parseName(file.name);
+
+        let target: Playlist | undefined;
+        if (playlistName) {
+          const idx = playlists.value.findIndex(
+            p => p.name.toLowerCase() === playlistName.toLowerCase()
+          );
+          if (idx !== -1) {
+            target = playlists.value[idx];
+          } else {
+            const newPl = new Playlist(playlistName);
+            newPl.id = await DB_AddPlaylist(newPl);
+            playlists.value.push(newPl);
+            target = playlists.value[playlists.value.length - 1];
+          }
+        } else {
+          target = playlists.value[0];
+        }
+
+        const ft = new FileTrack(file, trackName);
+        ft.playlistId = target.id;
+        ft.order = target.tracks.length;
         ft.id = await DB_AddTrack(ft);
-        lib.tracks.push(ft);
+        target.tracks.push(ft);
+      }
+
+      function parseName(name: string) {
+        const parts = name.split('--');
+        let playlistName: string | undefined;
+        let trackName = name;
+        if (parts.length > 1) {
+          playlistName = parts[0].trim();
+          trackName = parts.slice(1).join('--').trim();
+        }
+        trackName = trackName.replace(/\.[^/.]+$/, '');
+        return { playlistName, trackName };
       }
 
       async function ensureLibrary() {
@@ -305,6 +339,7 @@
         startResize,
         trackMatchesSearch,
         visibleTracks,
+        helpText,
       };
     }
   });
