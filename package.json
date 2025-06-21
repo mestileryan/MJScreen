@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "dexie": "^4.0.10",
+    "jszip": "^3.10.1",
     "lucide-vue-next": "^0.471.0",
     "svgstore": "^3.0.1",
     "tippy.js": "^6.3.7",
