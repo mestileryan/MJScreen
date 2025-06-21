@@ -3,6 +3,7 @@
     <div class="p-8 overflow-auto min-w-[522px]">
       <div class="flex items-center justify-between">
         <h1 class="text-3xl font-bold text-purple-400 mb-8">MJ Screen Jukebox</h1>
+        <!-- Accès aux actions d'import/export -->
         <SettingsModal />
       </div>
 
@@ -33,6 +34,7 @@
   import { defineComponent, ref, watch } from 'vue';
   import Library from './Library.vue';
   import TracksPlayer from './TracksPlayer.vue';
+  // Bouton ouvrant la modale d'import/export
   import SettingsModal from './SettingsModal.vue';
   import FileTrack from '../models/FileTrack'
   import { Cookies } from '../models/Cookies';

@@ -1,4 +1,5 @@
 <template>
+  <!-- Arrière-plan semi-transparent bloquant -->
   <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
     <div class="bg-gray-800 p-6 rounded-lg w-80 text-center">
       <p class="text-white mb-4">{{ message }}</p>
@@ -12,6 +13,8 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue';
+
+// Composant affichant une boîte de dialogue de confirmation générique
 export default defineComponent({
   name: 'ConfirmationModal',
   props: {
