@@ -1,8 +1,8 @@
 <template>
-  <div class="relative inline-block">
+  <div class="relative">
     <!-- Bouton en forme de roue crantée -->
-    <button @click="isOpen = true" class="p-2 rounded-full hover:bg-gray-700 transition-colors">
-      <Settings class="w-6 h-6 text-purple-400" />
+    <button @click="isOpen = true" class="absolute -left-3 bottom-10 rounded-full p-1 text-purple-300 hover:text-purple-400 hover:bg-gray-700 transition-colors bg-gray-800 border border-gray-600 shadow-md">
+      <Settings class="w-6 h-6" />
     </button>
 
     <!-- Fenêtre modale contenant les options -->
