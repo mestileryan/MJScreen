@@ -32,10 +32,10 @@
 
     <!-- Modale de confirmation avant l'import -->
     <ConfirmationModal
-      v-if="toImport"
+      v-if="showConfirmation"
       :message="'Importer ce fichier écrasera tout le travail en cours. Continuer ?'"
       @confirm="confirmImport"
-      @cancel="toImport = null"
+      @cancel="showConfirmation = null"
     />
   </div>
 </template>
@@ -55,6 +55,7 @@ export default defineComponent({
   setup(props, { emit }) {
     // Fichier sélectionné pour l'import
     const toImport = ref<File | null>(null);
+    const showConfirmation = ref<boolean | null>(null);
     const errorMessage = ref<string | null>(null);
 
     // Génère l'archive et déclenche le téléchargement
@@ -80,6 +81,7 @@ export default defineComponent({
       const file = (e.target as HTMLInputElement).files?.[0];
       if (file) {
         toImport.value = file;
+        showConfirmation.value = true;
       }
     }
 
@@ -88,6 +90,7 @@ export default defineComponent({
       if (toImport.value) {
         errorMessage.value = null;
         try {
+          showConfirmation.value = false;
           await importLibrary(toImport.value);
           toImport.value = null;
           emit('close');
@@ -102,6 +105,7 @@ export default defineComponent({
     return {
       errorMessage,
       toImport,
+      showConfirmation,
       triggerExport,
       onFileChange,
       confirmImport
