@@ -7,6 +7,7 @@
 
       <div>
         <Library ref="library" @play="handlePlay" />
+        <NotesPanel class="mt-6" @play="handlePlay" />
       </div>
     </div>
 
@@ -32,6 +33,7 @@
   import { defineComponent, ref, watch } from 'vue';
   import Library from './Library.vue';
   import TracksPlayer from './TracksPlayer.vue';
+  import NotesPanel from './NotesPanel.vue';
   import FileTrack from '../models/FileTrack'
   import { Cookies } from '../models/Cookies';
 
@@ -40,6 +42,7 @@
     components: {
       Library,
       TracksPlayer,
+      NotesPanel,
     },
     setup() {
       const library = ref<InstanceType<typeof Library> | null>(null);
