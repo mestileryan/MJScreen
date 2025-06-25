@@ -78,16 +78,36 @@ export async function exportLibrary(): Promise<Blob> {
 
 // Importe l'archive produite par exportLibrary et remplace la base actuelle
 export async function importLibrary(blob: Blob): Promise<void> {
-  const zip = await JSZip.loadAsync(blob);
-  const json = await zip.file('data.json')!.async('string');
-  const data: ExportData = JSON.parse(json);
+  let zip: JSZip;
 
-  // On vide la base existante avant d'insérer les nouvelles données
+  // 1. Vérifie que c’est bien une archive ZIP
+  try {
+    zip = await JSZip.loadAsync(blob);
+  } catch {
+    throw new Error("Le fichier fourni est invalide.");
+  }
+
+  // 2. Vérifie la présence de data.json
+  const dataFile = zip.file('data.json');
+  if (!dataFile) {
+    throw new Error("Le fichier fourni est invalide (aucune piste trouvée)");
+  }
+
+  let data: ExportData;
+  try {
+    const json = await dataFile.async('string');
+    data = JSON.parse(json);
+  } catch {
+    throw new Error("Impossible de lire ou parser le fichier. Le fichier est corrompu ou invalide.");
+  }
+
+  // 3. Purge les anciennes données
   await PlaylistLibraryDB.playlists.clear();
   await TrackLibraryDB.tracks.clear();
 
   const playlists: Playlist[] = [];
-  // Reconstruction des playlists
+
+  // 4. Restauration des playlists
   for (const plData of data.playlists) {
     const pl = new Playlist(plData.name);
     pl.width = plData.width ?? undefined;
@@ -95,18 +115,24 @@ export async function importLibrary(blob: Blob): Promise<void> {
     playlists.push(pl);
   }
 
-  // Restauration des fichiers audio avec leurs métadonnées
+  // 5. Restauration des morceaux
   for (const trackMeta of data.tracks) {
-    const trackBlob = await zip.file(trackMeta.filePath)!.async('blob');
+    const trackFileEntry = zip.file(trackMeta.filePath);
+    if (!trackFileEntry) {
+      throw new Error(`Le fichier audio '${trackMeta.filePath}' est manquant dans l'archive.`);
+    }
+
+    const trackBlob = await trackFileEntry.async('blob');
     const file = new File([trackBlob], trackMeta.name, { type: trackMeta.type });
     const ft = new FileTrack(file, trackMeta.name);
-    // Valeurs par défaut pour assurer la compatibilité avec d'éventuelles nouvelles propriétés
+
     ft.initialVolume = trackMeta.initialVolume ?? 0.8;
     ft.iconName = trackMeta.iconName ?? '';
     ft.iconColor = trackMeta.iconColor ?? '#c084fc';
     ft.order = trackMeta.order ?? 0;
     ft.playlistId = playlists[trackMeta.playlistIndex]?.id;
     ft.loop = trackMeta.loop ?? false;
+
     await DB_AddTrack(ft);
   }
 }
