@@ -10,21 +10,14 @@
       </div>
     </div>
 
-    <div v-show="!isPlayerCollapsed" class="w-96 bg-gray-800 p-6 flex flex-col justify-start border-l border-gray-700 relative">
-      <button @click="togglePlayer"
-              class="absolute -left-3 top-2 rounded-full p-1 text-purple-300 hover:text-purple-400 hover:bg-gray-700 transition-colors bg-gray-800 border border-gray-600 shadow-md">
-        <ChevronRight class="w-4 h-4" />
-      </button>
-
+    <CollapsibleSidebar v-model:collapsed="isPlayerCollapsed" @open-settings="handleOpenSettings">
       <TracksPlayer ref="tracksPlayer" />
-    </div>
+    </CollapsibleSidebar>
 
-    <div v-show="isPlayerCollapsed" class="relative w-6 flex items-center justify-center border-l border-gray-700">
-      <button @click="togglePlayer"
-              class="absolute -left-3 top-2 rounded-full p-1 text-purple-300 hover:text-purple-400 hover:bg-gray-700 transition-colors bg-gray-800 border border-gray-600 shadow-md">
-        <ChevronLeft class="w-4 h-4" />
-      </button>
-    </div>
+    <SettingsModal
+      :isOpen="showSettings"
+      @close="showSettings = false" />
+
   </div>
 </template>
 
@@ -32,6 +25,10 @@
   import { defineComponent, ref, watch } from 'vue';
   import Library from './Library.vue';
   import TracksPlayer from './TracksPlayer.vue';
+  // Bouton ouvrant la modale d'import/export
+  import SettingsModal from './SettingsModal.vue';
+  // Barre latérale rétractable pour le lecteur
+  import CollapsibleSidebar from './CollapsibleSidebar.vue';
   import FileTrack from '../models/FileTrack'
   import { Cookies } from '../models/Cookies';
 
@@ -40,19 +37,18 @@
     components: {
       Library,
       TracksPlayer,
+      SettingsModal,
+      CollapsibleSidebar,
     },
     setup() {
       const library = ref<InstanceType<typeof Library> | null>(null);
       const tracksPlayer = ref<InstanceType<typeof TracksPlayer> | null>(null);
+      const showSettings = ref(false)
 
       const isPlayerCollapsed = ref(Cookies.get('playerCollapsed') === 'true');
       watch(isPlayerCollapsed, val => {
         Cookies.set('playerCollapsed', val ? 'true' : 'false');
       });
-
-      function togglePlayer() {
-        isPlayerCollapsed.value = !isPlayerCollapsed.value;
-      }
 
       const handlePlay = (track: FileTrack) => {
         if (tracksPlayer.value) {
@@ -60,12 +56,17 @@
         }
       };
 
+      const handleOpenSettings = () => {
+        showSettings.value = true
+      }
+
       return {
         library,
         tracksPlayer,
         handlePlay,
         isPlayerCollapsed,
-        togglePlayer,
+        handleOpenSettings,
+        showSettings,
       };
     },
   });
