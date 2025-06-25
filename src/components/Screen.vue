@@ -10,12 +10,14 @@
       </div>
     </div>
 
-    <CollapsibleSidebar v-model:collapsed="isPlayerCollapsed">
+    <CollapsibleSidebar v-model:collapsed="isPlayerCollapsed" @open-settings="handleOpenSettings">
       <TracksPlayer ref="tracksPlayer" />
-      <template #footer>
-        <SettingsModal class="absolute -left-3 bottom-10 rounded-full p-1 text-purple-300 hover:text-purple-400 hover:bg-gray-700 transition-colors bg-gray-800 border border-gray-600 shadow-md" />
-      </template>
     </CollapsibleSidebar>
+
+    <SettingsModal
+      :isOpen="showSettings"
+      @close="showSettings = false" />
+
   </div>
 </template>
 
@@ -41,6 +43,7 @@
     setup() {
       const library = ref<InstanceType<typeof Library> | null>(null);
       const tracksPlayer = ref<InstanceType<typeof TracksPlayer> | null>(null);
+      const showSettings = ref(false)
 
       const isPlayerCollapsed = ref(Cookies.get('playerCollapsed') === 'true');
       watch(isPlayerCollapsed, val => {
@@ -53,11 +56,17 @@
         }
       };
 
+      const handleOpenSettings = () => {
+        showSettings.value = true
+      }
+
       return {
         library,
         tracksPlayer,
         handlePlay,
         isPlayerCollapsed,
+        handleOpenSettings,
+        showSettings,
       };
     },
   });

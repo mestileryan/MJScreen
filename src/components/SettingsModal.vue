@@ -1,9 +1,5 @@
 <template>
   <div class="relative">
-    <!-- Bouton en forme de roue crantée -->
-    <button @click="isOpen = true" class="absolute -left-3 bottom-10 rounded-full p-1 text-purple-300 hover:text-purple-400 hover:bg-gray-700 transition-colors bg-gray-800 border border-gray-600 shadow-md">
-      <Settings class="w-6 h-6" />
-    </button>
 
     <!-- Fenêtre modale contenant les options -->
     <div v-if="isOpen" class="fixed inset-0 bg-black/50 flex items-center justify-center z-40">
@@ -17,7 +13,7 @@
             Importer
             <input type="file" class="hidden" @change="onFileChange" />
           </label>
-          <button @click="isOpen = false" class="px-3 py-2 bg-gray-600 rounded text-white">Fermer</button>
+          <button  @click="$emit('close')" class="px-3 py-2 bg-gray-600 rounded text-white">Fermer</button>
         </div>
       </div>
     </div>
@@ -40,9 +36,11 @@ import ConfirmationModal from './ConfirmationModal.vue';
 export default defineComponent({
   name: 'SettingsModal',
   components: { ConfirmationModal },
-  setup() {
-    // Etat de visibilité de la modale
-    const isOpen = ref(false);
+  props: {
+    isOpen: { type: Boolean, required: true }
+  },
+  emits: ['close'],
+  setup(props, { emit }) {
     // Fichier sélectionné pour l'import
     const toImport = ref<File | null>(null);
 
@@ -70,13 +68,13 @@ export default defineComponent({
       if (toImport.value) {
         await importLibrary(toImport.value);
         toImport.value = null;
-        isOpen.value = false;
+        emit('close');
         window.location.reload();
       }
     }
 
     // Données et méthodes exposées au template
-    return { isOpen, toImport, triggerExport, onFileChange, confirmImport };
+    return { toImport, triggerExport, onFileChange, confirmImport };
   }
 });
 </script>
