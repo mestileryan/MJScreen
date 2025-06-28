@@ -87,7 +87,8 @@ export async function DB_GetTracks(): Promise<FileTrack[]> {
 }
 
 /**
- * Retrieve a single track by its id from Dexie
+ * Retrieve a single track by its id from Dexie and rebuild the FileTrack
+ * instance.
  */
 export async function DB_GetTrack(id: number): Promise<FileTrack | undefined> {
   const st = await TrackLibraryDB.tracks.get(id);

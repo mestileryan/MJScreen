@@ -142,6 +142,7 @@
         emit('play', props.trackFile);
       }
 
+      // Copy a direct link to this track in the clipboard
       function copyLink() {
         if (!props.trackFile.id) return;
         const url = new URL(window.location.href);
