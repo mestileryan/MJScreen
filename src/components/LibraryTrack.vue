@@ -42,6 +42,9 @@
         <Repeat1 v-if="trackFile.loop" class="w-5 h-5 text-purple-400" />
         <Repeat1 v-if="!trackFile.loop" class="w-5 h-5 text-gray-400" />
       </button>
+      <button class="p-1 rounded-full hover:bg-purple-400/20 transition-colors" @click="copyLink" :disabled="!trackFile.id">
+        <Link class="w-5 h-5 text-purple-300" />
+      </button>
       <button @click="onRemove" class="p-1 hover:bg-red-700/20 rounded-full transition-colors">
         <Trash2 class="w-5 h-5 text-red-400" />
       </button>
@@ -77,7 +80,7 @@
 
 <script lang="ts">
   import { defineComponent, defineAsyncComponent, ref, computed, nextTick } from 'vue';
-  import { GripVertical } from 'lucide-vue-next';
+  import { GripVertical, Link } from 'lucide-vue-next';
   import FileTrack from '@/models/FileTrack';
   import { DB_UpdateTrack } from '@/persistance/TrackService';
   import IconSelector from './IconSelector.vue';
@@ -89,6 +92,7 @@
     components: {
       IconSelector,
       GripVertical,
+      Link,
     },
     props: {
       trackFile: {
@@ -138,6 +142,13 @@
         emit('play', props.trackFile);
       }
 
+      function copyLink() {
+        if (!props.trackFile.id) return;
+        const url = new URL(window.location.href);
+        url.searchParams.set('trackId', String(props.trackFile.id));
+        navigator.clipboard.writeText(url.toString());
+      }
+
       async function onIconChosen(payload: { iconName: string; color: string }) {
         props.trackFile.iconName = payload.iconName;
         props.trackFile.iconColor = payload.color;
@@ -165,6 +176,7 @@
         handleVolumeChange,
         onRemove,
         onPlay,
+        copyLink,
         onIconChosen,
         onDragStart,
         spriteHref,

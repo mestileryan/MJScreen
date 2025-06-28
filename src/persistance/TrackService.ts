@@ -85,3 +85,22 @@ export async function DB_GetTracks(): Promise<FileTrack[]> {
   // 3) Retourne la liste des FileTrack
   return fileTracks;
 }
+
+/**
+ * Retrieve a single track by its id from Dexie
+ */
+export async function DB_GetTrack(id: number): Promise<FileTrack | undefined> {
+  const st = await TrackLibraryDB.tracks.get(id);
+  if (!st) return undefined;
+
+  const file = new File([st.blob], st.name, { type: st.blob.type });
+  const ft = new FileTrack(file, st.name);
+  ft.initialVolume = st.initialVolume;
+  ft.id = st.id;
+  ft.iconName = st.iconName;
+  ft.iconColor = st.iconColor ?? '#c084fc';
+  ft.order = st.order;
+  ft.playlistId = st.playlistId;
+  ft.loop = st.loop ?? false;
+  return ft;
+}
