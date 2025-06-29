@@ -1,4 +1,4 @@
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { DB_GetTrack } from '@/persistance/TrackService'
 import type FileTrack from '@/models/FileTrack'
 
@@ -18,16 +18,22 @@ export function useTrackLink(handlePlay: (track: FileTrack) => void) {
   // Communication channel used to talk between tabs of the application
   const broadcast = new BroadcastChannel('mjscreen')
 
+  const state = ref<'active' | 'passive'>('active')
+
+  const originalTitle = document.title
+
+  watch(state, (newState) => {
+    if (newState === 'passive') {
+      document.title = `Inactif - ${originalTitle}`
+    } else {
+      document.title = originalTitle
+    }
+  })
+
   /** Display a short lived error message */
   function showToast(msg: string) {
     toastMessage.value = msg
     setTimeout(() => (toastMessage.value = null), 3000)
-  }
-
-  /** Attempt to close the current window when the user clicks the "Fermer"
-   *  button. If the browser refuses, the user will have to close it manually. */
-  function closePage() {
-    window.close()
   }
 
   /**
@@ -39,19 +45,20 @@ export function useTrackLink(handlePlay: (track: FileTrack) => void) {
     if (track) {
       handlePlay(track)
     } else {
-      showToast('Track introuvable')
+      showToast('Musique introuvable')
     }
   }
 
   onMounted(() => {
     // When another tab asks to open a track, play it here and acknowledge
     broadcast.addEventListener('message', (e) => {
+      if (state.value === 'passive') return
+
       if (e.data?.type === 'open-track') {
         playTrackById(Number(e.data.trackId))
-        broadcast.postMessage({ type: 'ack', reason: 'open-track' })
-        window.focus()
+        broadcast.postMessage({ type: 'ack' })
       } else if (e.data?.type === 'ping') {
-        broadcast.postMessage({ type: 'ack', reason: 'ping' })
+        broadcast.postMessage({ type: 'ack' })
       }
     })
 
@@ -59,11 +66,9 @@ export function useTrackLink(handlePlay: (track: FileTrack) => void) {
     const param = url.searchParams.get('trackId')
 
     let ack = false
-    let reason = ''
     const handler = (e: MessageEvent) => {
       if (e.data?.type === 'ack') {
         ack = true
-        reason = e.data.reason
       }
     }
     broadcast.addEventListener('message', handler)
@@ -74,7 +79,8 @@ export function useTrackLink(handlePlay: (track: FileTrack) => void) {
       setTimeout(() => {
         broadcast.removeEventListener('message', handler)
         if (ack) {
-          externalMessage.value = "L'application est déjà ouverte sur une autre page, vous pouvez fermer celle-ci."
+          externalMessage.value = "La musique a été lancée sur votre page principale.<br>Vous pouvez fermer celle-ci."
+          state.value = 'passive'
         } else {
           playTrackById(id)
         }
@@ -86,11 +92,12 @@ export function useTrackLink(handlePlay: (track: FileTrack) => void) {
       setTimeout(() => {
         broadcast.removeEventListener('message', handler)
         if (ack) {
-          externalMessage.value = 'Vous avez déjà une page ouverte pour cette application.'
+          externalMessage.value = 'Vous avez déjà une page ouverte pour cette application.<br>Fermez celles en trop et recharger la page principale.'
+          state.value = 'passive'
         }
       }, 200)
     }
   })
 
-  return { toastMessage, externalMessage, closePage }
+  return { toastMessage, externalMessage }
 }

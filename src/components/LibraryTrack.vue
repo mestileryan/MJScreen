@@ -8,8 +8,12 @@
       <GripVertical class="w-4 h-4"
                     :class="dragDisabled ? 'text-gray-600' : 'text-gray-400'" />
     </div>
-    <div class="mr-3 cursor-pointer hover:bg-purple-400/20 rounded-full p-1" @click="isSelectingIcon = true">
-      <svg v-if="trackFile.iconName" class="w-5 h-5" :style="{ color: trackFile.iconColor }">
+
+    <button class="p-1 rounded-full hover:bg-purple-400/20 transition-colors" @click="copyLink" :disabled="!trackFile.id">
+      <Link class="w-3 h-3 text-purple-300" />
+    </button>
+    <div class="mr-3 cursor-pointer hover:bg-purple-400/20 rounded-full ml-2" @click="isSelectingIcon = true">
+      <svg v-if="trackFile.iconName" class="w-6 h-6" :style="{ color: trackFile.iconColor }">
         <use :href="`#${trackFile.iconName}`" />
       </svg>
       <Music v-else class="w-5 h-5" :style="{ color: trackFile.iconColor }" />
@@ -41,9 +45,6 @@
               @click="toggleLoop">
         <Repeat1 v-if="trackFile.loop" class="w-5 h-5 text-purple-400" />
         <Repeat1 v-if="!trackFile.loop" class="w-5 h-5 text-gray-400" />
-      </button>
-      <button class="p-1 rounded-full hover:bg-purple-400/20 transition-colors" @click="copyLink" :disabled="!trackFile.id">
-        <Link class="w-5 h-5 text-purple-300" />
       </button>
       <button @click="onRemove" class="p-1 hover:bg-red-700/20 rounded-full transition-colors">
         <Trash2 class="w-5 h-5 text-red-400" />
