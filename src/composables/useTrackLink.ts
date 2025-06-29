@@ -12,6 +12,9 @@ export function useTrackLink(handlePlay: (track: FileTrack) => void) {
   // Toast message displayed at the top of the page
   const toastMessage = ref<string | null>(null)
 
+  // Message displayed when another tab already hosts the application
+  const externalMessage = ref<string | null>(null)
+
   // Communication channel used to talk between tabs of the application
   const broadcast = new BroadcastChannel('mjscreen')
 
@@ -19,6 +22,12 @@ export function useTrackLink(handlePlay: (track: FileTrack) => void) {
   function showToast(msg: string) {
     toastMessage.value = msg
     setTimeout(() => (toastMessage.value = null), 3000)
+  }
+
+  /** Attempt to close the current window when the user clicks the "Fermer"
+   *  button. If the browser refuses, the user will have to close it manually. */
+  function closePage() {
+    window.close()
   }
 
   /**
@@ -39,42 +48,49 @@ export function useTrackLink(handlePlay: (track: FileTrack) => void) {
     broadcast.addEventListener('message', (e) => {
       if (e.data?.type === 'open-track') {
         playTrackById(Number(e.data.trackId))
-        // Notify the opener so it can close itself as soon as possible
-        broadcast.postMessage({ type: 'ack' })
-        // Ensure this tab gets focus
+        broadcast.postMessage({ type: 'ack', reason: 'open-track' })
         window.focus()
+      } else if (e.data?.type === 'ping') {
+        broadcast.postMessage({ type: 'ack', reason: 'ping' })
       }
     })
 
-    // If this tab was opened from an external link with ?trackId=xxx
     const url = new URL(window.location.href)
     const param = url.searchParams.get('trackId')
-    if (!param) return
 
-    const id = Number(param)
     let ack = false
+    let reason = ''
     const handler = (e: MessageEvent) => {
       if (e.data?.type === 'ack') {
         ack = true
-        broadcast.removeEventListener('message', handler)
-        // Close this temporary tab as soon as the other one confirms reception
-        window.close()
+        reason = e.data.reason
       }
     }
     broadcast.addEventListener('message', handler)
-    // Ask any existing tab to play the track
-    broadcast.postMessage({ type: 'open-track', trackId: id })
-    setTimeout(() => {
-      broadcast.removeEventListener('message', handler)
-      // If no acknowledgement was received, play the track ourselves
-      if (!ack) {
-        playTrackById(id)
-      }
-      // Clean up the URL so refreshing the page doesn't repeat the action
-      url.searchParams.delete('trackId')
-      window.history.replaceState({}, '', url.toString())
-    }, 200)
+
+    if (param) {
+      const id = Number(param)
+      broadcast.postMessage({ type: 'open-track', trackId: id })
+      setTimeout(() => {
+        broadcast.removeEventListener('message', handler)
+        if (ack) {
+          externalMessage.value = "L'application est déjà ouverte sur une autre page, vous pouvez fermer celle-ci."
+        } else {
+          playTrackById(id)
+        }
+        url.searchParams.delete('trackId')
+        window.history.replaceState({}, '', url.toString())
+      }, 200)
+    } else {
+      broadcast.postMessage({ type: 'ping' })
+      setTimeout(() => {
+        broadcast.removeEventListener('message', handler)
+        if (ack) {
+          externalMessage.value = 'Vous avez déjà une page ouverte pour cette application.'
+        }
+      }, 200)
+    }
   })
 
-  return { toastMessage }
+  return { toastMessage, externalMessage, closePage }
 }

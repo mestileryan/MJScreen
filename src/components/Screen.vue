@@ -4,6 +4,14 @@
     <div v-if="toastMessage" class="fixed top-2 left-1/2 -translate-x-1/2 bg-red-600 text-white px-3 py-2 rounded z-50">
       {{ toastMessage }}
     </div>
+
+    <!-- Inform the user that another tab already runs the application -->
+    <div v-if="externalMessage" class="fixed inset-0 bg-black/70 flex items-center justify-center z-50" tabindex="0" @keyup.enter="closePage">
+      <div class="bg-gray-800 p-6 rounded flex flex-col items-center gap-4">
+        <p class="text-white text-center">{{ externalMessage }}</p>
+        <button class="bg-purple-600 hover:bg-purple-500 px-4 py-2 rounded text-white" @click="closePage">Fermer cette page</button>
+      </div>
+    </div>
     <div class="p-8 overflow-auto min-w-[522px]">
       <div class="flex items-center justify-between">
         <h1 class="text-3xl font-bold text-purple-400 mb-8">MJ Screen Jukebox</h1>
@@ -58,7 +66,7 @@
       }
 
       // Register logic that handles ?trackId= links and inter-tab communication
-      const { toastMessage } = useTrackLink(handlePlay)
+      const { toastMessage, externalMessage, closePage } = useTrackLink(handlePlay)
 
       const isPlayerCollapsed = ref(Cookies.get('playerCollapsed') === 'true');
       watch(isPlayerCollapsed, val => {
@@ -77,6 +85,8 @@
         handleOpenSettings,
         showSettings,
         toastMessage,
+        externalMessage,
+        closePage,
       };
     },
   });
