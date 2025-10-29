@@ -96,7 +96,7 @@
 </template>
 
 <script lang="ts">
-  import { defineComponent, nextTick, onBeforeUnmount, onMounted, reactive, ref, computed } from 'vue';
+  import { defineComponent, nextTick, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
   import type { ComponentPublicInstance } from 'vue';
   import draggable from 'vuedraggable';
   import GalleryImage from '@/models/GalleryImage';
@@ -118,6 +118,8 @@
       const fileInput = ref<HTMLInputElement | null>(null);
       const hoverPreview = ref<HoverPreview | null>(null);
       const presentationWindow = ref<Window | null>(null);
+      const isPresentationOpen = ref(false);
+      let presentationWindowMonitor: number | null = null;
       const editingImage = ref<GalleryImage | null>(null);
       const editingOriginalName = ref('');
       const nameInputRefs = new WeakMap<GalleryImage, HTMLInputElement>();
@@ -134,8 +136,10 @@
       onBeforeUnmount(() => {
         images.value.forEach(revokeObjectUrl);
         hoverPreview.value = null;
+        stopPresentationWindowMonitor();
         presentationWindow.value?.removeEventListener('beforeunload', handlePresentationClosed);
         presentationWindow.value = null;
+        isPresentationOpen.value = false;
       });
 
       function openFileDialog() {
@@ -220,40 +224,59 @@
         await DB_UpdateImages(images.value);
       }
 
-      function handlePresentationClosed() {
-        presentationWindow.value?.removeEventListener('beforeunload', handlePresentationClosed);
-        presentationWindow.value = null;
+      function stopPresentationWindowMonitor() {
+        if (presentationWindowMonitor !== null) {
+          window.clearInterval(presentationWindowMonitor);
+          presentationWindowMonitor = null;
+        }
       }
 
-      const isPresentationOpen = computed(() => {
-        if (!presentationWindow.value) {
-          return false;
+      function handlePresentationClosed() {
+        stopPresentationWindowMonitor();
+        if (presentationWindow.value) {
+          presentationWindow.value.removeEventListener('beforeunload', handlePresentationClosed);
         }
-        if (presentationWindow.value.closed) {
-          handlePresentationClosed();
-          return false;
-        }
-        return true;
-      });
+        presentationWindow.value = null;
+        isPresentationOpen.value = false;
+      }
 
-      function getPresentationWindow(): Window | null {
-        if (presentationWindow.value && presentationWindow.value.closed) {
+      function ensurePresentationWindow(): Window | null {
+        if (presentationWindow.value && !presentationWindow.value.closed) {
+          isPresentationOpen.value = true;
+          return presentationWindow.value;
+        }
+
+        const newWindow = window.open('/MJScreen/gallery-viewer.html', 'gallery-viewer', 'width=800,height=600');
+        if (!newWindow) {
           handlePresentationClosed();
+          return null;
         }
-        if (!presentationWindow.value) {
-          presentationWindow.value = window.open('/MJScreen/gallery-viewer.html', 'gallery-viewer', 'width=800,height=600');
-          presentationWindow.value?.addEventListener('beforeunload', handlePresentationClosed);
-        }
+
+        presentationWindow.value = newWindow;
+        isPresentationOpen.value = true;
+        presentationWindow.value.addEventListener('beforeunload', handlePresentationClosed);
+        presentationWindowMonitor = window.setInterval(() => {
+          if (presentationWindow.value?.closed) {
+            handlePresentationClosed();
+          }
+        }, 500);
+
         return presentationWindow.value;
       }
 
       function openPresentation() {
-        getPresentationWindow()?.focus();
+        ensurePresentationWindow()?.focus();
       }
 
       function sendToPresentation(image: GalleryImage) {
-        const win = getPresentationWindow();
-        if (!win) return;
+        if (!isPresentationOpen.value) {
+          return;
+        }
+        const win = presentationWindow.value;
+        if (!win || win.closed) {
+          handlePresentationClosed();
+          return;
+        }
         win.postMessage({ type: 'display-image', url: ensureObjectUrl(image), name: image.name }, window.location.origin);
       }
 
