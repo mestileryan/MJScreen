@@ -3,6 +3,9 @@ import { DB_GetPlaylists, DB_AddPlaylist } from './PlaylistService';
 import { DB_GetTracks, DB_AddTrack } from './TrackService';
 import { PlaylistLibraryDB } from './PlaylistPersistance';
 import { TrackLibraryDB } from './TrackPersistance';
+import { ImageLibraryDB } from './ImagePersistance';
+import { DB_GetImages, DB_AddImage, DB_UpdateImages } from './ImageService';
+import GalleryImage from '@/models/GalleryImage';
 import Playlist from '@/models/Playlist';
 import FileTrack from '@/models/FileTrack';
 
@@ -28,6 +31,13 @@ interface ExportTrackMeta {
 }
 
 // Structure globale du fichier d'export
+interface ExportImageMeta {
+  name: string;
+  order: number;
+  type: string;
+  filePath: string;
+}
+
 interface ExportData {
   // Numéro de version pour la compatibilité future
   version: number;
@@ -35,18 +45,22 @@ interface ExportData {
   playlists: { name: string; width?: number | null }[];
   // Liste des métadonnées de morceaux
   tracks: ExportTrackMeta[];
+  // Liste des images de la galerie (optionnel pour rétrocompatibilité)
+  images?: ExportImageMeta[];
 }
 
 // Exporte la base de données complète dans une archive ZIP
 export async function exportLibrary(): Promise<Blob> {
   const playlists = await DB_GetPlaylists();
   const tracks = await DB_GetTracks();
+  const images = await DB_GetImages();
 
   const data: ExportData = {
     // incrémenter si le format change à l'avenir
-    version: 1,
+    version: 2,
     playlists: playlists.map(pl => ({ name: pl.name, width: pl.width ?? null })),
     tracks: [],
+    images: [],
   };
 
   const zip = new JSZip();
@@ -67,6 +81,17 @@ export async function exportLibrary(): Promise<Blob> {
       playlistIndex,
       loop: track.loop,
       type: track.file.type,
+      filePath: path,
+    });
+  }
+
+  for (const [idx, image] of images.entries()) {
+    const path = `images/${idx}`;
+    zip.file(path, image.file);
+    data.images?.push({
+      name: image.name,
+      order: image.order,
+      type: image.file.type,
       filePath: path,
     });
   }
@@ -104,6 +129,7 @@ export async function importLibrary(blob: Blob): Promise<void> {
   // 3. Purge les anciennes données
   await PlaylistLibraryDB.playlists.clear();
   await TrackLibraryDB.tracks.clear();
+  await ImageLibraryDB.images.clear();
 
   const playlists: Playlist[] = [];
 
@@ -135,4 +161,27 @@ export async function importLibrary(blob: Blob): Promise<void> {
 
     await DB_AddTrack(ft);
   }
+
+  const imagesMeta = data.images ?? [];
+  const galleryImages: GalleryImage[] = [];
+  for (const [index, imageMeta] of imagesMeta.entries()) {
+    const fallbackPath = `images/${index}`;
+    const imageEntry = zip.file(imageMeta.filePath ?? fallbackPath);
+    if (!imageEntry) {
+      throw new Error(`L'image '${imageMeta.filePath || fallbackPath}' est manquante dans l'archive.`);
+    }
+
+    const imageBlob = await imageEntry.async('blob');
+    const file = new File([imageBlob], imageMeta.name, { type: imageMeta.type });
+    const galleryImage = new GalleryImage(file, imageMeta.name);
+    galleryImage.order = imageMeta.order ?? index;
+    await DB_AddImage(galleryImage);
+    galleryImages.push(galleryImage);
+  }
+
+  // Assure l'ordre dans la base pour éviter les trous éventuels
+  galleryImages.sort((a, b) => a.order - b.order).forEach((image, index) => {
+    image.order = index;
+  });
+  await DB_UpdateImages(galleryImages);
 }
