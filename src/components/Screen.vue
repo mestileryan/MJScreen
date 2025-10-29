@@ -16,7 +16,8 @@
         <h1 class="text-3xl font-bold text-purple-400 mb-8">MJ Screen Jukebox</h1>
       </div>
 
-      <div>
+      <div class="space-y-6">
+        <Gallery />
         <Library ref="library" @play="handlePlay" />
       </div>
     </div>
@@ -34,6 +35,7 @@
 
 <script lang="ts">
   import { defineComponent, ref, watch } from 'vue';
+  import Gallery from './Gallery.vue';
   import Library from './Library.vue';
   import TracksPlayer from './TracksPlayer.vue';
   // Bouton ouvrant la modale d'import/export
@@ -47,6 +49,7 @@
   export default defineComponent({
     name: 'Screen',
     components: {
+      Gallery,
       Library,
       TracksPlayer,
       SettingsModal,
