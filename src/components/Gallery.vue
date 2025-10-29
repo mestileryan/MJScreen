@@ -115,6 +115,7 @@ export default defineComponent({
     const fileInput = ref<HTMLInputElement | null>(null);
     const hoverPreview = ref<HoverPreview | null>(null);
     const presentationWindow = ref<Window | null>(null);
+    const isPresentationActive = ref(false);
 
     async function loadImages() {
       images.value = await DB_GetImages();
@@ -212,21 +213,44 @@ export default defineComponent({
       await DB_UpdateImages(images.value);
     }
 
-    function getPresentationWindow(): Window | null {
+    function getPresentationWindow(createIfMissing = false): Window | null {
       if (presentationWindow.value && presentationWindow.value.closed) {
         presentationWindow.value = null;
+        isPresentationActive.value = false;
       }
-      if (!presentationWindow.value) {
-        presentationWindow.value = window.open('/MJScreen/gallery-viewer.html', 'gallery-viewer', 'width=800,height=600');
+
+      if (!presentationWindow.value && createIfMissing) {
+        const openedWindow = window.open(
+          '/MJScreen/gallery-viewer.html',
+          'gallery-viewer',
+          'width=800,height=600'
+        );
+
+        if (openedWindow) {
+          presentationWindow.value = openedWindow;
+          isPresentationActive.value = true;
+          openedWindow.addEventListener('beforeunload', () => {
+            presentationWindow.value = null;
+            isPresentationActive.value = false;
+          });
+        }
       }
+
       return presentationWindow.value;
     }
 
     function openPresentation() {
-      getPresentationWindow()?.focus();
+      const win = getPresentationWindow(true);
+      if (win) {
+        win.focus();
+      }
     }
 
     function sendToPresentation(image: GalleryImage) {
+      if (!isPresentationActive.value) {
+        return;
+      }
+
       const win = getPresentationWindow();
       if (!win) return;
       win.postMessage({ type: 'display-image', url: ensureObjectUrl(image), name: image.name }, window.location.origin);
@@ -236,6 +260,7 @@ export default defineComponent({
       images,
       fileInput,
       hoverPreview,
+      isPresentationActive,
       openFileDialog,
       ensureObjectUrl,
       handleFilesDropped,
