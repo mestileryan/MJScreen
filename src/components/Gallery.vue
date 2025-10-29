@@ -17,7 +17,7 @@
       <div class="flex items-center gap-2">
         <h2 class="text-xl font-bold text-purple-300">Galerie</h2>
         <button
-          class="p-2 rounded bg-purple-600 hover:bg-purple-500 text-white transition-colors"
+          class="w-8 cursor-pointer bg-purple-600 hover:bg-purple-500 px-2 py-2 rounded-lg flex items-center gap-2 transition-colors justify-center"
           @click="openFileDialog"
         >
           <Plus class="w-4 h-4" />
@@ -42,25 +42,25 @@
       >
         <template #item="{ element }">
           <div
-            class="flex flex-col items-center gap-1 text-center relative"
-            @mouseenter="showPreview(element, $event)"
-            @mousemove="updatePreviewPosition($event)"
-            @mouseleave="hidePreview"
-            @click="sendToPresentation(element)"
+            class="flex flex-col items-center gap-1 text-center relative hover:bg-gray-500 transition-colors"
           >
             <button
-              class="absolute -top-2 -right-2 bg-red-700 text-white rounded-full p-1 hover:bg-red-600"
+              class="absolute -top-2 -right-2 text-white rounded-full p-1 hover:bg-red-600 hover:bg-red-700/20 transition-colors cursor-pointer"
               title="Supprimer"
               @click.stop="removeImage(element)"
             >
-              <Trash2 class="w-3 h-3" />
+              <Trash2 class="w-3 h-3 text-red-400" />
             </button>
             <img
               :src="ensureObjectUrl(element)"
               :alt="element.name"
-              class="max-w-[20px] max-h-[20px] object-contain"
+              class="max-w-[40px] max-h-[40px] object-contain cursor-pointer"
+              @mouseenter="showPreview(element, $event)"
+              @mousemove="updatePreviewPosition($event)"
+              @mouseleave="hidePreview"
+              @click="sendToPresentation(element)"
             />
-            <span class="text-xs text-gray-300 break-all max-w-[80px]">{{ element.name }}</span>
+            <span class="text-xs text-gray-300 break-all max-w-[80px] caret-cursor">{{ element.name }}</span>
           </div>
         </template>
         <template #footer>
@@ -86,7 +86,7 @@
         <img
           :src="hoverPreview.url"
           :alt="hoverPreview.name"
-          class="max-w-[200px] max-h-[200px] object-contain"
+          class="max-w-[500px] max-h-[500px] object-contain"
         />
       </div>
     </div>
@@ -195,6 +195,7 @@ export default defineComponent({
     }
 
     async function removeImage(image: GalleryImage) {
+      hidePreview();
       await DB_RemoveImage(image);
       const index = images.value.indexOf(image);
       if (index >= 0) {
@@ -216,7 +217,7 @@ export default defineComponent({
         presentationWindow.value = null;
       }
       if (!presentationWindow.value) {
-        presentationWindow.value = window.open('/gallery-viewer.html', 'gallery-viewer', 'width=800,height=600');
+        presentationWindow.value = window.open('/MJScreen/gallery-viewer.html', 'gallery-viewer', 'width=800,height=600');
       }
       return presentationWindow.value;
     }
