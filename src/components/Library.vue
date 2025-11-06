@@ -131,7 +131,7 @@
 </template>
 
 <script lang="ts">
-  import { computed, defineComponent, onMounted, ref, watch } from 'vue';
+  import { computed, defineComponent, onBeforeUnmount, onMounted, ref, watch } from 'vue';
   import draggable from 'vuedraggable';
   import {
     DB_AddTrack,
@@ -184,7 +184,7 @@
     },
     directives: { focus, tooltip },
     emits: ['playAudio', 'openImage'],
-    setup(_, { emit }) {
+    setup(_, { emit, expose }) {
       const playlists = ref<Playlist[]>([]);
       const isListView = ref(Cookies.get('viewMode') !== 'soundboard');
       const searchTerm = ref('');
@@ -193,6 +193,9 @@
         'préfixez son nom par "Nom_Playlist --". Exemple : "MaPlaylist -- MonFichier"';
       const resizing = ref<Playlist | null>(null);
       const selectedImage = ref<GalleryImage | null>(null);
+      const lastPresentedImage = ref<GalleryImage | null>(null);
+      const presentationWindow = ref<Window | null>(null);
+      let presentationWindowMonitor: number | null = null;
       const selectedImageUrl = computed(() => selectedImage.value?.ensureObjectUrl() ?? '');
       let startX = 0;
       let startWidth = 0;
@@ -234,6 +237,12 @@
         });
 
         playlists.value.forEach(pl => pl.items.sort((a, b) => a.order - b.order));
+      });
+
+      onBeforeUnmount(() => {
+        stopPresentationWindowMonitor();
+        presentationWindow.value?.removeEventListener('beforeunload', handlePresentationClosed);
+        presentationWindow.value = null;
       });
 
       async function handleFilesDropped(files: File[]) {
@@ -322,11 +331,74 @@
 
       function handleOpenImage(image: GalleryImage) {
         selectedImage.value = image;
+        lastPresentedImage.value = image;
+        sendToPresentation(image);
         emit('openImage', image);
       }
 
       function closeImage() {
         selectedImage.value = null;
+      }
+
+      function ensurePresentationWindow(): Window | null {
+        if (presentationWindow.value && !presentationWindow.value.closed) {
+          return presentationWindow.value;
+        }
+
+        const newWindow = window.open(
+          '/MJScreen/gallery-viewer.html',
+          'gallery-viewer',
+          'width=800,height=600'
+        );
+
+        if (!newWindow) {
+          handlePresentationClosed();
+          return null;
+        }
+
+        presentationWindow.value = newWindow;
+        presentationWindow.value.addEventListener('beforeunload', handlePresentationClosed);
+        presentationWindowMonitor = window.setInterval(() => {
+          if (presentationWindow.value?.closed) {
+            handlePresentationClosed();
+          }
+        }, 500);
+
+        return presentationWindow.value;
+      }
+
+      function stopPresentationWindowMonitor() {
+        if (presentationWindowMonitor !== null) {
+          window.clearInterval(presentationWindowMonitor);
+          presentationWindowMonitor = null;
+        }
+      }
+
+      function handlePresentationClosed() {
+        stopPresentationWindowMonitor();
+        if (presentationWindow.value) {
+          presentationWindow.value.removeEventListener('beforeunload', handlePresentationClosed);
+        }
+        presentationWindow.value = null;
+      }
+
+      function sendToPresentation(image: GalleryImage) {
+        const win = ensurePresentationWindow();
+        if (!win) return;
+        win.postMessage({
+          type: 'display-image',
+          url: image.ensureObjectUrl(),
+          name: image.name,
+        }, window.location.origin);
+      }
+
+      function openImageViewer() {
+        const win = ensurePresentationWindow();
+        if (!win) return;
+        win.focus();
+        if (lastPresentedImage.value) {
+          sendToPresentation(lastPresentedImage.value);
+        }
       }
 
       async function savePlaylistName(pl: Playlist) {
@@ -408,6 +480,10 @@
         return pl.items.filter(t => itemMatchesSearch(t));
       }
 
+      expose({
+        openImageViewer,
+      });
+
       return {
         playlists,
         isListView,
@@ -429,6 +505,6 @@
         selectedImageUrl,
         closeImage,
       };
-    }
+    },
   });
 </script>

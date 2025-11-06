@@ -22,7 +22,7 @@
     </div>
 
     <CollapsibleSidebar v-model:collapsed="isPlayerCollapsed" @open-settings="handleOpenSettings">
-      <TracksPlayer ref="tracksPlayer" />
+      <TracksPlayer ref="tracksPlayer" @open-viewer="handleOpenViewer" />
     </CollapsibleSidebar>
 
     <SettingsModal
@@ -54,7 +54,9 @@
       CollapsibleSidebar,
     },
     setup() {
-      const library = ref<InstanceType<typeof Library> | null>(null);
+      type LibraryInstance = InstanceType<typeof Library> & { openImageViewer: () => void };
+
+      const library = ref<LibraryInstance | null>(null);
       const tracksPlayer = ref<InstanceType<typeof TracksPlayer> | null>(null);
       const showSettings = ref(false)
 
@@ -67,6 +69,10 @@
 
       const handleOpenImage = (_image: GalleryImage) => {
         // the library component manages the modal presentation; hook provided for extensibility
+      }
+
+      const handleOpenViewer = () => {
+        library.value?.openImageViewer()
       }
 
       // Register logic that handles ?trackId= links and inter-tab communication
@@ -86,6 +92,7 @@
         tracksPlayer,
         handlePlayAudio,
         handleOpenImage,
+        handleOpenViewer,
         isPlayerCollapsed,
         handleOpenSettings,
         showSettings,
