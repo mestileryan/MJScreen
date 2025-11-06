@@ -8,11 +8,13 @@ export default class Playlist {
    * If undefined, playlist takes full available width.
    */
   width?: number;
+  order: number;
   tracks: FileTrack[];
   isEditing: boolean = false;
 
   constructor(name: string) {
     this.name = name;
+    this.order = 0;
     this.tracks = [];
   }
 }

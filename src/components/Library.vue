@@ -28,6 +28,7 @@
         animation="700"
         handle=".playlist-handle"
         tag="div"
+        @change="updatePlaylistsOrder"
       >
         <template #item="{ element: playlist }">
           <div
@@ -211,6 +212,7 @@
             target = playlists.value[idx];
           } else {
             const newPl = new Playlist(playlistName);
+            newPl.order = playlists.value.length;
             newPl.id = await DB_AddPlaylist(newPl);
             playlists.value.push(newPl);
             target = playlists.value[playlists.value.length - 1];
@@ -240,6 +242,7 @@
 
       async function ensureLibrary() {
         const defaultPl = new Playlist('Bibliothèque');
+        defaultPl.order = playlists.value.length;
         defaultPl.id = await DB_AddPlaylist(defaultPl);
         playlists.value.unshift(defaultPl);
       }
@@ -262,8 +265,10 @@
 
       async function addPlaylist() {
         const pl = new Playlist(`Playlist ${playlists.value.length}`);
+        pl.order = playlists.value.length;
         pl.id = await DB_AddPlaylist(pl);
         playlists.value.push(pl);
+        await updatePlaylistsOrder();
       }
       async function removePlaylist(pl: Playlist) {
         await DB_RemovePlaylist(pl);
@@ -272,6 +277,7 @@
         if (idx > -1) {
           playlists.value.splice(idx, 1);
         }
+        await updatePlaylistsOrder();
       }
 
       async function updateTrackOrder(pl: Playlist, event: any) {
@@ -287,6 +293,16 @@
         for (let i = 0; i < pl.tracks.length; i++) {
           pl.tracks[i].order = i;
           await DB_UpdateTrack(pl.tracks[i]);
+        }
+      }
+
+      async function updatePlaylistsOrder() {
+        for (let i = 0; i < playlists.value.length; i++) {
+          const playlist = playlists.value[i];
+          if (playlist.order !== i) {
+            playlist.order = i;
+            await DB_UpdatePlaylist(playlist);
+          }
         }
       }
 
@@ -334,6 +350,7 @@
         removePlaylist,
         savePlaylistName,
         updateTrackOrder,
+        updatePlaylistsOrder,
         playTrack,
         removeTrack,
         startResize,

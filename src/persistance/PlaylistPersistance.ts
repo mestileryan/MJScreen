@@ -23,6 +23,21 @@ export class PlaylistLibrary extends Dexie {
         if (pl.width === undefined) pl.width = null;
       });
     });
+
+    this.version(3).stores({
+      playlists: '++id,name,width,order'
+    }).upgrade(tx => {
+      let currentOrder = 0;
+      return tx
+        .table('playlists')
+        .toCollection()
+        .modify(pl => {
+          if (pl.order === undefined) {
+            pl.order = currentOrder;
+          }
+          currentOrder += 1;
+        });
+    });
   }
 }
 
