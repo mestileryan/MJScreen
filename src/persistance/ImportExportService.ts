@@ -42,7 +42,7 @@ interface ExportData {
   // Numéro de version pour la compatibilité future
   version: number;
   // Liste des playlists enregistrées
-  playlists: { name: string; width?: number | null }[];
+  playlists: { name: string; width?: number | null; order?: number }[];
   // Liste des métadonnées de morceaux
   tracks: ExportTrackMeta[];
   // Liste des images de la galerie (optionnel pour rétrocompatibilité)
@@ -57,8 +57,12 @@ export async function exportLibrary(): Promise<Blob> {
 
   const data: ExportData = {
     // incrémenter si le format change à l'avenir
-    version: 2,
-    playlists: playlists.map(pl => ({ name: pl.name, width: pl.width ?? null })),
+    version: 3,
+    playlists: playlists.map(pl => ({
+      name: pl.name,
+      width: pl.width ?? null,
+      order: pl.order,
+    })),
     tracks: [],
     images: [],
   };
@@ -134,9 +138,10 @@ export async function importLibrary(blob: Blob): Promise<void> {
   const playlists: Playlist[] = [];
 
   // 4. Restauration des playlists
-  for (const plData of data.playlists) {
+  for (const [index, plData] of data.playlists.entries()) {
     const pl = new Playlist(plData.name);
     pl.width = plData.width ?? undefined;
+    pl.order = plData.order ?? index;
     pl.id = await DB_AddPlaylist(pl);
     playlists.push(pl);
   }

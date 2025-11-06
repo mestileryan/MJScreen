@@ -10,6 +10,7 @@ export async function DB_AddPlaylist(playlist: Playlist): Promise<number> {
   const stored: PlaylistDB = {
     name: playlist.name,
     width: playlist.width,
+    order: playlist.order,
   };
 
   // Dexie renvoie l'ID nouvellement inséré
@@ -30,6 +31,7 @@ export async function DB_UpdatePlaylist(playlist: Playlist): Promise<void> {
   await PlaylistLibraryDB.playlists.update(playlist.id, {
     name: playlist.name,
     width: playlist.width,
+    order: playlist.order,
   });
 }
 
@@ -51,13 +53,21 @@ export async function DB_GetPlaylists(): Promise<Playlist[]> {
   // 1) Récupération de tous les enregistrements (StoredTrack)
   const storedPlaylists: PlaylistDB[] = await PlaylistLibraryDB.playlists.toArray();
 
+  storedPlaylists.sort((a, b) => {
+    const orderA = a.order ?? Number.MAX_SAFE_INTEGER;
+    const orderB = b.order ?? Number.MAX_SAFE_INTEGER;
+    if (orderA !== orderB) return orderA - orderB;
+    return (a.id ?? 0) - (b.id ?? 0);
+  });
+
   // 2) Conversion en FileTrack
-  const playlists: Playlist[] = storedPlaylists.map(st => {
+  const playlists: Playlist[] = storedPlaylists.map((st, index) => {
 
     // b) On instancie un FileTrack avec le volume initial
     const ft = new Playlist(st.name);
     ft.id = st.id;
     ft.width = st.width ?? undefined;
+    ft.order = st.order ?? index;
 
     return ft;
   });
