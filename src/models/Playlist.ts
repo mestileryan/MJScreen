@@ -1,4 +1,4 @@
-import FileTrack from './FileTrack';
+import type LibraryItem from './LibraryItem';
 
 export default class Playlist {
   id?: number;
@@ -8,11 +8,16 @@ export default class Playlist {
    * If undefined, playlist takes full available width.
    */
   width?: number;
-  tracks: FileTrack[];
+  items: LibraryItem[];
   isEditing: boolean = false;
 
   constructor(name: string) {
     this.name = name;
-    this.tracks = [];
+    this.items = [];
+  }
+
+  get tracks() {
+    return this.items;
   }
 }
+

@@ -38,45 +38,40 @@
             <div
               v-if="!isListView"
               class="absolute top-0 right-0 w-[10px] h-full cursor-col-resize"
-                 style="right:-6px"
+              style="right:-6px"
               @mousedown="e => startResize(e, playlist)"
             />
-           <!-- ——— HEADER : poignée + titre + poubelle ——— -->
-           <div class="flex items-center mb-2">
-               <!-- 1) Poignée -->
-               <div class="playlist-handle cursor-move p-1 mr-3 rounded hover:bg-gray-800/25">
-                   <GripVertical class="w-5 h-5 text-gray-400" />
-
+            <div class="flex items-center mb-2">
+              <div class="playlist-handle cursor-move p-1 mr-3 rounded hover:bg-gray-800/25">
+                <GripVertical class="w-5 h-5 text-gray-400" />
               </div>
 
-               <!-- 2) Titre éditable -->
-               <div class="flex-1">
-                   <p v-if="!playlist.isEditing"
-                      class="text-white font-semibold cursor-pointer"
-                      @click="playlist.isEditing = true"
-                    >
-                       {{ playlist.name }}
+              <div class="flex-1">
+                <p v-if="!playlist.isEditing"
+                   class="text-white font-semibold cursor-pointer"
+                   @click="playlist.isEditing = true"
+                >
+                  {{ playlist.name }}
                 </p>
-                   <input v-else
-                          v-model="playlist.name"
-                          v-focus
-                          class="bg-gray-600 text-white px-2 py-1 rounded w-full focus:outline-none"
-                          @blur="savePlaylistName(playlist)"
-                          @keyup.enter="savePlaylistName(playlist)"
-                   />
+                <input v-else
+                       v-model="playlist.name"
+                       v-focus
+                       class="bg-gray-600 text-white px-2 py-1 rounded w-full focus:outline-none"
+                       @blur="savePlaylistName(playlist)"
+                       @keyup.enter="savePlaylistName(playlist)"
+                />
               </div>
 
-               <!-- 3) Bouton poubelle -->
-               <button v-if="playlist.tracks.length === 0"
-                       class="p-2 hover:bg-red-700/20 rounded-full transition-colors ml-3"
-                       @click="removePlaylist(playlist)"
-               >
-                   <Trash2 class="w-5 h-5 text-red-400" />
+              <button v-if="playlist.items.length === 0"
+                      class="p-2 hover:bg-red-700/20 rounded-full transition-colors ml-3"
+                      @click="removePlaylist(playlist)"
+              >
+                <Trash2 class="w-5 h-5 text-red-400" />
               </button>
             </div>
 
-            <draggable v-model="playlist.tracks"
-                       group="tracks"
+            <draggable v-model="playlist.items"
+                       group="library-items"
                        item-key="id"
                        animation="700"
                        handle=".track-drag-handle"
@@ -85,18 +80,21 @@
                        :class="isListView
                           ? 'flex flex-col space-y-1'
                           : 'flex flex-wrap justify-start'"
-                       @change="e => updateTrackOrder(playlist, e)">
+                       @change="e => updateItemOrder(playlist, e)">
               <template #item="{ element }">
-                <div v-if="trackMatchesSearch(element)">
-                  <LibraryTrack :trackFile="element"
-                                :isListView="isListView"
-                                :dragDisabled="searchTerm !== ''"
-                                @remove-file="() => removeTrack(playlist, element)"
-                                @play="playTrack" />
+                <div v-if="itemMatchesSearch(element)">
+                  <LibraryItemCard
+                    :item="element"
+                    :isListView="isListView"
+                    :dragDisabled="searchTerm !== ''"
+                    @remove="() => removeItem(playlist, element)"
+                    @play-audio="handlePlayAudio"
+                    @open-image="handleOpenImage"
+                  />
                 </div>
               </template>
               <template #footer>
-                <div v-if="visibleTracks(playlist).length === 0">
+                <div v-if="visibleItems(playlist).length === 0">
                   <p class="text-gray-400 text-xl">
                     🕸️🕸️🕸
                   </p>
@@ -118,11 +116,22 @@
       </div>
 
     </ImportFileDragOverlay>
+
+    <div v-if="selectedImage"
+         class="fixed inset-0 bg-black/80 flex items-center justify-center z-50"
+         @click="closeImage">
+      <div class="max-w-5xl max-h-[90vh] p-4" @click.stop>
+        <img :src="selectedImageUrl"
+             :alt="selectedImage?.name"
+             class="max-h-[80vh] max-w-full object-contain rounded shadow-lg border border-purple-500" />
+        <p class="text-center text-gray-200 mt-4">{{ selectedImage?.name }}</p>
+      </div>
+    </div>
   </div>
 </template>
 
 <script lang="ts">
-  import { defineComponent, ref, onMounted, watch } from 'vue';
+  import { computed, defineComponent, onMounted, ref, watch } from 'vue';
   import draggable from 'vuedraggable';
   import {
     DB_AddTrack,
@@ -136,17 +145,24 @@
     DB_UpdatePlaylist,
     DB_GetPlaylists,
   } from '@/persistance/PlaylistService';
+  import {
+    DB_AddImage,
+    DB_GetImages,
+    DB_RemoveImage,
+    DB_UpdateImage,
+  } from '@/persistance/ImageService';
   import FileTrack from '@/models/FileTrack';
+  import GalleryImage from '@/models/GalleryImage';
   import Playlist from '@/models/Playlist';
-  import LibraryTrack from './LibraryTrack.vue';
+  import type LibraryItemModel from '@/models/LibraryItem';
+  import LibraryItemCard from './LibraryTrack.vue';
   import Uploader from './Uploader.vue';
   import ImportFileDragOverlay from './ImportFileDragOverlay.vue';
   import ViewModePlayerToggle from './ViewModePlayerToggle.vue';
-  import { GripVertical, HelpCircle } from 'lucide-vue-next'
+  import { GripVertical, HelpCircle, Plus, Trash2 } from 'lucide-vue-next';
   import tooltip from '@/directives/tooltip';
   import { Cookies } from '@/models/Cookies';
 
-  // Directive autofocus
   const focus = {
     mounted(el: HTMLElement) {
       el.focus();
@@ -156,19 +172,28 @@
   export default defineComponent({
     name: 'Library',
     components: {
-      LibraryTrack, Uploader, ImportFileDragOverlay,
-      ViewModePlayerToggle, draggable, GripVertical, HelpCircle
+      LibraryItemCard,
+      Uploader,
+      ImportFileDragOverlay,
+      ViewModePlayerToggle,
+      draggable,
+      GripVertical,
+      HelpCircle,
+      Plus,
+      Trash2,
     },
     directives: { focus, tooltip },
+    emits: ['playAudio', 'openImage'],
     setup(_, { emit }) {
       const playlists = ref<Playlist[]>([]);
       const isListView = ref(Cookies.get('viewMode') !== 'soundboard');
       const searchTerm = ref('');
-      const playlistNameInput = ref<HTMLInputElement | null>(null);
       const helpText =
-        'Pour ranger directement votre fichier de musique dans une playlist en particulier, ' +
-        'préfixez son nom par "Nom_Playlist --". Exemple : "MaPlaylist -- MonSon.mp3"';
+        'Pour ranger directement votre fichier dans une playlist en particulier, ' +
+        'préfixez son nom par "Nom_Playlist --". Exemple : "MaPlaylist -- MonFichier"';
       const resizing = ref<Playlist | null>(null);
+      const selectedImage = ref<GalleryImage | null>(null);
+      const selectedImageUrl = computed(() => selectedImage.value?.ensureObjectUrl() ?? '');
       let startX = 0;
       let startWidth = 0;
 
@@ -184,23 +209,41 @@
       onMounted(async () => {
         playlists.value = await DB_GetPlaylists();
         if (!playlists.value.length) await ensureLibrary();
-        const loaded = await DB_GetTracks();
-        loaded.forEach(track => {
+        const [loadedTracks, loadedImages] = await Promise.all([
+          DB_GetTracks(),
+          DB_GetImages(),
+        ]);
+
+        playlists.value.forEach(pl => {
+          if (!pl.items) {
+            pl.items = [];
+          }
+        });
+
+        loadedTracks.forEach(track => {
           const pl = playlists.value.find(p => p.id === track.playlistId) || playlists.value[0];
           track.playlistId = pl.id;
-          pl.tracks.push(track);
+          pl.items.push(track);
         });
-        playlists.value.forEach(pl => pl.tracks.sort((a, b) => a.order - b.order));
+
+        loadedImages.forEach(image => {
+          const pl = playlists.value.find(p => p.id === image.playlistId) || playlists.value[0];
+          image.playlistId = pl.id;
+          image.ensureObjectUrl();
+          pl.items.push(image);
+        });
+
+        playlists.value.forEach(pl => pl.items.sort((a, b) => a.order - b.order));
       });
 
       async function handleFilesDropped(files: File[]) {
         for (const file of files) await addFile(file);
       }
-      function handleFileSelected(file: File) { addFile(file); }
+      async function handleFileSelected(file: File) { await addFile(file); }
 
       async function addFile(file: File) {
         if (!playlists.value.length) await ensureLibrary();
-        const { playlistName, trackName } = parseName(file.name);
+        const { playlistName, itemName } = parseName(file.name);
 
         let target: Playlist | undefined;
         if (playlistName) {
@@ -218,24 +261,42 @@
         } else {
           target = playlists.value[0];
         }
+        if (!target) return;
 
-        const ft = new FileTrack(file, trackName);
+        if (file.type.startsWith('image/')) {
+          await addImageToPlaylist(file, itemName, target);
+        } else if (file.type.startsWith('audio/')) {
+          await addTrackToPlaylist(file, itemName, target);
+        }
+      }
+
+      async function addTrackToPlaylist(file: File, itemName: string, target: Playlist) {
+        const ft = new FileTrack(file, itemName);
         ft.playlistId = target.id;
-        ft.order = target.tracks.length;
+        ft.order = target.items.length;
         ft.id = await DB_AddTrack(ft);
-        target.tracks.push(ft);
+        target.items.push(ft);
+      }
+
+      async function addImageToPlaylist(file: File, itemName: string, target: Playlist) {
+        const img = new GalleryImage(file, itemName);
+        img.playlistId = target.id;
+        img.order = target.items.length;
+        await DB_AddImage(img);
+        img.ensureObjectUrl();
+        target.items.push(img);
       }
 
       function parseName(name: string) {
         const parts = name.split('--');
         let playlistName: string | undefined;
-        let trackName = name;
+        let itemName = name;
         if (parts.length > 1) {
           playlistName = parts[0].trim();
-          trackName = parts.slice(1).join('--').trim();
+          itemName = parts.slice(1).join('--').trim();
         }
-        trackName = trackName.replace(/\.[^/.]+$/, '');
-        return { playlistName, trackName };
+        itemName = itemName.replace(/\.[^/.]+$/, '');
+        return { playlistName, itemName };
       }
 
       async function ensureLibrary() {
@@ -244,15 +305,29 @@
         playlists.value.unshift(defaultPl);
       }
 
-      function removeTrack(pl: Playlist, track: FileTrack) {
-        const idx = pl.tracks.findIndex(t => t.id === track.id);
+      async function removeItem(pl: Playlist, item: LibraryItemModel) {
+        const idx = pl.items.findIndex(i => i === item);
         if (idx > -1) {
-          pl.tracks.splice(idx, 1);
-          DB_RemoveTrack(track);
+          pl.items.splice(idx, 1);
+          if (item.kind === 'audio') {
+            await DB_RemoveTrack(item as FileTrack);
+          } else {
+            await DB_RemoveImage(item as GalleryImage);
+          }
+          await persistPlaylistOrder(pl);
         }
       }
 
-      function playTrack(track: FileTrack) { emit('play', track); }
+      function handlePlayAudio(track: FileTrack) { emit('playAudio', track); }
+
+      function handleOpenImage(image: GalleryImage) {
+        selectedImage.value = image;
+        emit('openImage', image);
+      }
+
+      function closeImage() {
+        selectedImage.value = null;
+      }
 
       async function savePlaylistName(pl: Playlist) {
         if (!pl.name.trim()) pl.name = 'Nouvelle Playlist';
@@ -274,19 +349,29 @@
         }
       }
 
-      async function updateTrackOrder(pl: Playlist, event: any) {
-        // Si on drop une track depuis une autre playlist ou la bibliothèque
+      async function updateItemOrder(pl: Playlist, event: any) {
         if (event.added) {
           const { element, newIndex } = event.added;
-          // On l’assigne à la bonne playlist
           element.playlistId = pl.id;
           element.order = newIndex;
-          await DB_UpdateTrack(element);
+          if (element.kind === 'audio') {
+            await DB_UpdateTrack(element as FileTrack);
+          } else {
+            await DB_UpdateImage(element as GalleryImage);
+          }
         }
-        // Puis on ré‐numérote tout
-        for (let i = 0; i < pl.tracks.length; i++) {
-          pl.tracks[i].order = i;
-          await DB_UpdateTrack(pl.tracks[i]);
+        await persistPlaylistOrder(pl);
+      }
+
+      async function persistPlaylistOrder(pl: Playlist) {
+        for (let i = 0; i < pl.items.length; i++) {
+          const item = pl.items[i];
+          item.order = i;
+          if (item.kind === 'audio') {
+            await DB_UpdateTrack(item as FileTrack);
+          } else {
+            await DB_UpdateImage(item as GalleryImage);
+          }
         }
       }
 
@@ -314,32 +399,35 @@
         resizing.value = null;
       }
 
-      function trackMatchesSearch(track: FileTrack) {
+      function itemMatchesSearch(item: LibraryItemModel) {
         if (!searchTerm.value) return true;
-        return track.name.toLowerCase().includes(searchTerm.value.toLowerCase());
+        return item.name.toLowerCase().includes(searchTerm.value.toLowerCase());
       }
 
-      function visibleTracks(pl: Playlist) {
-        return pl.tracks.filter(t => trackMatchesSearch(t));
+      function visibleItems(pl: Playlist) {
+        return pl.items.filter(t => itemMatchesSearch(t));
       }
 
       return {
         playlists,
         isListView,
         searchTerm,
-        playlistNameInput,
         handleFileSelected,
         handleFilesDropped,
         addPlaylist,
         removePlaylist,
         savePlaylistName,
-        updateTrackOrder,
-        playTrack,
-        removeTrack,
+        updateItemOrder,
+        handlePlayAudio,
+        handleOpenImage,
+        removeItem,
         startResize,
-        trackMatchesSearch,
-        visibleTracks,
+        itemMatchesSearch,
+        visibleItems,
         helpText,
+        selectedImage,
+        selectedImageUrl,
+        closeImage,
       };
     }
   });

@@ -36,6 +36,9 @@ interface ExportImageMeta {
   order: number;
   type: string;
   filePath: string;
+  playlistIndex: number;
+  createdAt?: number;
+  updatedAt?: number;
 }
 
 interface ExportData {
@@ -57,7 +60,7 @@ export async function exportLibrary(): Promise<Blob> {
 
   const data: ExportData = {
     // incrémenter si le format change à l'avenir
-    version: 2,
+    version: 3,
     playlists: playlists.map(pl => ({ name: pl.name, width: pl.width ?? null })),
     tracks: [],
     images: [],
@@ -67,7 +70,7 @@ export async function exportLibrary(): Promise<Blob> {
 
   // Ajout des fichiers audio dans l'archive
   for (const [idx, track] of tracks.entries()) {
-    const playlistIndex = playlists.findIndex(p => p.id === track.playlistId);
+    const playlistIndex = Math.max(0, playlists.findIndex(p => p.id === track.playlistId));
     const path = `tracks/${idx}`;
     // on stocke le fichier brut dans un dossier "tracks"
     zip.file(path, track.file);
@@ -86,6 +89,7 @@ export async function exportLibrary(): Promise<Blob> {
   }
 
   for (const [idx, image] of images.entries()) {
+    const playlistIndex = Math.max(0, playlists.findIndex(p => p.id === image.playlistId));
     const path = `images/${idx}`;
     zip.file(path, image.file);
     data.images?.push({
@@ -93,6 +97,9 @@ export async function exportLibrary(): Promise<Blob> {
       order: image.order,
       type: image.file.type,
       filePath: path,
+      playlistIndex,
+      createdAt: image.createdAt,
+      updatedAt: image.updatedAt,
     });
   }
 
@@ -156,7 +163,8 @@ export async function importLibrary(blob: Blob): Promise<void> {
     ft.iconName = trackMeta.iconName ?? '';
     ft.iconColor = trackMeta.iconColor ?? '#c084fc';
     ft.order = trackMeta.order ?? 0;
-    ft.playlistId = playlists[trackMeta.playlistIndex]?.id;
+    const playlist = playlists[trackMeta.playlistIndex] ?? playlists[0];
+    ft.playlistId = playlist?.id;
     ft.loop = trackMeta.loop ?? false;
 
     await DB_AddTrack(ft);
@@ -175,6 +183,10 @@ export async function importLibrary(blob: Blob): Promise<void> {
     const file = new File([imageBlob], imageMeta.name, { type: imageMeta.type });
     const galleryImage = new GalleryImage(file, imageMeta.name);
     galleryImage.order = imageMeta.order ?? index;
+    const playlist = playlists[imageMeta.playlistIndex] ?? playlists[0];
+    galleryImage.playlistId = playlist?.id;
+    if (imageMeta.createdAt) galleryImage.createdAt = imageMeta.createdAt;
+    if (imageMeta.updatedAt) galleryImage.updatedAt = imageMeta.updatedAt;
     await DB_AddImage(galleryImage);
     galleryImages.push(galleryImage);
   }

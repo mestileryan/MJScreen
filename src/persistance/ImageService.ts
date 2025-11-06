@@ -7,6 +7,9 @@ export async function DB_AddImage(image: GalleryImage): Promise<number> {
     name: image.name,
     blob: image.file,
     order: image.order,
+    playlistId: image.playlistId ?? null,
+    createdAt: image.createdAt,
+    updatedAt: image.updatedAt,
   };
 
   const newId = await ImageLibraryDB.images.add(stored);
@@ -17,9 +20,12 @@ export async function DB_AddImage(image: GalleryImage): Promise<number> {
 export async function DB_UpdateImage(image: GalleryImage): Promise<void> {
   if (image.id == null) return;
 
+  image.touch();
   await ImageLibraryDB.images.update(image.id, {
     name: image.name,
     order: image.order,
+    playlistId: image.playlistId ?? null,
+    updatedAt: image.updatedAt,
   });
 }
 
@@ -30,6 +36,7 @@ export async function DB_UpdateImages(images: GalleryImage[]): Promise<void> {
 export async function DB_RemoveImage(image: GalleryImage): Promise<void> {
   if (image.id == null) return;
   await ImageLibraryDB.images.delete(image.id);
+  image.revokeObjectUrl();
 }
 
 export async function DB_GetImages(): Promise<GalleryImage[]> {
@@ -39,6 +46,9 @@ export async function DB_GetImages(): Promise<GalleryImage[]> {
     const image = new GalleryImage(file, stored.name);
     image.id = stored.id;
     image.order = stored.order ?? 0;
+    image.playlistId = stored.playlistId ?? undefined;
+    if (stored.createdAt) image.createdAt = stored.createdAt;
+    if (stored.updatedAt) image.updatedAt = stored.updatedAt;
     return image;
   });
 
