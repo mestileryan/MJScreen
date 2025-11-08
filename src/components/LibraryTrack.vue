@@ -28,8 +28,7 @@
              class="w-10 h-10 object-cover rounded"
              @mouseenter="showPreview"
              @mousemove="updatePreview"
-             @mouseleave="hidePreview"
-             @click="onOpenImage" />
+             @mouseleave="hidePreview" />
       </div>
     </template>
 

@@ -117,16 +117,6 @@
 
     </ImportFileDragOverlay>
 
-    <div v-if="selectedImage"
-         class="fixed inset-0 bg-black/80 flex items-center justify-center z-50"
-         @click="closeImage">
-      <div class="max-w-5xl max-h-[90vh] p-4" @click.stop>
-        <img :src="selectedImageUrl"
-             :alt="selectedImage?.name"
-             class="max-h-[80vh] max-w-full object-contain rounded shadow-lg border border-purple-500" />
-        <p class="text-center text-gray-200 mt-4">{{ selectedImage?.name }}</p>
-      </div>
-    </div>
   </div>
 </template>
 
@@ -192,11 +182,9 @@
         'Pour ranger directement votre fichier dans une playlist en particulier, ' +
         'préfixez son nom par "Nom_Playlist --". Exemple : "MaPlaylist -- MonFichier"';
       const resizing = ref<Playlist | null>(null);
-      const selectedImage = ref<GalleryImage | null>(null);
       const lastPresentedImage = ref<GalleryImage | null>(null);
       const presentationWindow = ref<Window | null>(null);
       let presentationWindowMonitor: number | null = null;
-      const selectedImageUrl = computed(() => selectedImage.value?.ensureObjectUrl() ?? '');
       let startX = 0;
       let startWidth = 0;
 
@@ -330,14 +318,9 @@
       function handlePlayAudio(track: FileTrack) { emit('playAudio', track); }
 
       function handleOpenImage(image: GalleryImage) {
-        selectedImage.value = image;
         lastPresentedImage.value = image;
         sendToPresentation(image);
         emit('openImage', image);
-      }
-
-      function closeImage() {
-        selectedImage.value = null;
       }
 
       function ensurePresentationWindow(): Window | null {
@@ -501,9 +484,6 @@
         itemMatchesSearch,
         visibleItems,
         helpText,
-        selectedImage,
-        selectedImageUrl,
-        closeImage,
       };
     },
   });
