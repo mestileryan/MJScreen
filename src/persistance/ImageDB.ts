@@ -3,4 +3,7 @@ export interface ImageDB {
   name: string;
   blob: Blob;
   order: number;
+  playlistId?: number | null;
+  createdAt?: number;
+  updatedAt?: number;
 }

@@ -2,6 +2,9 @@
   <div class="flex flex-col items-center justify-center gap-6 h-full">
 
     <div class="flex items-center justify-center gap-6">
+      <button @click="openImageViewer" class="rounded-full hover:bg-blue-400/20 transition-colors">
+        <MonitorPlay class="w-8 h-8 text-blue-400" />
+      </button>
       <button @click="toggleAutoplay" class="rounded-full hover:bg-gray-600/20 transition-colors">
         <SquareMousePointer class="w-8 h-8 text-purple-400" v-if="autoPlayMode" />
         <SquareDashedMousePointer class="w-8 h-8 text-gray-600" v-if="!autoPlayMode" />
@@ -54,7 +57,8 @@
     components: {
       TrackComponent,
     },
-    setup() {
+    emits: ['open-viewer'],
+    setup(_, { emit }) {
       const tracks = ref<Track[]>([]);
       const trackRefs = ref<(InstanceType<typeof TrackComponent> | null)[]>([]);
       const autoPlayMode = ref(false); // Contrôle global de l'autoplay
@@ -103,6 +107,10 @@
         autoPlayMode.value = !autoPlayMode.value;
       };
 
+      const openImageViewer = () => {
+        emit('open-viewer');
+      };
+
       const playAll = () => {
         trackRefs.value.forEach((trackRef) => {
           trackRef?.play();
@@ -128,6 +136,7 @@
         removeTrack,
         removeAllTracks,
         toggleAutoplay,
+        openImageViewer,
         playAll,
         pauseAll,
 

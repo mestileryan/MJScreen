@@ -1,23 +1,19 @@
-export default class FileTrack {
-  id?: number;             // Identifiant pour IndexedDB
-  file: File;
+import LibraryItem from './LibraryItem';
+
+export default class FileTrack extends LibraryItem {
+  readonly kind = 'audio' as const;
   initialVolume: number;
-  name: string;
-  iconName?: string; // <-- permet de stocker l'icône choisie
+  iconName?: string;
   /** Couleur personnalisée de l'icône */
   iconColor?: string;
-  order: number;           // <-- Ajout de l'ordre des tracks
-  playlistId?: number;
   /** Etat boucle par defaut lors de la lecture */
   loop: boolean;
 
   constructor(file: File, name: string) {
-    this.file = file; // Génère un ID unique basé sur le timestamp
-    this.initialVolume = 0.8; // Crée une URL unique pour le fichier
-    this.name = name;
-    this.iconName = ''; // par défaut vide
+    super(file, name);
+    this.initialVolume = 0.8;
+    this.iconName = '';
     this.iconColor = '#c084fc';
-    this.order = 0;
     this.loop = false;
   }
 }

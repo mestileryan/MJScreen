@@ -17,13 +17,12 @@
       </div>
 
       <div class="space-y-6">
-        <Gallery />
-        <Library ref="library" @play="handlePlay" />
+        <Library ref="library" @play-audio="handlePlayAudio" @open-image="handleOpenImage" />
       </div>
     </div>
 
     <CollapsibleSidebar v-model:collapsed="isPlayerCollapsed" @open-settings="handleOpenSettings">
-      <TracksPlayer ref="tracksPlayer" />
+      <TracksPlayer ref="tracksPlayer" @open-viewer="handleOpenViewer" />
     </CollapsibleSidebar>
 
     <SettingsModal
@@ -35,7 +34,6 @@
 
 <script lang="ts">
   import { defineComponent, ref, watch } from 'vue';
-  import Gallery from './Gallery.vue';
   import Library from './Library.vue';
   import TracksPlayer from './TracksPlayer.vue';
   // Bouton ouvrant la modale d'import/export
@@ -43,32 +41,42 @@
   // Barre latérale rétractable pour le lecteur
   import CollapsibleSidebar from './CollapsibleSidebar.vue';
   import FileTrack from '../models/FileTrack'
+  import GalleryImage from '@/models/GalleryImage'
   import { Cookies } from '../models/Cookies';
   import { useTrackLink } from '@/composables/useTrackLink';
 
   export default defineComponent({
     name: 'Screen',
     components: {
-      Gallery,
       Library,
       TracksPlayer,
       SettingsModal,
       CollapsibleSidebar,
     },
     setup() {
-      const library = ref<InstanceType<typeof Library> | null>(null);
+      type LibraryInstance = InstanceType<typeof Library> & { openImageViewer: () => void };
+
+      const library = ref<LibraryInstance | null>(null);
       const tracksPlayer = ref<InstanceType<typeof TracksPlayer> | null>(null);
       const showSettings = ref(false)
 
       // Add the selected track to the player queue
-      const handlePlay = (track: FileTrack) => {
+      const handlePlayAudio = (track: FileTrack) => {
         if (tracksPlayer.value) {
           tracksPlayer.value.addTrack(track)
         }
       }
 
+      const handleOpenImage = (_image: GalleryImage) => {
+        // the library component manages the modal presentation; hook provided for extensibility
+      }
+
+      const handleOpenViewer = () => {
+        library.value?.openImageViewer()
+      }
+
       // Register logic that handles ?trackId= links and inter-tab communication
-      const { toastMessage, externalMessage } = useTrackLink(handlePlay)
+      const { toastMessage, externalMessage } = useTrackLink(handlePlayAudio)
 
       const isPlayerCollapsed = ref(Cookies.get('playerCollapsed') === 'true');
       watch(isPlayerCollapsed, val => {
@@ -82,7 +90,9 @@
       return {
         library,
         tracksPlayer,
-        handlePlay,
+        handlePlayAudio,
+        handleOpenImage,
+        handleOpenViewer,
         isPlayerCollapsed,
         handleOpenSettings,
         showSettings,

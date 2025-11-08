@@ -4,7 +4,7 @@
 
       <Plus/>
       <input type="file"
-              accept="audio/*"
+              accept="audio/*,image/*"
               @change="handleFileChange"
               class="hidden" />
     </label>

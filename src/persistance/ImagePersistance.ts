@@ -10,6 +10,23 @@ class ImageLibrary extends Dexie {
     this.version(1).stores({
       images: '++id,name,order'
     });
+    this.version(2)
+      .stores({
+        images: '++id,playlistId,order'
+      })
+      .upgrade(async transaction => {
+        const table = transaction.table('images');
+        const now = Date.now();
+        await table.toCollection().modify(image => {
+          if (image.playlistId === undefined) {
+            image.playlistId = null;
+          }
+          if (!image.createdAt) {
+            image.createdAt = now;
+          }
+          image.updatedAt = now;
+        });
+      });
   }
 }
 
