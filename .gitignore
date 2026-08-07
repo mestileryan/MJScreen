@@ -9,13 +9,16 @@ lerna-debug.log*
 
 node_modules
 .DS_Store
-dist
-dist-ssr
 coverage
 *.local
 
-/cypress/videos/
-/cypress/screenshots/
+# Next.js
+/.next/
+/out/
+next-env.d.ts
+
+# Ancien dossier de build Vite
+/dist/
 
 # Editor directories and files
 .vscode/*
@@ -32,5 +35,7 @@ coverage
 /.vscode
 /obj/Debug
 /mjscreen.client.esproj.user
-/src/assets/icon-sprite.svg
+
+# Générés par `npm run build-icons`
+/public/icon-sprite.svg
 /src/assets/icon-list.json

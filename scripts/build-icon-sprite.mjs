@@ -6,7 +6,10 @@ import svgstore from 'svgstore';
 import { optimize } from 'svgo';
 
 const iconsDir  = path.resolve('src/assets/game-icons');
-const outSprite = path.resolve('src/assets/icon-sprite.svg');
+// Le sprite pèse plusieurs Mo : il est servi comme fichier statique et récupéré par
+// le navigateur (voir IconSpriteLoader), pas empaqueté dans le bundle.
+const outSprite = path.resolve('public/icon-sprite.svg');
+// La liste des noms, elle, est importée directement par IconSelector.
 const listFile  = path.resolve('src/assets/icon-list.json');
 
 (async () => {

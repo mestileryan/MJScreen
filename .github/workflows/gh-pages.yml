@@ -1,4 +1,4 @@
-name: Deploy Vue.js App to GitHub Pages
+name: Deploy Next.js App to GitHub Pages
 
 on:
   push:
@@ -10,21 +10,22 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '22'
 
       - name: Install dependencies
         run: npm install
 
+      # Génère le sprite d'icônes puis exporte le site statique dans ./out
       - name: Build project
         run: npm run build
 
       - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v3
+        uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./dist
+          publish_dir: ./out

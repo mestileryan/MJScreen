@@ -1,9 +1,10 @@
-import { PlaylistLibraryDB } from './PlaylistPersistance';
-import Playlist from '../models/Playlist'; // ou le bon chemin
-import type { PlaylistDB } from './PlaylistDB';
+import { playlistLibraryDB } from './PlaylistPersistance'
+import { createPlaylist } from '@/models/Playlist'
+import type Playlist from '@/models/Playlist'
+import type { PlaylistDB } from './PlaylistDB'
 
 /**
- * Sauvegarde un FileTrack dans Dexie
+ * Sauvegarde une playlist dans Dexie et retourne l'id attribué.
  */
 export async function DB_AddPlaylist(playlist: Playlist): Promise<number> {
   // On construit l'objet qu'on veut stocker
@@ -11,28 +12,24 @@ export async function DB_AddPlaylist(playlist: Playlist): Promise<number> {
     name: playlist.name,
     width: playlist.width,
     order: playlist.order,
-  };
+  }
 
   // Dexie renvoie l'ID nouvellement inséré
-  const newId = await PlaylistLibraryDB.playlists.add(stored);
-
-  // On l'enregistre dans l'instance de FileTrack
-  playlist.id = newId;
-
-  return newId;
+  return playlistLibraryDB().playlists.add(stored)
 }
+
 /**
- * Met à jour le volume dans la DB pour le track donné
+ * Met à jour le nom, la largeur et l'ordre de la playlist
  */
 export async function DB_UpdatePlaylist(playlist: Playlist): Promise<void> {
   if (playlist.id == null) {
-    return;
+    return
   }
-  await PlaylistLibraryDB.playlists.update(playlist.id, {
+  await playlistLibraryDB().playlists.update(playlist.id, {
     name: playlist.name,
     width: playlist.width,
     order: playlist.order,
-  });
+  })
 }
 
 /**
@@ -41,37 +38,27 @@ export async function DB_UpdatePlaylist(playlist: Playlist): Promise<void> {
 export async function DB_RemovePlaylist(playlist: Playlist): Promise<void> {
   if (playlist.id == null) {
     // Pas d'id => rien à supprimer
-    return;
+    return
   }
-  await PlaylistLibraryDB.playlists.delete(playlist.id);
+  await playlistLibraryDB().playlists.delete(playlist.id)
 }
 
 /**
- * Charge tous les StoredTrack depuis Dexie et les convertit en FileTrack
+ * Charge toutes les playlists depuis Dexie, triées par ordre d'affichage
  */
 export async function DB_GetPlaylists(): Promise<Playlist[]> {
-  // 1) Récupération de tous les enregistrements (StoredTrack)
-  const storedPlaylists: PlaylistDB[] = await PlaylistLibraryDB.playlists.toArray();
+  const storedPlaylists: PlaylistDB[] = await playlistLibraryDB().playlists.toArray()
 
   storedPlaylists.sort((a, b) => {
-    const orderA = a.order ?? Number.MAX_SAFE_INTEGER;
-    const orderB = b.order ?? Number.MAX_SAFE_INTEGER;
-    if (orderA !== orderB) return orderA - orderB;
-    return (a.id ?? 0) - (b.id ?? 0);
-  });
+    const orderA = a.order ?? Number.MAX_SAFE_INTEGER
+    const orderB = b.order ?? Number.MAX_SAFE_INTEGER
+    if (orderA !== orderB) return orderA - orderB
+    return (a.id ?? 0) - (b.id ?? 0)
+  })
 
-  // 2) Conversion en FileTrack
-  const playlists: Playlist[] = storedPlaylists.map((st, index) => {
-
-    // b) On instancie un FileTrack avec le volume initial
-    const ft = new Playlist(st.name);
-    ft.id = st.id;
-    ft.width = st.width ?? undefined;
-    ft.order = st.order ?? index;
-
-    return ft;
-  });
-
-  // 3) Retourne la liste des FileTrack
-  return playlists;
+  return storedPlaylists.map((stored, index) => ({
+    ...createPlaylist(stored.name, stored.order ?? index),
+    id: stored.id,
+    width: stored.width ?? undefined,
+  }))
 }

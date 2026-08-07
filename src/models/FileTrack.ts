@@ -1,19 +1,25 @@
-import LibraryItem from './LibraryItem';
+import { baseFrom, type LibraryItemBase } from './LibraryItem'
 
-export default class FileTrack extends LibraryItem {
-  readonly kind = 'audio' as const;
-  initialVolume: number;
-  iconName?: string;
+export const DEFAULT_ICON_COLOR = '#c084fc'
+
+/** Piste audio telle qu'elle est rangée dans la bibliothèque. */
+export default interface FileTrack extends LibraryItemBase {
+  kind: 'audio'
+  initialVolume: number
+  iconName?: string
   /** Couleur personnalisée de l'icône */
-  iconColor?: string;
+  iconColor?: string
   /** Etat boucle par defaut lors de la lecture */
-  loop: boolean;
+  loop: boolean
+}
 
-  constructor(file: File, name: string) {
-    super(file, name);
-    this.initialVolume = 0.8;
-    this.iconName = '';
-    this.iconColor = '#c084fc';
-    this.loop = false;
+export function createFileTrack(file: File, name?: string): FileTrack {
+  return {
+    ...baseFrom(file, name),
+    kind: 'audio',
+    initialVolume: 0.8,
+    iconName: '',
+    iconColor: DEFAULT_ICON_COLOR,
+    loop: false,
   }
 }

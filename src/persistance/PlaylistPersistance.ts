@@ -1,45 +1,57 @@
 // db.ts
-import Dexie from 'dexie';
-import type { Table } from 'dexie';
-import type { PlaylistDB } from './PlaylistDB';
-
+import Dexie from 'dexie'
+import type { Table } from 'dexie'
+import type { PlaylistDB } from './PlaylistDB'
 
 export class PlaylistLibrary extends Dexie {
   // Table "playlists", type = PlaylistDB
-  playlists!: Table<PlaylistDB>;
+  playlists!: Table<PlaylistDB>
 
   constructor() {
-    super('PlaylistLibrary'); // nom de la base
+    super('PlaylistLibrary') // nom de la base
     this.version(1).stores({
       // "++id" = champ auto-incrémenté, vous pouvez aussi utiliser un "uuid"
-      playlists: '++id,name'
-    });
+      playlists: '++id,name',
+    })
 
     // Ajout du champ "width" en version 2
-    this.version(2).stores({
-      playlists: '++id,name,width'
-    }).upgrade(tx => {
-      return tx.table('playlists').toCollection().modify(pl => {
-        if (pl.width === undefined) pl.width = null;
-      });
-    });
+    this.version(2)
+      .stores({
+        playlists: '++id,name,width',
+      })
+      .upgrade(tx => {
+        return tx
+          .table('playlists')
+          .toCollection()
+          .modify(pl => {
+            if (pl.width === undefined) pl.width = null
+          })
+      })
 
-    this.version(3).stores({
-      playlists: '++id,name,width,order'
-    }).upgrade(tx => {
-      let currentOrder = 0;
-      return tx
-        .table('playlists')
-        .toCollection()
-        .modify(pl => {
-          if (pl.order === undefined) {
-            pl.order = currentOrder;
-          }
-          currentOrder += 1;
-        });
-    });
+    this.version(3)
+      .stores({
+        playlists: '++id,name,width,order',
+      })
+      .upgrade(tx => {
+        let currentOrder = 0
+        return tx
+          .table('playlists')
+          .toCollection()
+          .modify(pl => {
+            if (pl.order === undefined) {
+              pl.order = currentOrder
+            }
+            currentOrder += 1
+          })
+      })
   }
 }
 
-// On exporte une instance unique de la DB
-export const PlaylistLibraryDB = new PlaylistLibrary();
+// Voir TrackPersistance : instanciation paresseuse pour rester compatible avec le
+// pré-rendu Node de l'export statique.
+let instance: PlaylistLibrary | null = null
+
+export function playlistLibraryDB(): PlaylistLibrary {
+  if (!instance) instance = new PlaylistLibrary()
+  return instance
+}

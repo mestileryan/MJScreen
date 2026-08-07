@@ -1,24 +1,13 @@
-import LibraryItem from './LibraryItem';
+import { baseFrom, type LibraryItemBase } from './LibraryItem'
 
-export default class GalleryImage extends LibraryItem {
-  readonly kind = 'image' as const;
-  objectUrl?: string;
+/** Image de la galerie, affichée dans la fenêtre de présentation. */
+export default interface GalleryImage extends LibraryItemBase {
+  kind: 'image'
+}
 
-  constructor(file: File, name?: string) {
-    super(file, name);
-  }
-
-  ensureObjectUrl(): string {
-    if (!this.objectUrl) {
-      this.objectUrl = URL.createObjectURL(this.file);
-    }
-    return this.objectUrl;
-  }
-
-  revokeObjectUrl() {
-    if (this.objectUrl) {
-      URL.revokeObjectURL(this.objectUrl);
-      this.objectUrl = undefined;
-    }
+export function createGalleryImage(file: File, name?: string): GalleryImage {
+  return {
+    ...baseFrom(file, name),
+    kind: 'image',
   }
 }
