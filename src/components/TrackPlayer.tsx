@@ -8,11 +8,13 @@ import {
   Pause,
   Play,
   Repeat1,
-  Trash2,
+  SkipBack,
+  Square,
   Volume,
   Volume1,
   Volume2,
   VolumeOff,
+  X,
 } from 'lucide-react'
 import { useLibrary } from '@/context/LibraryContext'
 import { useAudioWaveform, DEFAULT_WAVEFORM_OPTIONS } from '@/hooks/useAudioWaveform'
@@ -258,6 +260,37 @@ export default function TrackPlayer({
     else startPlayback()
   }
 
+  /** Repart du début sans interrompre la lecture en cours. */
+  function rewind() {
+    if (player.current) player.current.currentTime = 0
+  }
+
+  /**
+   * Arrêt : comme la pause, fondu de sortie compris, puis retour au début.
+   * On ne rembobine que si la piste s'est réellement arrêtée — un ordre plus
+   * récent a pu reprendre la lecture pendant le fondu.
+   */
+  async function stopAndRewind() {
+    await stopPlayback()
+    if (player.current?.paused) player.current.currentTime = 0
+  }
+
+  // Coupure du son : volontairement éphémère, elle ne touche pas au volume
+  // enregistré de la piste. Un ref suffit, l'icône se déduisant de `track.volume`.
+  const mutedFrom = useRef<number | null>(null)
+
+  function toggleMute() {
+    if (track.volume > 0) {
+      mutedFrom.current = track.volume
+      applyVolume(0)
+      return
+    }
+    // Curseur déjà à zéro sans coupure préalable : on retrouve le volume de la
+    // bibliothèque plutôt que de laisser un bouton sans effet.
+    applyVolume(mutedFrom.current ?? live?.initialVolume ?? 1)
+    mutedFrom.current = null
+  }
+
   function toggleLoop() {
     const loop = !track.loop
     lastLibraryLoop.current = loop
@@ -265,11 +298,18 @@ export default function TrackPlayer({
     if (live) void saveItem({ ...live, loop })
   }
 
+  /** Applique un volume à la lecture et à la file, sans rien enregistrer. */
+  function applyVolume(volume: number) {
+    if (player.current) player.current.volume = volume
+    onChange({ ...track, volume })
+  }
+
   // Le curseur agit immédiatement sur la lecture ; l'écriture en base attend le relâchement.
   function updateVolume(volume: number) {
-    if (player.current) player.current.volume = volume
     lastLibraryVolume.current = volume
-    onChange({ ...track, volume })
+    // Bouger le curseur lève la coupure.
+    mutedFrom.current = null
+    applyVolume(volume)
   }
 
   function commitVolume() {
@@ -305,9 +345,31 @@ export default function TrackPlayer({
 
   const tweaked = !isNeutral(effects)
 
+  // Le halo de survol reprend la teinte de l'icône, comme la rangée d'outils du haut.
+  // Les classes sont écrites en entier : Tailwind ne peut pas les deviner à l'exécution.
+  const playHalo =
+    fading === 'in' || (!fading && !isPlaying)
+      ? 'hover:bg-green-400/20'
+      : 'hover:bg-gray-400/20'
+  const loopHalo = track.loop ? 'hover:bg-purple-400/20' : 'hover:bg-gray-400/20'
+  const volumeHalo = track.volume === 0 ? 'hover:bg-red-400/20' : 'hover:bg-purple-400/20'
+  const effectsHalo = tweaked ? 'hover:bg-purple-400/20' : 'hover:bg-gray-400/20'
+
   return (
     <>
-      <p className="text-white text-xs mb-1">{track.name}</p>
+      {/* Le retrait est sorti de la rangée de transport, devenue trop chargée :
+          il vit en haut à droite du bloc, à hauteur du nom. */}
+      <div className="mb-1 flex items-center gap-2">
+        <p className="min-w-0 flex-1 truncate text-xs text-white">{track.name}</p>
+        <button
+          className="shrink-0 rounded-full p-0.5 transition-colors hover:bg-red-400/20"
+          onClick={() => void removeWithFade()}
+          title="Retirer de la file"
+          aria-label="Retirer de la file"
+        >
+          <X className="h-4 w-4 text-red-400" />
+        </button>
+      </div>
       {/* Player audio */}
       <audio
         ref={player}
@@ -331,13 +393,15 @@ export default function TrackPlayer({
       {/* Boutons Play/Pause et Boucler */}
       <div className="flex gap-1">
         <button
-          className="rounded-full hover:bg-red-400/20 transition-colors"
-          onClick={() => void removeWithFade()}
+          className="rounded-full hover:bg-purple-400/20 transition-colors"
+          onClick={rewind}
+          title="Revenir au début"
+          aria-label="Revenir au début"
         >
-          <Trash2 className="w-5 h-5 text-red-400" />
+          <SkipBack className="w-5 h-5 text-purple-400" />
         </button>
         <button
-          className="rounded-full hover:bg-gray-400/20 transition-colors"
+          className={`rounded-full transition-colors ${playHalo}`}
           onClick={togglePlay}
           title={
             fading === 'in'
@@ -362,13 +426,27 @@ export default function TrackPlayer({
           )}
         </button>
         <button
-          className="rounded-full hover:bg-gray-400/20 transition-colors"
+          className="rounded-full hover:bg-red-400/20 transition-colors"
+          onClick={() => void stopAndRewind()}
+          title="Arrêter et revenir au début"
+          aria-label="Arrêter et revenir au début"
+        >
+          <Square className="w-5 h-5 text-red-400" />
+        </button>
+        <button
+          className={`rounded-full transition-colors ${loopHalo}`}
           onClick={toggleLoop}
         >
           <Repeat1 className={`w-5 h-5 ${track.loop ? 'text-purple-400' : 'text-gray-400'}`} />
         </button>
 
-        <div className="ml-1 mr-1">
+        {/* L'indicateur de volume coupe et rétablit le son d'un clic. */}
+        <button
+          className={`ml-1 mr-1 rounded-full transition-colors ${volumeHalo}`}
+          onClick={toggleMute}
+          title={track.volume === 0 ? 'Rétablir le son' : 'Couper le son'}
+          aria-label={track.volume === 0 ? 'Rétablir le son' : 'Couper le son'}
+        >
           {track.volume === 0 && <VolumeOff className="w-5 h-5 text-red-400" />}
           {track.volume > 0 && track.volume <= 0.33 && (
             <Volume className="w-5 h-5 text-purple-400" />
@@ -377,7 +455,7 @@ export default function TrackPlayer({
             <Volume1 className="w-5 h-5 text-purple-400" />
           )}
           {track.volume > 0.66 && <Volume2 className="w-5 h-5 text-purple-400" />}
-        </div>
+        </button>
 
         <input
           className="w-20"
@@ -393,7 +471,7 @@ export default function TrackPlayer({
 
         {/* Réglages avancés — le chevron vire au violet dès qu'un effet est actif */}
         <button
-          className="ml-auto rounded-full hover:bg-gray-400/20 transition-colors"
+          className={`ml-auto rounded-full transition-colors ${effectsHalo}`}
           onClick={() => setShowEffects(open => !open)}
           aria-expanded={showEffects}
           aria-label="Réglages avancés"

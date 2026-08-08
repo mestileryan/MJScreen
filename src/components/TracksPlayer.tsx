@@ -4,13 +4,14 @@ import { useCallback, useRef, useState } from 'react'
 import {
   CirclePause,
   CirclePlay,
+  CircleX,
   MonitorPlay,
   SquareDashedMousePointer,
   SquareMousePointer,
-  Trash2,
 } from 'lucide-react'
 import TrackPlayer, { type TrackControls } from './TrackPlayer'
 import { useAudioOutputs } from '@/hooks/useAudioOutputs'
+import { DEFAULT_WAVEFORM_OPTIONS } from '@/hooks/useAudioWaveform'
 import type Track from '@/models/Track'
 
 interface TracksPlayerProps {
@@ -51,10 +52,13 @@ export default function TracksPlayer({
   }
 
   return (
-    // `min-h-full` plutôt que `h-full` : le contenu reste centré tant qu'il y a de la
-    // place, mais peut dépasser et défiler quand la file s'allonge, sans que le haut
-    // devienne inatteignable comme avec un simple `justify-center`.
-    <div className="flex flex-col items-center justify-center gap-6 min-h-full">
+    // Alignement en haut, explicitement. Le panneau s'appuyait auparavant sur le
+    // `mt-auto` du sélecteur de sortie pour compenser un `justify-center` : dès que ce
+    // sélecteur est masqué faute de périphérique, la marge automatique disparaît avec
+    // lui et tout se recentrait. Le `mt-auto` ne sert donc plus qu'à plaquer le
+    // sélecteur en bas quand il est là.
+    // `min-h-full` plutôt que `h-full` : la file peut dépasser et défiler.
+    <div className="flex flex-col items-center gap-6 min-h-full">
       <div className="flex items-center justify-center gap-4 sm:gap-6">
         <button
           onClick={onOpenViewer}
@@ -82,17 +86,20 @@ export default function TracksPlayer({
           onClick={onRemoveAllTracks}
           className="rounded-full hover:bg-red-400/20 transition-colors"
         >
-          {/* lucide n'a pas de poubelle cerclée : on la compose. Le cercle fait 28 px
-              pour coller au diamètre réellement dessiné par CirclePlay / CirclePause
-              voisins (r=10 sur un viewBox de 24 rendu en 32 px). */}
-          <span className="flex h-7 w-7 items-center justify-center rounded-full border-2 border-red-400">
-            <Trash2 className="w-4 h-4 text-red-400" />
-          </span>
+          {/* `CircleX` vient de la même famille que CirclePlay et CirclePause :
+              cercle rigoureusement identique, sans composition à ajuster. */}
+          <CircleX className="w-8 h-8 text-red-400" />
         </button>
       </div>
 
       {tracks.map(track => (
-        <div key={track.id} className="mt-3">
+        // Largeur calée sur la forme d'onde : sans elle le bloc se dimensionne sur son
+        // contenu, et un nom à rallonge l'élargit au lieu d'être tronqué.
+        <div
+          key={track.id}
+          className="mt-3 max-w-full"
+          style={{ width: DEFAULT_WAVEFORM_OPTIONS.canvWidth }}
+        >
           <TrackPlayer
             track={track}
             autoPlay={autoPlayMode}
