@@ -1,3 +1,4 @@
+import type TrackEffects from '@/models/TrackEffects';
 
 export interface TrackDB {
   id?: number; // clé primaire auto-incrémentée
@@ -15,5 +16,10 @@ export interface TrackDB {
    * Absent tant que la piste n'a jamais été décodée (backfill en arrière-plan).
    */
   peaks?: Uint8Array;
+  /**
+   * Réglages avancés (fondus, latéralisation, hauteur, effets).
+   * Champ non indexé lui aussi : absent tant que la piste reste neutre.
+   */
+  effects?: TrackEffects;
 }
 

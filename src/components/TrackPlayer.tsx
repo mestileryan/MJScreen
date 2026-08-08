@@ -1,10 +1,36 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
-import { Pause, Play, Repeat1, Trash2, Volume, Volume1, Volume2, VolumeOff } from 'lucide-react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import {
+  ChevronDown,
+  ChevronRight,
+  LoaderCircle,
+  Pause,
+  Play,
+  Repeat1,
+  Trash2,
+  Volume,
+  Volume1,
+  Volume2,
+  VolumeOff,
+} from 'lucide-react'
 import { useLibrary } from '@/context/LibraryContext'
 import { useAudioWaveform, DEFAULT_WAVEFORM_OPTIONS } from '@/hooks/useAudioWaveform'
+import TrackEffectsPanel from './TrackEffectsPanel'
+import {
+  createTrackGraph,
+  resumePlaybackContext,
+  setPlaybackSink,
+  type TrackAudioGraph,
+} from '@/lib/audioGraph'
+import { isNeutral, needsAudioGraph, withDefaults } from '@/models/TrackEffects'
+import type TrackEffects from '@/models/TrackEffects'
 import type Track from '@/models/Track'
+
+export interface TrackControls {
+  play: () => void
+  pause: () => void
+}
 
 interface TrackPlayerProps {
   track: Track
@@ -13,7 +39,7 @@ interface TrackPlayerProps {
   onChange: (track: Track) => void
   onRemove: () => void
   /** Permet au parent de piloter « tout jouer / tout mettre en pause ». */
-  registerAudio: (id: number, audio: HTMLAudioElement | null) => void
+  registerControls: (id: number, controls: TrackControls | null) => void
 }
 
 /** `setSinkId` n'est pas encore dans les typages DOM standards. */
@@ -23,44 +49,186 @@ function setSink(audio: HTMLAudioElement, sinkId: string): Promise<void> {
   return withSink.setSinkId(sinkId)
 }
 
+/** `preservesPitch` n'est pas déclaré partout ; le désactiver donne l'effet « bande ». */
+function setPlaybackRate(audio: HTMLAudioElement, semitones: number): void {
+  const withPitch = audio as HTMLAudioElement & { preservesPitch?: boolean }
+  withPitch.preservesPitch = false
+  audio.playbackRate = Math.pow(2, semitones / 12)
+}
+
 export default function TrackPlayer({
   track,
   autoPlay,
   sinkId,
   onChange,
   onRemove,
-  registerAudio,
+  registerControls,
 }: TrackPlayerProps) {
   const { findTrack, saveItem } = useLibrary()
   const player = useRef<HTMLAudioElement>(null)
   const canvas = useRef<HTMLCanvasElement>(null)
   const [isPlaying, setIsPlaying] = useState(false)
+  const [showEffects, setShowEffects] = useState(false)
+  /** Fondu en cours, pour afficher une attente sur le bouton de lecture. */
+  const [fading, setFading] = useState<'in' | 'out' | null>(null)
 
   // Version courante de la piste dans la bibliothèque, si elle y est toujours.
   const live = findTrack(track.fileTrack.id)
+
+  // Les réglages suivent la piste de la bibliothèque ; on retombe sur l'instantané
+  // de la file si elle en a été retirée.
+  const storedEffects = live?.effects ?? track.fileTrack.effects
+  const effects = useMemo(() => withDefaults(storedEffects), [storedEffects])
 
   // Les crêtes sont persistées par piste dans Dexie : après le premier décodage
   // (à l'upload ou en backfill), l'affichage de la forme d'onde est immédiat.
   useAudioWaveform(player, canvas, track.fileTrack.file, track.fileTrack.id)
 
+  // ------------------------------------------------------------- graphe audio
+
+  const graph = useRef<TrackAudioGraph | null>(null)
+
+  // Le graphe n'est monté qu'à la première demande, et jamais démonté ensuite :
+  // `createMediaElementSource` est irréversible. Une piste restée neutre continue
+  // donc de sortir par son élément, en conservant `setSinkId` dessus.
   useEffect(() => {
-    registerAudio(track.id, player.current)
-    return () => registerAudio(track.id, null)
-  }, [track.id, registerAudio])
+    if (!player.current) return
+    if (!graph.current) {
+      // Rien à router tant qu'aucun effet n'est actif.
+      if (!needsAudioGraph(effects)) return
+      graph.current = createTrackGraph(player.current)
+      setPlaybackSink(sinkId)
+    }
+    // Une fois le graphe en place, il suit les réglages en toutes circonstances —
+    // y compris le retour au neutre, sans quoi il resterait figé sur le dernier
+    // effet actif.
+    graph.current.apply(effects)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [effects])
+
+  useEffect(() => {
+    const current = graph
+    return () => {
+      current.current?.dispose()
+      current.current = null
+    }
+  }, [])
+
+  // Hauteur : obtenue par la vitesse de lecture, sans passer par le graphe.
+  useEffect(() => {
+    if (player.current) setPlaybackRate(player.current, effects.detune)
+  }, [effects.detune])
+
+  // ------------------------------------------------------------- lecture
+
+  // Un fondu est asynchrone : ce jeton invalide celui qui serait dépassé par un
+  // ordre plus récent (relance pendant un fondu de sortie, par exemple).
+  const fadeRun = useRef(0)
+  const fadeTimer = useRef<number | null>(null)
+
+  function clearFadeTimer() {
+    if (fadeTimer.current !== null) {
+      window.clearTimeout(fadeTimer.current)
+      fadeTimer.current = null
+    }
+  }
+
+  useEffect(() => clearFadeTimer, [])
+
+  function startPlayback() {
+    const audio = player.current
+    if (!audio || isPlaying) return
+    resumePlaybackContext()
+
+    const run = ++fadeRun.current
+    clearFadeTimer()
+
+    if (graph.current) {
+      // Le fondu doit être programmé avant que le son ne sorte.
+      graph.current.fadeIn(effects.fadeIn)
+      setPlaybackSink(sinkId)
+      if (effects.fadeIn > 0) {
+        setFading('in')
+        fadeTimer.current = window.setTimeout(() => {
+          if (fadeRun.current === run) setFading(null)
+        }, effects.fadeIn * 1000)
+      } else {
+        setFading(null)
+      }
+    } else {
+      // setSinkId peut rejeter (périphérique débranché) : on lit alors sur la sortie courante.
+      setSink(audio, sinkId).catch(() => {})
+      setFading(null)
+    }
+
+    audio.play().catch(() => {})
+  }
+
+  /** Arrête la piste en respectant le fondu de sortie. */
+  async function stopPlayback() {
+    const audio = player.current
+    if (!audio || audio.paused) return
+
+    const run = ++fadeRun.current
+    clearFadeTimer()
+
+    if (graph.current && effects.fadeOut > 0) {
+      setFading('out')
+      await graph.current.fadeOut(effects.fadeOut)
+      // Un ordre plus récent est passé pendant le fondu : il fait autorité.
+      if (fadeRun.current !== run) return
+      if (!player.current || player.current.paused) {
+        setFading(null)
+        return
+      }
+    }
+
+    setFading(null)
+    audio.pause()
+    graph.current?.cancelFade()
+  }
+
+  // Le parent pilote « tout jouer / tout mettre en pause » à travers ces
+  // enveloppes stables, qui relisent les handlers courants à chaque appel — et
+  // passent donc bien par les fondus.
+  const playRef = useRef(startPlayback)
+  const pauseRef = useRef(stopPlayback)
+  useEffect(() => {
+    playRef.current = startPlayback
+    pauseRef.current = stopPlayback
+  })
+
+  useEffect(() => {
+    registerControls(track.id, {
+      play: () => playRef.current(),
+      pause: () => void pauseRef.current(),
+    })
+    return () => registerControls(track.id, null)
+  }, [track.id, registerControls])
 
   // Volume initial + autoplay au montage
   useEffect(() => {
-    if (player.current) player.current.volume = track.volume
+    if (player.current) {
+      player.current.volume = track.volume
+      setPlaybackRate(player.current, effects.detune)
+    }
     // Une piste peut arriver sans geste utilisateur (lien ?trackId=, message
     // inter-onglets) : le navigateur refuse alors play(). On avale le rejet — la
     // piste reste en file, en pause, avec le bouton Play affiché.
-    if (autoPlay) player.current?.play().catch(() => {})
+    // Démarrage différé d'une micro-tâche : `startPlayback` publie l'état du fondu,
+    // ce qui n'a pas sa place dans le corps synchrone d'un effet.
+    if (autoPlay) queueMicrotask(startPlayback)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // Répercute le canal de sortie choisi
   useEffect(() => {
-    if (!player.current || !sinkId) return
+    if (!sinkId) return
+    if (graph.current) {
+      setPlaybackSink(sinkId)
+      return
+    }
+    if (!player.current) return
     setSink(player.current, sinkId).catch((err: Error) => {
       console.error('Erreur lors de la mise à jour du sinkId :', err)
     })
@@ -85,17 +253,9 @@ export default function TrackPlayer({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [live?.loop])
 
-  function play() {
-    if (!player.current || isPlaying) return
-    // setSinkId peut rejeter (périphérique débranché) : on lit alors sur la sortie courante.
-    setSink(player.current, sinkId).catch(() => {})
-    player.current.play().catch(() => {})
-  }
-
   function togglePlay() {
-    if (!player.current) return
-    if (isPlaying) player.current.pause()
-    else play()
+    if (isPlaying) void stopPlayback()
+    else startPlayback()
   }
 
   function toggleLoop() {
@@ -116,11 +276,34 @@ export default function TrackPlayer({
     if (live) void saveItem({ ...live, initialVolume: track.volume })
   }
 
+  /** Les réglages avancés sont enregistrés sur la piste de la bibliothèque. */
+  function updateEffects(next: TrackEffects) {
+    if (live) void saveItem({ ...live, effects: next })
+  }
+
+  /** Retire la piste de la file, après le fondu de sortie s'il y en a un. */
+  async function removeWithFade() {
+    if (graph.current && effects.fadeOut > 0 && !player.current?.paused) {
+      const run = ++fadeRun.current
+      clearFadeTimer()
+      setFading('out')
+      await graph.current.fadeOut(effects.fadeOut)
+      // La piste a pu être relancée ou arrêtée autrement entre-temps.
+      if (fadeRun.current !== run) return
+    }
+    onRemove()
+  }
+
   // Gère la fin de la lecture : la piste quitte la file si elle ne boucle pas
   function handleTrackEnd() {
     setIsPlaying(false)
+    fadeRun.current++
+    clearFadeTimer()
+    setFading(null)
     if (!track.loop) onRemove()
   }
+
+  const tweaked = !isNeutral(effects)
 
   return (
     <>
@@ -147,15 +330,30 @@ export default function TrackPlayer({
       <div className="flex gap-1">
         <button
           className="rounded-full hover:bg-red-400/20 transition-colors"
-          onClick={onRemove}
+          onClick={() => void removeWithFade()}
         >
           <Trash2 className="w-5 h-5 text-red-400" />
         </button>
         <button
           className="rounded-full hover:bg-gray-400/20 transition-colors"
           onClick={togglePlay}
+          title={
+            fading === 'in'
+              ? 'Fondu d’entrée en cours'
+              : fading === 'out'
+                ? 'Fondu de sortie en cours'
+                : undefined
+          }
         >
-          {isPlaying ? (
+          {fading ? (
+            // Le son monte ou descend : l'attente reprend la couleur de l'action
+            // en cours, vert pour un démarrage, gris pour un arrêt.
+            <LoaderCircle
+              className={`w-5 h-5 animate-spin ${
+                fading === 'in' ? 'text-green-400' : 'text-gray-400'
+              }`}
+            />
+          ) : isPlaying ? (
             <Pause className="w-5 h-5 text-gray-400" />
           ) : (
             <Play className="w-5 h-5 text-green-400" />
@@ -190,7 +388,24 @@ export default function TrackPlayer({
           onPointerUp={commitVolume}
           onKeyUp={commitVolume}
         />
+
+        {/* Réglages avancés — le chevron vire au violet dès qu'un effet est actif */}
+        <button
+          className="ml-auto rounded-full hover:bg-gray-400/20 transition-colors"
+          onClick={() => setShowEffects(open => !open)}
+          aria-expanded={showEffects}
+          aria-label="Réglages avancés"
+          title="Réglages avancés"
+        >
+          {showEffects ? (
+            <ChevronDown className={`w-5 h-5 ${tweaked ? 'text-purple-400' : 'text-gray-400'}`} />
+          ) : (
+            <ChevronRight className={`w-5 h-5 ${tweaked ? 'text-purple-400' : 'text-gray-400'}`} />
+          )}
+        </button>
       </div>
+
+      {showEffects && <TrackEffectsPanel effects={effects} onChange={updateEffects} />}
     </>
   )
 }

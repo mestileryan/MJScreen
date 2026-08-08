@@ -1,4 +1,5 @@
 import { baseFrom, type LibraryItemBase } from './LibraryItem'
+import type TrackEffects from './TrackEffects'
 
 export const DEFAULT_ICON_COLOR = '#c084fc'
 
@@ -11,6 +12,8 @@ export default interface FileTrack extends LibraryItemBase {
   iconColor?: string
   /** Etat boucle par defaut lors de la lecture */
   loop: boolean
+  /** Réglages avancés (fondus, effets). Absent = piste neutre. */
+  effects?: TrackEffects
 }
 
 export function createFileTrack(file: File, name?: string): FileTrack {

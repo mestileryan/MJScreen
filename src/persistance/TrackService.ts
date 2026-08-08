@@ -18,6 +18,7 @@ export async function DB_AddTrack(track: FileTrack): Promise<number> {
     order: track.order,
     playlistId: track.playlistId,
     loop: track.loop,
+    effects: track.effects,
   }
 
   // Dexie renvoie l'ID nouvellement inséré
@@ -40,6 +41,7 @@ export async function DB_UpdateTrack(track: FileTrack): Promise<void> {
     order: track.order,
     playlistId: track.playlistId,
     loop: track.loop,
+    effects: track.effects,
   })
 }
 
@@ -97,6 +99,7 @@ function fromStored(stored: TrackDB): FileTrack {
     order: stored.order,
     playlistId: stored.playlistId,
     loop: stored.loop ?? false,
+    effects: stored.effects,
   }
 }
 

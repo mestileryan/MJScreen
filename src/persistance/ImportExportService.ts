@@ -15,6 +15,7 @@ import type GalleryImage from '@/models/GalleryImage'
 import { createPlaylist } from '@/models/Playlist'
 import type Playlist from '@/models/Playlist'
 import { createFileTrack, DEFAULT_ICON_COLOR } from '@/models/FileTrack'
+import type TrackEffects from '@/models/TrackEffects'
 
 // Informations sur un morceau à sauvegarder dans l'archive
 interface ExportTrackMeta {
@@ -39,6 +40,9 @@ interface ExportTrackMeta {
   // Absent pour les archives antérieures à la version 4 : le décodage se fera alors
   // en arrière-plan après l'import.
   peaksPath?: string
+  // Réglages avancés (fondus, latéralisation, hauteur, effets). Absent pour les
+  // archives antérieures à la version 5, et pour toute piste restée neutre.
+  effects?: TrackEffects
 }
 
 // Structure globale du fichier d'export
@@ -72,7 +76,8 @@ export async function exportLibrary(): Promise<Blob> {
   const data: ExportData = {
     // incrémenter si le format change à l'avenir
     // v4 : ajout des crêtes de forme d'onde pré-calculées (`peaksPath`)
-    version: 4,
+    // v5 : ajout des réglages avancés par piste (`effects`)
+    version: 5,
     playlists: playlists.map(pl => ({
       name: pl.name,
       width: pl.width ?? null,
@@ -117,6 +122,7 @@ export async function exportLibrary(): Promise<Blob> {
       type: track.file.type,
       filePath: path,
       peaksPath,
+      effects: track.effects,
     })
   }
 
@@ -208,6 +214,7 @@ export async function importLibrary(blob: Blob): Promise<void> {
       order: trackMeta.order ?? 0,
       playlistId: playlist?.id,
       loop: trackMeta.loop ?? false,
+      effects: trackMeta.effects,
     })
 
     // Crêtes pré-calculées (archives v4+) : restaurées telles quelles, la piste

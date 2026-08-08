@@ -9,7 +9,7 @@ import {
   SquareMousePointer,
   Trash2,
 } from 'lucide-react'
-import TrackPlayer from './TrackPlayer'
+import TrackPlayer, { type TrackControls } from './TrackPlayer'
 import { useAudioOutputs } from '@/hooks/useAudioOutputs'
 import type Track from '@/models/Track'
 
@@ -32,20 +32,22 @@ export default function TracksPlayer({
   const [autoPlayMode, setAutoPlayMode] = useState(true)
   const { outputChannels, selectedOutputChannel, setSelectedOutputChannel } = useAudioOutputs()
 
-  // Chaque TrackPlayer enregistre son élément <audio> pour permettre le pilotage global.
-  const audios = useRef(new Map<number, HTMLAudioElement>())
+  // Chaque TrackPlayer enregistre ses commandes pour permettre le pilotage global.
+  // On passe par elles plutôt que par l'élément <audio> pour que « tout jouer » et
+  // « tout mettre en pause » respectent aussi les fondus.
+  const controls = useRef(new Map<number, TrackControls>())
 
-  const registerAudio = useCallback((id: number, audio: HTMLAudioElement | null) => {
-    if (audio) audios.current.set(id, audio)
-    else audios.current.delete(id)
+  const registerControls = useCallback((id: number, trackControls: TrackControls | null) => {
+    if (trackControls) controls.current.set(id, trackControls)
+    else controls.current.delete(id)
   }, [])
 
   function playAll() {
-    audios.current.forEach(audio => audio.play().catch(() => {}))
+    controls.current.forEach(trackControls => trackControls.play())
   }
 
   function pauseAll() {
-    audios.current.forEach(audio => audio.pause())
+    controls.current.forEach(trackControls => trackControls.pause())
   }
 
   return (
@@ -97,7 +99,7 @@ export default function TracksPlayer({
             sinkId={selectedOutputChannel}
             onChange={onUpdateTrack}
             onRemove={() => onRemoveTrack(track)}
-            registerAudio={registerAudio}
+            registerControls={registerControls}
           />
         </div>
       ))}
