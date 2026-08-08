@@ -2,12 +2,12 @@
 
 import { useCallback, useRef, useState } from 'react'
 import {
-  Bomb,
   CirclePause,
   CirclePlay,
   MonitorPlay,
   SquareDashedMousePointer,
   SquareMousePointer,
+  Trash2,
 } from 'lucide-react'
 import TrackPlayer from './TrackPlayer'
 import { useAudioOutputs } from '@/hooks/useAudioOutputs'
@@ -80,7 +80,12 @@ export default function TracksPlayer({
           onClick={onRemoveAllTracks}
           className="rounded-full hover:bg-red-400/20 transition-colors"
         >
-          <Bomb className="w-8 h-8 text-red-400" />
+          {/* lucide n'a pas de poubelle cerclée : on la compose. Le cercle fait 28 px
+              pour coller au diamètre réellement dessiné par CirclePlay / CirclePause
+              voisins (r=10 sur un viewBox de 24 rendu en 32 px). */}
+          <span className="flex h-7 w-7 items-center justify-center rounded-full border-2 border-red-400">
+            <Trash2 className="w-4 h-4 text-red-400" />
+          </span>
         </button>
       </div>
 
