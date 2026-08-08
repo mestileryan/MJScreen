@@ -310,7 +310,7 @@ export default function Library({ onPlayAudio, onOpenImage }: LibraryProps) {
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center">
             <h2 className="text-xl font-bold text-purple-300 mr-2">Bibliothèque</h2>
-            <Uploader onFileSelected={file => void addFiles([file])} />
+            <Uploader onFilesSelected={addFiles} />
             <HelpCircle ref={helpRef} className="w-5 text-gray-400 ml-1 cursor-help" />
           </div>
           <div className="flex items-center gap-2">
