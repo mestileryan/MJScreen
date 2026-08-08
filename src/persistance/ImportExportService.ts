@@ -1,6 +1,11 @@
 import JSZip from 'jszip'
 import { DB_GetPlaylists, DB_AddPlaylist } from './PlaylistService'
-import { DB_GetTracks, DB_AddTrack } from './TrackService'
+import {
+  DB_GetTracks,
+  DB_AddTrack,
+  DB_GetTrackPeaks,
+  DB_SetTrackPeaks,
+} from './TrackService'
 import { playlistLibraryDB } from './PlaylistPersistance'
 import { trackLibraryDB } from './TrackPersistance'
 import { imageLibraryDB } from './ImagePersistance'
@@ -30,6 +35,10 @@ interface ExportTrackMeta {
   type: string
   // Chemin du fichier dans l'archive
   filePath: string
+  // Chemin des crêtes de forme d'onde pré-calculées, si la piste a déjà été décodée.
+  // Absent pour les archives antérieures à la version 4 : le décodage se fera alors
+  // en arrière-plan après l'import.
+  peaksPath?: string
 }
 
 // Structure globale du fichier d'export
@@ -62,7 +71,8 @@ export async function exportLibrary(): Promise<Blob> {
 
   const data: ExportData = {
     // incrémenter si le format change à l'avenir
-    version: 3,
+    // v4 : ajout des crêtes de forme d'onde pré-calculées (`peaksPath`)
+    version: 4,
     playlists: playlists.map(pl => ({
       name: pl.name,
       width: pl.width ?? null,
@@ -83,6 +93,18 @@ export async function exportLibrary(): Promise<Blob> {
     const path = `tracks/${idx}`
     // on stocke le fichier brut dans un dossier "tracks"
     zip.file(path, track.file)
+
+    // Crêtes de forme d'onde (~2 Ko) : les embarquer évite de redécoder toute la
+    // bibliothèque après un import. Les marqueurs d'échec (tableau vide) ne sont
+    // volontairement PAS exportés, pour qu'une piste marquée à tort suite à une
+    // erreur passagère retente sa chance sur la machine de destination.
+    const peaks = track.id != null ? await DB_GetTrackPeaks(track.id) : undefined
+    let peaksPath: string | undefined
+    if (peaks?.length) {
+      peaksPath = `peaks/${idx}`
+      zip.file(peaksPath, peaks)
+    }
+
     // on conserve les métadonnées pour la restauration
     data.tracks.push({
       name: track.name,
@@ -94,6 +116,7 @@ export async function exportLibrary(): Promise<Blob> {
       loop: track.loop,
       type: track.file.type,
       filePath: path,
+      peaksPath,
     })
   }
 
@@ -177,7 +200,7 @@ export async function importLibrary(blob: Blob): Promise<void> {
     const file = new File([trackBlob], trackMeta.name, { type: trackMeta.type })
     const playlist = playlists[trackMeta.playlistIndex] ?? playlists[0]
 
-    await DB_AddTrack({
+    const trackId = await DB_AddTrack({
       ...createFileTrack(file, trackMeta.name),
       initialVolume: trackMeta.initialVolume ?? 0.8,
       iconName: trackMeta.iconName ?? '',
@@ -186,6 +209,14 @@ export async function importLibrary(blob: Blob): Promise<void> {
       playlistId: playlist?.id,
       loop: trackMeta.loop ?? false,
     })
+
+    // Crêtes pré-calculées (archives v4+) : restaurées telles quelles, la piste
+    // s'affiche sans décodage. Une archive plus ancienne n'en a pas, le backfill
+    // au prochain chargement s'en chargera.
+    const peaksEntry = trackMeta.peaksPath ? zip.file(trackMeta.peaksPath) : null
+    if (peaksEntry) {
+      await DB_SetTrackPeaks(trackId, await peaksEntry.async('uint8array'))
+    }
   }
 
   const imagesMeta = data.images ?? []

@@ -28,7 +28,8 @@ export default function TracksPlayer({
   onRemoveAllTracks,
   onOpenViewer,
 }: TracksPlayerProps) {
-  const [autoPlayMode, setAutoPlayMode] = useState(false) // Contrôle global de l'autoplay
+  // Contrôle global de l'autoplay : actif par défaut, une piste ajoutée démarre seule.
+  const [autoPlayMode, setAutoPlayMode] = useState(true)
   const { outputChannels, selectedOutputChannel, setSelectedOutputChannel } = useAudioOutputs()
 
   // Chaque TrackPlayer enregistre son élément <audio> pour permettre le pilotage global.
@@ -40,7 +41,7 @@ export default function TracksPlayer({
   }, [])
 
   function playAll() {
-    audios.current.forEach(audio => void audio.play())
+    audios.current.forEach(audio => audio.play().catch(() => {}))
   }
 
   function pauseAll() {
@@ -48,7 +49,10 @@ export default function TracksPlayer({
   }
 
   return (
-    <div className="flex flex-col items-center justify-center gap-6 h-full">
+    // `min-h-full` plutôt que `h-full` : le contenu reste centré tant qu'il y a de la
+    // place, mais peut dépasser et défiler quand la file s'allonge, sans que le haut
+    // devienne inatteignable comme avec un simple `justify-center`.
+    <div className="flex flex-col items-center justify-center gap-6 min-h-full">
       <div className="flex items-center justify-center gap-6">
         <button
           onClick={onOpenViewer}

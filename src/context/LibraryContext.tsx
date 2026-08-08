@@ -12,8 +12,13 @@ import {
   type SetStateAction,
 } from 'react'
 import { DB_GetPlaylists, DB_AddPlaylist } from '@/persistance/PlaylistService'
-import { DB_GetTracks, DB_UpdateTrack } from '@/persistance/TrackService'
+import {
+  DB_GetTracks,
+  DB_UpdateTrack,
+  DB_GetTrackIdsMissingPeaks,
+} from '@/persistance/TrackService'
 import { DB_GetImages, DB_UpdateImage } from '@/persistance/ImageService'
+import { ensureTrackPeaks } from '@/lib/waveformPeaks'
 import { createPlaylist } from '@/models/Playlist'
 import type Playlist from '@/models/Playlist'
 import type LibraryItem from '@/models/LibraryItem'
@@ -41,6 +46,16 @@ interface LibraryContextValue {
   patchItem: (item: LibraryItem) => void
   /** Remplace un élément dans sa playlist et le persiste. */
   saveItem: (item: LibraryItem) => Promise<void>
+  /**
+   * Avancement du calcul des formes d'onde manquantes, `null` quand il n'y a
+   * rien à faire ou que c'est terminé.
+   */
+  waveformProgress: WaveformProgress | null
+}
+
+export interface WaveformProgress {
+  done: number
+  total: number
 }
 
 const LibraryContext = createContext<LibraryContextValue | null>(null)
@@ -55,6 +70,7 @@ export function useLibrary(): LibraryContextValue {
 
 export function LibraryProvider({ children }: { children: ReactNode }) {
   const [playlists, setPlaylists] = useState<Playlist[]>([])
+  const [waveformProgress, setWaveformProgress] = useState<WaveformProgress | null>(null)
 
   // React monte les composants deux fois en développement (StrictMode) : sans ce
   // garde-fou une playlist « Bibliothèque » serait créée en double au premier lancement.
@@ -89,6 +105,47 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
       }
 
       setPlaylists(loadedPlaylists)
+
+      // Backfill des formes d'onde : les pistes jamais décodées (bibliothèque
+      // antérieure à la persistance des crêtes, ou fraîchement importée) le sont
+      // une par une en arrière-plan, avec une pause après chaque décodage pour
+      // laisser le CPU à l'utilisateur.
+      const backfillPeaks = async () => {
+        // La liste est établie ici, à l'intérieur du verrou : un onglet qui a
+        // attendu son tour ne recompte pas le travail déjà fait par un autre.
+        const byId = new Map(loadedTracks.map(track => [track.id, track]))
+        const pending = (await DB_GetTrackIdsMissingPeaks()).filter(id => byId.has(id))
+        if (!pending.length) return
+
+        setWaveformProgress({ done: 0, total: pending.length })
+        try {
+          for (const [index, id] of pending.entries()) {
+            const track = byId.get(id)
+            try {
+              if (track) await ensureTrackPeaks(id, track.file)
+            } catch {
+              // Piste illisible : la forme d'onde restera vide, la lecture reste possible.
+            }
+            setWaveformProgress({ done: index + 1, total: pending.length })
+            // Pause entre deux décodages pour laisser le CPU à l'utilisateur ;
+            // inutile après le dernier.
+            if (index < pending.length - 1) {
+              await new Promise(resolve => setTimeout(resolve, 500))
+            }
+          }
+        } finally {
+          setWaveformProgress(null)
+        }
+      }
+
+      // L'application gère plusieurs onglets (BroadcastChannel) : le verrou garantit
+      // qu'un seul onglet décode à la fois. Les suivants prennent le verrou après
+      // coup et ne font plus que des lectures Dexie bon marché.
+      if (typeof navigator !== 'undefined' && 'locks' in navigator) {
+        void navigator.locks.request('mjscreen-waveform-backfill', backfillPeaks)
+      } else {
+        void backfillPeaks()
+      }
     })()
   }, [])
 
@@ -133,7 +190,7 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
 
   return (
     <LibraryContext.Provider
-      value={{ playlists, setPlaylists, findTrack, patchItem, saveItem }}
+      value={{ playlists, setPlaylists, findTrack, patchItem, saveItem, waveformProgress }}
     >
       {children}
     </LibraryContext.Provider>

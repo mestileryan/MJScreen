@@ -44,6 +44,35 @@ export async function DB_UpdateTrack(track: FileTrack): Promise<void> {
 }
 
 /**
+ * Crêtes de forme d'onde pré-calculées. Trois états distincts :
+ *   - `Uint8Array` : crêtes connues (un tableau vide est le marqueur
+ *     « fichier indécodable ») ;
+ *   - `null` : la piste existe mais n'a jamais été décodée ;
+ *   - `undefined` : la piste n'existe plus.
+ * Distinguer les deux derniers évite de décoder une piste supprimée entre-temps.
+ */
+export async function DB_GetTrackPeaks(id: number): Promise<Uint8Array | null | undefined> {
+  const stored = await trackLibraryDB().tracks.get(id)
+  if (!stored) return undefined
+  return stored.peaks ?? null
+}
+
+/** Mémorise les crêtes d'une piste. No-op si la piste n'existe plus. */
+export async function DB_SetTrackPeaks(id: number, peaks: Uint8Array): Promise<void> {
+  await trackLibraryDB().tracks.update(id, { peaks })
+}
+
+/**
+ * Ids des pistes dont la forme d'onde n'a jamais été calculée.
+ * Permet au backfill de connaître son volume de travail à l'avance (progression
+ * affichable) et de n'itérer que sur les pistes concernées.
+ */
+export async function DB_GetTrackIdsMissingPeaks(): Promise<number[]> {
+  const stored = await trackLibraryDB().tracks.toArray()
+  return stored.flatMap(row => (row.id != null && row.peaks == null ? [row.id] : []))
+}
+
+/**
  * Supprime un enregistrement de la DB via son id
  */
 export async function DB_RemoveTrack(track: FileTrack): Promise<void> {

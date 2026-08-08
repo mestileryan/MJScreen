@@ -1,11 +1,15 @@
 'use client'
 
 import { useCallback, useEffect, useRef, type RefObject } from 'react'
+import { peaksFor } from '@/lib/waveformPeaks'
 
 /**
- * Remplace `useAVWaveform` de `vue-audio-visual` : décode la piste, en extrait les
- * crêtes puis dessine la forme d'onde sur un canvas, la portion déjà jouée dans une
- * couleur distincte. Un clic sur le canvas déplace la lecture.
+ * Remplace `useAVWaveform` de `vue-audio-visual` : dessine la forme d'onde de la
+ * piste sur un canvas, la portion déjà jouée dans une couleur distincte. Un clic
+ * sur le canvas déplace la lecture.
+ *
+ * L'extraction des crêtes (décodage compris) est déléguée à `waveformPeaks`, qui
+ * décode en basse fréquence et mémorise le résultat par fichier.
  */
 export interface WaveformOptions {
   canvWidth: number
@@ -23,39 +27,6 @@ export const DEFAULT_WAVEFORM_OPTIONS: WaveformOptions = {
   playtimeFontColor: '#aaa',
 }
 
-// Les navigateurs limitent le nombre d'AudioContext : une seule instance partagée
-// suffit pour décoder toutes les pistes.
-let sharedContext: AudioContext | null = null
-
-function audioContext(): AudioContext {
-  if (!sharedContext) {
-    sharedContext = new AudioContext()
-  }
-  return sharedContext
-}
-
-/** Réduit le buffer décodé à une crête par colonne de pixels. */
-function extractPeaks(buffer: AudioBuffer, columns: number): number[] {
-  const channel = buffer.getChannelData(0)
-  const blockSize = Math.floor(channel.length / columns) || 1
-  const peaks: number[] = []
-  let max = 0
-
-  for (let i = 0; i < columns; i++) {
-    const start = i * blockSize
-    let peak = 0
-    for (let j = 0; j < blockSize; j++) {
-      const value = Math.abs(channel[start + j] ?? 0)
-      if (value > peak) peak = value
-    }
-    peaks.push(peak)
-    if (peak > max) max = peak
-  }
-
-  // Normalisation pour occuper toute la hauteur disponible
-  return max > 0 ? peaks.map(peak => peak / max) : peaks
-}
-
 function formatTime(seconds: number): string {
   if (!Number.isFinite(seconds)) return '00:00'
   const total = Math.floor(seconds)
@@ -67,7 +38,8 @@ function formatTime(seconds: number): string {
 export function useAudioWaveform(
   audioRef: RefObject<HTMLAudioElement | null>,
   canvasRef: RefObject<HTMLCanvasElement | null>,
-  src: string,
+  file: File,
+  trackId?: number,
   options: WaveformOptions = DEFAULT_WAVEFORM_OPTIONS,
 ) {
   const peaksRef = useRef<number[]>([])
@@ -109,18 +81,15 @@ export function useAudioWaveform(
     }
   }, [audioRef, canvasRef])
 
-  // Décodage de la piste
+  // Récupération des crêtes (cache mémoire, crêtes persistées en base, ou décodage)
   useEffect(() => {
-    if (!src) return
     let cancelled = false
 
     ;(async () => {
       try {
-        const response = await fetch(src)
-        const arrayBuffer = await response.arrayBuffer()
-        const buffer = await audioContext().decodeAudioData(arrayBuffer)
+        const peaks = await peaksFor(file, optionsRef.current.canvWidth, trackId)
         if (cancelled) return
-        peaksRef.current = extractPeaks(buffer, optionsRef.current.canvWidth)
+        peaksRef.current = peaks
         draw()
       } catch (error) {
         console.error("Impossible de décoder la piste pour la forme d'onde :", error)
@@ -130,7 +99,7 @@ export function useAudioWaveform(
     return () => {
       cancelled = true
     }
-  }, [src, draw])
+  }, [file, trackId, draw])
 
   // Rafraîchissement du curseur de lecture
   useEffect(() => {
@@ -169,7 +138,7 @@ export function useAudioWaveform(
       audio.removeEventListener('seeked', redraw)
       audio.removeEventListener('loadedmetadata', redraw)
     }
-  }, [audioRef, src, draw])
+  }, [audioRef, file, draw])
 
   // Clic sur le canvas : déplacement de la lecture
   useEffect(() => {

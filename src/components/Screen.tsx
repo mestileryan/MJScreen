@@ -7,6 +7,7 @@ import TracksPlayer from './TracksPlayer'
 import CollapsibleSidebar from './CollapsibleSidebar'
 // Modale d'import/export
 import SettingsModal from './SettingsModal'
+import WaveformProgressBadge from './WaveformProgressBadge'
 import { useCookieState } from '@/hooks/useCookieState'
 import { usePlayerQueue } from '@/hooks/usePlayerQueue'
 import { usePresentationWindow } from '@/hooks/usePresentationWindow'
@@ -31,6 +32,9 @@ export default function Screen() {
         isPlayerCollapsed ? 'grid-cols-[1fr_1.5rem]' : 'grid-cols-[1fr_24rem]'
       }`}
     >
+      {/* Avancement du calcul des formes d'onde (z-40 : un toast d'erreur passe devant) */}
+      <WaveformProgressBadge />
+
       {/* Error notification for invalid track links */}
       {toastMessage && (
         <div className="fixed top-2 left-1/2 -translate-x-1/2 bg-red-600 text-white px-3 py-2 rounded z-50">

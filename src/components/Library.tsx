@@ -24,6 +24,7 @@ import type FileTrack from '@/models/FileTrack'
 import { createGalleryImage } from '@/models/GalleryImage'
 import type GalleryImage from '@/models/GalleryImage'
 import type LibraryItem from '@/models/LibraryItem'
+import { ensureTrackPeaks } from '@/lib/waveformPeaks'
 
 const HELP_TEXT =
   'Pour ranger directement votre fichier dans une playlist en particulier, ' +
@@ -151,6 +152,9 @@ export default function Library({ onPlayAudio, onOpenImage }: LibraryProps) {
         order: target.items.length,
       }
       track.id = await DB_AddTrack(track)
+      // Décodage de la forme d'onde dès l'upload, en arrière-plan : elle sera prête
+      // (et persistée) avant que la piste soit lancée.
+      void ensureTrackPeaks(track.id, file).catch(() => {})
       return replaceItems(next, target.id, [...target.items, track])
     }
 

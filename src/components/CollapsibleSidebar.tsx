@@ -17,11 +17,14 @@ export default function CollapsibleSidebar({
   children,
 }: CollapsibleSidebarProps) {
   return (
+    // `self-start` empêche l'étirement sur toute la hauteur de la grille : sans cela
+    // le panneau n'aurait aucune marge de manœuvre pour coller. `sticky` sert aussi de
+    // référence de positionnement aux deux boutons en débord à gauche.
     <div
-      className={`relative border-l border-gray-700 ${
+      className={`sticky top-0 self-start h-screen border-l border-gray-700 ${
         collapsed
           ? 'w-6 flex items-center justify-center'
-          : 'w-96 bg-gray-800 p-6 flex flex-col justify-start'
+          : 'w-96 bg-gray-800 flex flex-col justify-start'
       }`}
     >
       <button
@@ -39,7 +42,9 @@ export default function CollapsibleSidebar({
         <Settings className="w-4 h-4" />
       </button>
 
-      {!collapsed && children}
+      {/* Le défilement est porté par ce conteneur intérieur : le poser sur la racine
+          rognerait les deux boutons, qui débordent à gauche. */}
+      {!collapsed && <div className="flex-1 min-h-0 overflow-y-auto p-6">{children}</div>}
     </div>
   )
 }

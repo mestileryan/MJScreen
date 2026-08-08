@@ -39,7 +39,9 @@ export default function TrackPlayer({
   // Version courante de la piste dans la bibliothèque, si elle y est toujours.
   const live = findTrack(track.fileTrack.id)
 
-  useAudioWaveform(player, canvas, track.src)
+  // Les crêtes sont persistées par piste dans Dexie : après le premier décodage
+  // (à l'upload ou en backfill), l'affichage de la forme d'onde est immédiat.
+  useAudioWaveform(player, canvas, track.fileTrack.file, track.fileTrack.id)
 
   useEffect(() => {
     registerAudio(track.id, player.current)
@@ -49,7 +51,10 @@ export default function TrackPlayer({
   // Volume initial + autoplay au montage
   useEffect(() => {
     if (player.current) player.current.volume = track.volume
-    if (autoPlay) void player.current?.play()
+    // Une piste peut arriver sans geste utilisateur (lien ?trackId=, message
+    // inter-onglets) : le navigateur refuse alors play(). On avale le rejet — la
+    // piste reste en file, en pause, avec le bouton Play affiché.
+    if (autoPlay) player.current?.play().catch(() => {})
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -82,8 +87,9 @@ export default function TrackPlayer({
 
   function play() {
     if (!player.current || isPlaying) return
-    void setSink(player.current, sinkId)
-    void player.current.play()
+    // setSinkId peut rejeter (périphérique débranché) : on lit alors sur la sortie courante.
+    setSink(player.current, sinkId).catch(() => {})
+    player.current.play().catch(() => {})
   }
 
   function togglePlay() {
