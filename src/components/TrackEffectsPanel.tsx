@@ -94,7 +94,7 @@ function Row({
       >
         <RotateCcw className="h-3 w-3" />
       </button>
-      <span ref={tooltip} className="w-[4.5rem] shrink-0 cursor-help text-gray-400">
+      <span ref={tooltip} className="w-14 shrink-0 cursor-help text-gray-400 sm:w-[4.5rem]">
         {label}
       </span>
       {children}

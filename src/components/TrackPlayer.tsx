@@ -323,7 +323,9 @@ export default function TrackPlayer({
         ref={canvas}
         width={DEFAULT_WAVEFORM_OPTIONS.canvWidth}
         height={DEFAULT_WAVEFORM_OPTIONS.canvHeight}
-        className="rounded bg-gray-600 mb-1"
+        /* `max-w-full` et non `w-full` : la forme d'onde garde sa taille native de
+           300 px sur grand écran, et ne rétrécit que si le panneau est plus étroit. */
+        className="max-w-full rounded bg-gray-600 mb-1"
       />
 
       {/* Boutons Play/Pause et Boucler */}

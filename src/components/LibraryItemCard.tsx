@@ -162,7 +162,7 @@ export default function LibraryItemCard({
   return (
     <>
       {isListView ? (
-        <div className="flex items-center ml-5 rounded-lg bg-gray-700 hover:bg-gray-600 mb-1 shrink-0">
+        <div className="flex items-center ml-2 sm:ml-5 rounded-lg bg-gray-700 hover:bg-gray-600 mb-1 shrink-0">
           <div
             className={`track-drag-handle p-1 mr-2 rounded hover:bg-gray-600/25 ${
               dragDisabled ? 'cursor-default' : 'cursor-move'
@@ -204,7 +204,7 @@ export default function LibraryItemCard({
             </div>
           )}
 
-          <div className="w-full min-w-24 mr-5" onClick={startEditing}>
+          <div className="min-w-0 flex-1 mr-2 sm:mr-5" onClick={startEditing}>
             {isEditing ? (
               <input
                 value={editableName}
@@ -217,19 +217,22 @@ export default function LibraryItemCard({
                 autoFocus
               />
             ) : (
-              <p className="text-white font-medium cursor-pointer flex items-center gap-2">
-                {item.name}
-                <span className="text-gray-400 text-sm">({fileSizeInMB} Mo)</span>
+              <p className="flex min-w-0 cursor-pointer items-center gap-2 font-medium text-white">
+                <span className="truncate">{item.name}</span>
+                {/* La taille est le premier détail sacrifié quand la place manque. */}
+                <span className="hidden shrink-0 text-sm text-gray-400 sm:inline">
+                  ({fileSizeInMB} Mo)
+                </span>
               </p>
             )}
           </div>
 
           {isAudio ? (
             <>
-              <div className="flex">
-                <VolumeIcon volume={fileTrack.initialVolume} className="w-5 h-5 mr-3" />
+              <div className="flex shrink-0 items-center">
+                <VolumeIcon volume={fileTrack.initialVolume} className="w-5 h-5 mr-1 sm:mr-3" />
                 <input
-                  className="volume-slider"
+                  className="volume-slider w-14 sm:w-auto"
                   type="range"
                   min="0"
                   max="1"
@@ -336,7 +339,7 @@ export default function LibraryItemCard({
 
       {isAudio && isSelectingIcon && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-gray-800 p-4 rounded shadow-lg w-3/4 max-w-2xl">
+          <div className="bg-gray-800 p-4 rounded shadow-lg w-[95%] sm:w-3/4 max-w-2xl">
             <IconSelector
               onIconChosen={onIconChosen}
               onClose={() => setIsSelectingIcon(false)}

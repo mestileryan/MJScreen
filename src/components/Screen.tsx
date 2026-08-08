@@ -28,8 +28,10 @@ export default function Screen() {
 
   return (
     <div
-      className={`min-h-screen bg-gray-900 grid ${
-        isPlayerCollapsed ? 'grid-cols-[1fr_1.5rem]' : 'grid-cols-[1fr_24rem]'
+      /* Sur téléphone la grille à deux colonnes est impossible : le lecteur devient
+         un panneau fixé en bas de l'écran, la bibliothèque prend toute la largeur. */
+      className={`min-h-screen bg-gray-900 md:grid ${
+        isPlayerCollapsed ? 'md:grid-cols-[1fr_1.5rem]' : 'md:grid-cols-[1fr_24rem]'
       }`}
     >
       {/* Avancement du calcul des formes d'onde (z-40 : un toast d'erreur passe devant) */}
@@ -58,9 +60,12 @@ export default function Screen() {
         </div>
       )}
 
-      <div className="p-8 overflow-auto min-w-[522px]">
+      {/* `pb-20` dégage la barre du lecteur, fixée en bas sur petit écran. */}
+      <div className="overflow-auto p-4 pb-20 sm:p-6 sm:pb-20 md:min-w-[522px] md:p-8">
         <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold text-purple-400 mb-8">MJ Screen Jukebox</h1>
+          <h1 className="mb-4 text-2xl font-bold text-purple-400 sm:mb-8 sm:text-3xl">
+            MJ Screen Jukebox
+          </h1>
         </div>
 
         <div className="space-y-6">

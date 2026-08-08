@@ -10,6 +10,7 @@ import { useLibrary } from '@/context/LibraryContext'
 import { useSortable, type SortableMove } from '@/hooks/useSortable'
 import { useTooltip } from '@/hooks/useTooltip'
 import { useCookieState } from '@/hooks/useCookieState'
+import { useIsNarrow } from '@/hooks/useMediaQuery'
 import {
   DB_AddPlaylist,
   DB_RemovePlaylist,
@@ -90,6 +91,13 @@ export default function Library({ onPlayAudio, onOpenImage }: LibraryProps) {
 
   const helpRef = useTooltip(HELP_TEXT)
   const playlistsContainer = useRef<HTMLDivElement>(null)
+
+  // Le mode soundboard dispose les playlists en colonnes flottantes de largeur fixe,
+  // posée en style inline : aucun point de rupture CSS ne peut l'écraser. Sur petit
+  // écran on repasse donc en colonne unique, et la poignée de redimensionnement —
+  // qui n'est de toute façon pilotable qu'à la souris — disparaît.
+  const isNarrow = useIsNarrow()
+  const boardLayout = !isListView && !isNarrow
 
   // Copie synchronisée de l'état, lisible depuis les handlers natifs (resize) et
   // depuis les boucles d'import qui enchaînent plusieurs `await`.
@@ -307,19 +315,19 @@ export default function Library({ onPlayAudio, onOpenImage }: LibraryProps) {
   return (
     <div className="w-full bg-gray-800 rounded-lg p-4 pt-2">
       <ImportFileDragOverlay onFilesDropped={addFiles}>
-        <div className="flex items-center justify-between mb-4">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center">
-            <h2 className="text-xl font-bold text-purple-300 mr-2">Bibliothèque</h2>
+            <h2 className="mr-2 text-xl font-bold text-purple-300">Bibliothèque</h2>
             <Uploader onFileSelected={file => void addFiles([file])} />
-            <HelpCircle ref={helpRef} className="w-5 text-gray-400 ml-1 cursor-help" />
+            <HelpCircle ref={helpRef} className="ml-1 w-5 cursor-help text-gray-400" />
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex min-w-0 flex-1 items-center justify-end gap-2">
             <input
               value={searchTerm}
               onChange={event => setSearchTerm(event.target.value)}
               type="text"
               placeholder="Rechercher..."
-              className="bg-gray-700 text-white px-2 py-1 rounded"
+              className="min-w-0 flex-1 rounded bg-gray-700 px-2 py-1 text-white sm:flex-none"
             />
             <ViewModePlayerToggle isListView={isListView} onChange={setIsListView} />
           </div>
@@ -330,15 +338,15 @@ export default function Library({ onPlayAudio, onOpenImage }: LibraryProps) {
             <div
               key={playlist.id}
               className={`bg-gray-700/25 p-3 rounded mt-1 mb-1 flex flex-col relative ${
-                !isListView ? 'float-left mr-2 border-r-[3px] border-purple-900' : ''
+                boardLayout ? 'float-left mr-2 border-r-[3px] border-purple-900' : ''
               }`}
               style={
-                !isListView
+                boardLayout
                   ? { width: playlist.width ? `${playlist.width}px` : '100%' }
                   : undefined
               }
             >
-              {!isListView && (
+              {boardLayout && (
                 <div
                   className="absolute top-0 right-0 w-[10px] h-full cursor-col-resize"
                   style={{ right: '-6px' }}

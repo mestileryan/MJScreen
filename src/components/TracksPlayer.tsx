@@ -55,7 +55,7 @@ export default function TracksPlayer({
     // place, mais peut dépasser et défiler quand la file s'allonge, sans que le haut
     // devienne inatteignable comme avec un simple `justify-center`.
     <div className="flex flex-col items-center justify-center gap-6 min-h-full">
-      <div className="flex items-center justify-center gap-6">
+      <div className="flex items-center justify-center gap-4 sm:gap-6">
         <button
           onClick={onOpenViewer}
           className="rounded-full hover:bg-blue-400/20 transition-colors"
@@ -104,7 +104,9 @@ export default function TracksPlayer({
         </div>
       ))}
 
-      <div className="mt-4 mt-auto w-full">
+      {/* Le choix du périphérique de sortie n'existe pas sur mobile : sans canal
+          énumérable, la liste serait vide et n'aurait rien à offrir. */}
+      <div className={`mt-4 mt-auto w-full ${outputChannels.length ? '' : 'hidden'}`}>
         <label htmlFor="outputChannel" className="block mb-2 text-sm font-medium text-purple-300">
           Canal audio de diffusion
         </label>

@@ -79,7 +79,7 @@ export default function IconSelector({
 
   return (
     <div className="p-4">
-      <div className="flex items-center justify-between mb-10">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2 sm:mb-10">
         {/* Titre à gauche */}
         <h2 className="font-bold text-white">Choisissez une icône</h2>
 
@@ -91,7 +91,7 @@ export default function IconSelector({
             value={searchTerm}
             onChange={event => handleSearchChange(event.target.value)}
             onFocus={event => event.target.select()}
-            className="p-2 rounded bg-gray-700 text-white mr-4"
+            className="min-w-0 flex-1 rounded bg-gray-700 p-2 text-white sm:mr-4 sm:flex-none"
             placeholder="Rechercher une icône..."
           />
           <input
@@ -108,7 +108,7 @@ export default function IconSelector({
 
       {/* Container scrollable où se produit l’infinite scroll */}
       <div
-        className="grid grid-cols-6 gap-3 max-h-72 overflow-y-auto"
+        className="grid max-h-72 grid-cols-4 gap-3 overflow-y-auto sm:grid-cols-6"
         ref={scrollContainer}
         onScroll={handleScroll}
       >
