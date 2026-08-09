@@ -355,6 +355,13 @@ export default function TrackPlayer({
   const volumeHalo = track.volume === 0 ? 'hover:bg-red-400/20' : 'hover:bg-purple-400/20'
   const effectsHalo = tweaked ? 'hover:bg-purple-400/20' : 'hover:bg-gray-400/20'
 
+  const fadeTitle =
+    fading === 'in'
+      ? 'Fondu d’entrée en cours'
+      : fading === 'out'
+        ? 'Fondu de sortie en cours'
+        : undefined
+
   return (
     <>
       {/* Le retrait est sorti de la rangée de transport, devenue trop chargée :
@@ -403,13 +410,7 @@ export default function TrackPlayer({
         <button
           className={`rounded-full transition-colors ${playHalo}`}
           onClick={togglePlay}
-          title={
-            fading === 'in'
-              ? 'Fondu d’entrée en cours'
-              : fading === 'out'
-                ? 'Fondu de sortie en cours'
-                : undefined
-          }
+          title={fadeTitle}
         >
           {fading ? (
             // Le son monte ou descend : l'attente reprend la couleur de l'action
@@ -428,10 +429,16 @@ export default function TrackPlayer({
         <button
           className="rounded-full hover:bg-red-400/20 transition-colors"
           onClick={() => void stopAndRewind()}
-          title="Arrêter et revenir au début"
+          title={fadeTitle ?? 'Arrêter et revenir au début'}
           aria-label="Arrêter et revenir au début"
         >
-          <Square className="w-5 h-5 text-red-400" />
+          {/* L'attente garde ici la teinte du bouton : l'arrêt reste l'arrêt,
+              quel que soit le sens du fondu. */}
+          {fading ? (
+            <LoaderCircle className="w-5 h-5 animate-spin text-red-400" />
+          ) : (
+            <Square className="w-5 h-5 text-red-400" />
+          )}
         </button>
         <button
           className={`rounded-full transition-colors ${loopHalo}`}
