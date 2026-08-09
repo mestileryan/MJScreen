@@ -1,8 +1,8 @@
 'use client'
 
 import { useEffect, useRef, useState, type MouseEvent } from 'react'
-import { GripVertical, HelpCircle, Plus, Trash2 } from 'lucide-react'
-import PlaylistItems from './PlaylistItems'
+import { CirclePlay, GripVertical, HelpCircle, Plus, Trash2 } from 'lucide-react'
+import PlaylistItems, { visibleItems } from './PlaylistItems'
 import Uploader from './Uploader'
 import ImportFileDragOverlay from './ImportFileDragOverlay'
 import ViewModePlayerToggle from './ViewModePlayerToggle'
@@ -24,6 +24,7 @@ import { createFileTrack } from '@/models/FileTrack'
 import type FileTrack from '@/models/FileTrack'
 import { createGalleryImage } from '@/models/GalleryImage'
 import type GalleryImage from '@/models/GalleryImage'
+import { isAudio } from '@/models/LibraryItem'
 import type LibraryItem from '@/models/LibraryItem'
 import { ensureTrackPeaks } from '@/lib/waveformPeaks'
 
@@ -379,6 +380,25 @@ export default function Library({ onPlayAudio, onOpenImage }: LibraryProps) {
                     </p>
                   )}
                 </div>
+
+                {/* Lecture de toute la playlist. Le bouton porte sur ce qui est
+                    affiché : pendant une recherche, il ne lance pas les pistes
+                    masquées. Elles démarrent ensemble, la file du lecteur étant
+                    faite pour superposer les sons. */}
+                {(() => {
+                  const playable = visibleItems(playlist.items, searchTerm).filter(isAudio)
+                  if (!playable.length) return null
+                  return (
+                    <button
+                      className="ml-3 rounded-full p-2 transition-colors hover:bg-green-400/20"
+                      onClick={() => playable.forEach(track => onPlayAudio(track))}
+                      title={`Lancer les ${playable.length} pistes de la playlist`}
+                      aria-label={`Lancer les ${playable.length} pistes de la playlist`}
+                    >
+                      <CirclePlay className="w-5 h-5 text-green-400" />
+                    </button>
+                  )
+                })()}
 
                 {playlist.items.length === 0 && (
                   <button

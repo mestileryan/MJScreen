@@ -18,6 +18,17 @@ interface PlaylistItemsProps {
   onOpenImage: (image: GalleryImage) => void
 }
 
+/**
+ * Éléments affichés compte tenu de la recherche.
+ * Partagé avec l'en-tête de playlist, dont le bouton de lecture doit porter sur
+ * ce que l'utilisateur voit et non sur ce qui est masqué.
+ */
+export function visibleItems(items: LibraryItem[], searchTerm: string): LibraryItem[] {
+  if (!searchTerm) return items
+  const needle = searchTerm.toLowerCase()
+  return items.filter(item => item.name.toLowerCase().includes(needle))
+}
+
 export function itemKey(item: LibraryItem): string {
   // Pistes et images vivent dans deux tables Dexie distinctes : leurs ids peuvent
   // se recouper, on préfixe donc par le type.
@@ -45,11 +56,7 @@ export default function PlaylistItems({
 
   // Le tri est désactivé pendant une recherche : les indices remontés par SortableJS
   // porteraient sinon sur la liste filtrée et non sur `playlist.items`.
-  const visibleItems = searchTerm
-    ? playlist.items.filter(item =>
-        item.name.toLowerCase().includes(searchTerm.toLowerCase()),
-      )
-    : playlist.items
+  const shown = visibleItems(playlist.items, searchTerm)
 
   return (
     <div
@@ -57,7 +64,7 @@ export default function PlaylistItems({
       data-playlist-id={playlist.id}
       className={isListView ? 'flex flex-col space-y-1' : 'flex flex-wrap justify-start'}
     >
-      {visibleItems.map(item => (
+      {shown.map(item => (
         <div key={itemKey(item)}>
           <LibraryItemCard
             item={item}
@@ -70,7 +77,7 @@ export default function PlaylistItems({
         </div>
       ))}
 
-      {visibleItems.length === 0 && (
+      {shown.length === 0 && (
         <div>
           <p className="text-gray-400 text-xl">🕸️🕸️🕸</p>
         </div>
