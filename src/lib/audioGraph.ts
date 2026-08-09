@@ -10,6 +10,7 @@
  * tous trois sommés dans le bus de sortie.
  */
 import type TrackEffects from '@/models/TrackEffects'
+import { LOUDNESS_EXPONENT } from './loudness'
 
 let context: AudioContext | null = null
 
@@ -115,9 +116,6 @@ function measureMakeupGain(curve: Float32Array): number {
  * se déroule sous le seuil de perception et s'entend comme un retard.
  */
 const FADE_FLOOR = 0.025
-
-/** Loi de Stevens : la sonie perçue varie comme l'amplitude élevée à 0,6. */
-const LOUDNESS_EXPONENT = 0.6
 
 /**
  * Facteur de fondu à l'avancement `t` (0 au début, 1 à la fin).

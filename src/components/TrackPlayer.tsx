@@ -25,6 +25,7 @@ import {
   setPlaybackSink,
   type TrackAudioGraph,
 } from '@/lib/audioGraph'
+import { gainForPosition, positionForGain } from '@/lib/loudness'
 import { isNeutral, needsAudioGraph, withDefaults } from '@/models/TrackEffects'
 import type TrackEffects from '@/models/TrackEffects'
 import type Track from '@/models/Track'
@@ -355,6 +356,9 @@ export default function TrackPlayer({
   const volumeHalo = track.volume === 0 ? 'hover:bg-red-400/20' : 'hover:bg-purple-400/20'
   const effectsHalo = tweaked ? 'hover:bg-purple-400/20' : 'hover:bg-gray-400/20'
 
+  // Position affichée du curseur, dérivée de l'amplitude enregistrée.
+  const volumePosition = positionForGain(track.volume)
+
   const fadeTitle =
     fading === 'in'
       ? 'Fondu d’entrée en cours'
@@ -454,14 +458,15 @@ export default function TrackPlayer({
           title={track.volume === 0 ? 'Rétablir le son' : 'Couper le son'}
           aria-label={track.volume === 0 ? 'Rétablir le son' : 'Couper le son'}
         >
-          {track.volume === 0 && <VolumeOff className="w-5 h-5 text-red-400" />}
-          {track.volume > 0 && track.volume <= 0.33 && (
+          {/* L'icône suit la position du curseur, pas l'amplitude brute. */}
+          {volumePosition === 0 && <VolumeOff className="w-5 h-5 text-red-400" />}
+          {volumePosition > 0 && volumePosition <= 0.33 && (
             <Volume className="w-5 h-5 text-purple-400" />
           )}
-          {track.volume > 0.33 && track.volume <= 0.66 && (
+          {volumePosition > 0.33 && volumePosition <= 0.66 && (
             <Volume1 className="w-5 h-5 text-purple-400" />
           )}
-          {track.volume > 0.66 && <Volume2 className="w-5 h-5 text-purple-400" />}
+          {volumePosition > 0.66 && <Volume2 className="w-5 h-5 text-purple-400" />}
         </button>
 
         <input
@@ -470,8 +475,8 @@ export default function TrackPlayer({
           min="0"
           max="1"
           step="0.01"
-          value={track.volume}
-          onChange={event => updateVolume(Number(event.target.value))}
+          value={volumePosition}
+          onChange={event => updateVolume(gainForPosition(Number(event.target.value)))}
           onPointerUp={commitVolume}
           onKeyUp={commitVolume}
         />

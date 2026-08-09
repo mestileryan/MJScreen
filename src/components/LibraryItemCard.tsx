@@ -18,6 +18,7 @@ import IconSelector from './IconSelector'
 import { useLibrary } from '@/context/LibraryContext'
 import { useTooltip } from '@/hooks/useTooltip'
 import { objectUrlFor } from '@/lib/objectUrl'
+import { gainForPosition, positionForGain } from '@/lib/loudness'
 import type LibraryItem from '@/models/LibraryItem'
 import type FileTrack from '@/models/FileTrack'
 import type GalleryImage from '@/models/GalleryImage'
@@ -38,10 +39,11 @@ interface LibraryItemCardProps {
   onOpenImage: (image: GalleryImage) => void
 }
 
-function VolumeIcon({ volume, className }: { volume: number; className: string }) {
-  if (volume === 0) return <VolumeOff className={`${className} text-red-400`} />
-  if (volume <= 0.33) return <Volume className={`${className} text-purple-400`} />
-  if (volume <= 0.66) return <Volume1 className={`${className} text-purple-400`} />
+/** `position` et non l'amplitude : l'icône doit suivre ce que montre le curseur. */
+function VolumeIcon({ position, className }: { position: number; className: string }) {
+  if (position === 0) return <VolumeOff className={`${className} text-red-400`} />
+  if (position <= 0.33) return <Volume className={`${className} text-purple-400`} />
+  if (position <= 0.66) return <Volume1 className={`${className} text-purple-400`} />
   return <Volume2 className={`${className} text-purple-400`} />
 }
 
@@ -88,7 +90,8 @@ export default function LibraryItemCard({
   // Le curseur met à jour l'état partagé en continu (le lecteur suit en direct)
   // mais n'écrit en base qu'au relâchement.
   function onVolumeInput(event: ChangeEvent<HTMLInputElement>) {
-    patchItem({ ...fileTrack, initialVolume: Number(event.target.value) })
+    // Le curseur porte une position perçue ; c'est l'amplitude qui est enregistrée.
+    patchItem({ ...fileTrack, initialVolume: gainForPosition(Number(event.target.value)) })
   }
 
   async function commitVolume() {
@@ -230,14 +233,17 @@ export default function LibraryItemCard({
           {isAudio ? (
             <>
               <div className="flex shrink-0 items-center">
-                <VolumeIcon volume={fileTrack.initialVolume} className="w-5 h-5 mr-1 sm:mr-3" />
+                <VolumeIcon
+                  position={positionForGain(fileTrack.initialVolume)}
+                  className="w-5 h-5 mr-1 sm:mr-3"
+                />
                 <input
                   className="volume-slider w-14 sm:w-auto"
                   type="range"
                   min="0"
                   max="1"
                   step="0.01"
-                  value={fileTrack.initialVolume}
+                  value={positionForGain(fileTrack.initialVolume)}
                   onChange={onVolumeInput}
                   onPointerUp={commitVolume}
                   onKeyUp={commitVolume}
