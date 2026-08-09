@@ -15,6 +15,7 @@ import type GalleryImage from '@/models/GalleryImage'
 import { createPlaylist } from '@/models/Playlist'
 import type Playlist from '@/models/Playlist'
 import { createFileTrack, DEFAULT_ICON_COLOR } from '@/models/FileTrack'
+import type LibraryItem from '@/models/LibraryItem'
 import type TrackEffects from '@/models/TrackEffects'
 
 // Informations sur un morceau à sauvegarder dans l'archive
@@ -149,6 +150,114 @@ export async function exportLibrary(): Promise<Blob> {
   return zip.generateAsync({ type: 'blob' })
 }
 
+/** Extensions déduites du type du fichier, `.mp3` en dernier recours. */
+const AUDIO_EXTENSIONS: Record<string, string> = {
+  'audio/mpeg': '.mp3',
+  'audio/mp3': '.mp3',
+  'audio/ogg': '.ogg',
+  'audio/opus': '.opus',
+  'audio/wav': '.wav',
+  'audio/x-wav': '.wav',
+  'audio/wave': '.wav',
+  'audio/flac': '.flac',
+  'audio/x-flac': '.flac',
+  'audio/mp4': '.m4a',
+  'audio/x-m4a': '.m4a',
+  'audio/aac': '.aac',
+  'audio/webm': '.webm',
+}
+
+const IMAGE_EXTENSIONS: Record<string, string> = {
+  'image/png': '.png',
+  'image/jpeg': '.jpg',
+  'image/jpg': '.jpg',
+  'image/gif': '.gif',
+  'image/webp': '.webp',
+  'image/avif': '.avif',
+  'image/bmp': '.bmp',
+  'image/svg+xml': '.svg',
+}
+
+function mediaExtension(file: File): string {
+  const type = file.type.split(';')[0].trim().toLowerCase()
+  return (
+    AUDIO_EXTENSIONS[type] ??
+    IMAGE_EXTENSIONS[type] ??
+    (type.startsWith('image/') ? '.png' : '.mp3')
+  )
+}
+
+/**
+ * Rend un nom utilisable comme fichier ou dossier : les noms saisis dans
+ * l'application sont libres et peuvent contenir des caractères qui cassent une
+ * arborescence ZIP, voire empêchent l'extraction sous Windows.
+ */
+function sanitizeName(name: string, fallback: string): string {
+  const cleaned = name
+    .replace(/[/\\:*?"<>|]/g, '-')
+    // Les points en tête ou en fin sont refusés par l'explorateur Windows.
+    .replace(/^[.\s]+|[.\s]+$/g, '')
+    .replace(/\s+/g, ' ')
+    .slice(0, 120)
+  return cleaned || fallback
+}
+
+/**
+ * Archive destinée au partage : les fichiers audio et les images, portant le nom
+ * qu'ils ont dans l'interface, rangés dans un dossier par playlist.
+ *
+ * L'extension est déduite du type réel du fichier plutôt que forcée : une piste
+ * OGG ou WAV renommée en MP3 serait illisible chez le destinataire, ce qui
+ * viderait l'export de son intérêt.
+ */
+export async function exportSharedArchive(): Promise<Blob> {
+  const [playlists, tracks, images] = await Promise.all([
+    DB_GetPlaylists(),
+    DB_GetTracks(),
+    DB_GetImages(),
+  ])
+  // Préfixe numéroté : un explorateur de fichiers trie par nom, le rang conserve
+  // donc l'ordre de la bibliothèque. `DB_GetPlaylists` les rend déjà triées, et on
+  // se fie à la position plutôt qu'au champ `order`, qui peut comporter des trous.
+  const folders = new Map(
+    playlists.map((playlist, index) => [
+      playlist.id,
+      `${String(index + 1).padStart(3, '0')} - ${sanitizeName(playlist.name, 'Playlist')}`,
+    ]),
+  )
+
+  const zip = new JSZip()
+  // Deux éléments homonymes dans une même playlist écraseraient le premier. Le
+  // registre est commun aux pistes et aux images, qui partagent leurs dossiers.
+  const used = new Set<string>()
+
+  const add = (item: LibraryItem, fallback: string) => {
+    const folder = folders.get(item.playlistId) ?? 'Sans playlist'
+    const base = sanitizeName(item.name, fallback)
+    const extension = mediaExtension(item.file)
+
+    let path = `${folder}/${base}${extension}`
+    for (let copy = 2; used.has(path); copy++) {
+      path = `${folder}/${base} (${copy})${extension}`
+    }
+    used.add(path)
+
+    zip.file(path, item.file)
+  }
+
+  for (const track of tracks) add(track, 'Piste')
+  for (const image of images) add(image, 'Image')
+
+  return zip.generateAsync({ type: 'blob' })
+}
+
+/** Efface toute la bibliothèque : playlists, pistes et images. */
+export async function clearLibrary(): Promise<void> {
+  await playlistLibraryDB().playlists.clear()
+  await trackLibraryDB().tracks.clear()
+  await imageLibraryDB().images.clear()
+}
+
 // Importe l'archive produite par exportLibrary et remplace la base actuelle
 export async function importLibrary(blob: Blob): Promise<void> {
   let zip: JSZip
@@ -177,9 +286,7 @@ export async function importLibrary(blob: Blob): Promise<void> {
   }
 
   // 3. Purge les anciennes données
-  await playlistLibraryDB().playlists.clear()
-  await trackLibraryDB().tracks.clear()
-  await imageLibraryDB().images.clear()
+  await clearLibrary()
 
   const playlists: Playlist[] = []
 
