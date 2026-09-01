@@ -7,7 +7,14 @@ import {
   exportLibrary,
   exportSharedArchive,
   importLibrary,
+  sanitizeName,
 } from '@/persistance/ImportExportService'
+import {
+  DEFAULT_PROJECT_TITLE,
+  currentProjectTitle,
+  saveProjectTitle,
+  titleFromFileName,
+} from '@/lib/projectTitle'
 import ConfirmationModal from './ConfirmationModal'
 
 interface SettingsModalProps {
@@ -38,7 +45,9 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     setErrorMessage(null)
     setBusy(true)
     try {
-      download(await exportLibrary(), 'library.mjszip')
+      // Le titre du projet voyage par le nom du fichier : il sera relu à l'import.
+      const title = sanitizeName(currentProjectTitle(), DEFAULT_PROJECT_TITLE)
+      download(await exportLibrary(), `${title}.mjs`)
     } catch (e) {
       setErrorMessage("Erreur lors de l'export : " + ((e as Error)?.message || 'inconnue'))
     } finally {
@@ -76,6 +85,9 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     try {
       setShowImportConfirmation(false)
       await importLibrary(toImport)
+      // Le nom du fichier redevient le titre du projet — y compris pour les
+      // anciennes archives `library.mjszip`, dont l'extension est simplement ôtée.
+      saveProjectTitle(titleFromFileName(toImport.name))
       setToImport(null)
       onClose()
       window.location.reload()
@@ -89,6 +101,10 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     setShowClearConfirmation(false)
     try {
       await clearLibrary()
+      // Bibliothèque vide = projet neuf : le titre repart sur sa valeur par
+      // défaut (une valeur vide y retombe). « Sauvegarder puis vider » exporte
+      // avant d'arriver ici, le fichier garde donc l'ancien titre.
+      saveProjectTitle('')
       onClose()
       window.location.reload()
     } catch (e) {

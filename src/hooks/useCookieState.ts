@@ -33,3 +33,21 @@ export function useCookieState(
 
   return [value, setValue] as const
 }
+
+/**
+ * Texte persisté dans un cookie, mêmes précautions d'hydratation que le
+ * booléen ci-dessus. Une valeur vide retombe sur `defaultValue`.
+ */
+export function useCookieText(name: string, defaultValue: string) {
+  const stored = useSyncExternalStore(
+    subscribeCookies,
+    () => readCookie(name),
+    () => null,
+  )
+
+  const value = stored ? stored : defaultValue
+
+  const setValue = useCallback((next: string) => writeCookie(name, next.trim()), [name])
+
+  return [value, setValue] as const
+}

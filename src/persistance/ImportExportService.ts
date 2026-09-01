@@ -207,8 +207,9 @@ function mediaExtension(file: File): string {
  * Rend un nom utilisable comme fichier ou dossier : les noms saisis dans
  * l'application sont libres et peuvent contenir des caractères qui cassent une
  * arborescence ZIP, voire empêchent l'extraction sous Windows.
+ * Exporté pour nommer le fichier d'export d'après le titre du projet.
  */
-function sanitizeName(name: string, fallback: string): string {
+export function sanitizeName(name: string, fallback: string): string {
   const cleaned = name
     .replace(/[/\\:*?"<>|]/g, '-')
     // Les points en tête ou en fin sont refusés par l'explorateur Windows.

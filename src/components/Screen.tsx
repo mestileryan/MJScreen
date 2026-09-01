@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import Library from './Library'
 import TracksPlayer from './TracksPlayer'
 import type { TrackControls } from './TrackPlayer'
@@ -9,11 +9,18 @@ import CollapsibleSidebar from './CollapsibleSidebar'
 // Modale d'import/export
 import SettingsModal from './SettingsModal'
 import WaveformProgressBadge from './WaveformProgressBadge'
-import { useCookieState } from '@/hooks/useCookieState'
+import { useCookieState, useCookieText } from '@/hooks/useCookieState'
 import { usePlayerQueue } from '@/hooks/usePlayerQueue'
 import { usePresentationWindow } from '@/hooks/usePresentationWindow'
 import { useTrackLink } from '@/hooks/useTrackLink'
+import { useTooltip } from '@/hooks/useTooltip'
 import { useLibrary } from '@/context/LibraryContext'
+import {
+  DEFAULT_PROJECT_TITLE,
+  FORBIDDEN_TITLE_CHARS_LABEL,
+  PROJECT_TITLE_COOKIE,
+  stripForbiddenTitleChars,
+} from '@/lib/projectTitle'
 import { isAudio } from '@/models/LibraryItem'
 import type FileTrack from '@/models/FileTrack'
 import type Track from '@/models/Track'
@@ -28,6 +35,54 @@ export default function Screen() {
     trueValue: 'true',
     falseValue: 'false',
   })
+
+  // Titre du projet : cosmétique, il donne son nom au fichier d'export et se
+  // retrouve depuis le nom du fichier à l'import.
+  const [projectTitle, setProjectTitle] = useCookieText(
+    PROJECT_TITLE_COOKIE,
+    DEFAULT_PROJECT_TITLE,
+  )
+  const [isEditingTitle, setIsEditingTitle] = useState(false)
+  const [titleDraft, setTitleDraft] = useState('')
+  const titleTooltip = useTooltip('Renommer le projet')
+
+  // Le titre nomme le fichier d'export : les caractères impossibles dans un nom
+  // de fichier sont refusés dès la saisie, avec une bulle qui les liste —
+  // plutôt qu'un remplacement silencieux à l'export qui semble bogué.
+  const [showForbiddenHint, setShowForbiddenHint] = useState(false)
+  const forbiddenHintTimer = useRef<number | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (forbiddenHintTimer.current !== null) {
+        window.clearTimeout(forbiddenHintTimer.current)
+      }
+    }
+  }, [])
+
+  function startEditingTitle() {
+    setTitleDraft(projectTitle)
+    setIsEditingTitle(true)
+  }
+
+  function updateTitleDraft(raw: string) {
+    const cleaned = stripForbiddenTitleChars(raw)
+    if (cleaned !== raw) {
+      setShowForbiddenHint(true)
+      if (forbiddenHintTimer.current !== null) {
+        window.clearTimeout(forbiddenHintTimer.current)
+      }
+      forbiddenHintTimer.current = window.setTimeout(() => setShowForbiddenHint(false), 2500)
+    }
+    setTitleDraft(cleaned)
+  }
+
+  function saveProjectTitle() {
+    setIsEditingTitle(false)
+    setShowForbiddenHint(false)
+    // Vider le champ revient au titre par défaut.
+    setProjectTitle(titleDraft.trim())
+  }
 
   // Registre des commandes des pistes en file. Il vit ici et non dans le lecteur :
   // les modes de playlist (enchaînement, classique) doivent pouvoir arrêter une
@@ -123,10 +178,38 @@ export default function Screen() {
 
       {/* `pb-20` dégage la barre du lecteur, fixée en bas sur petit écran. */}
       <div className="overflow-auto p-4 pb-20 sm:p-6 sm:pb-20 md:min-w-[522px] md:p-8">
-        <div className="flex items-center justify-between">
-          <h1 className="mb-4 text-2xl font-bold text-purple-400 sm:mb-8 sm:text-3xl">
-            MJ Screen Jukebox
-          </h1>
+        <div className="mb-4 flex items-center justify-between sm:mb-8">
+          {isEditingTitle ? (
+            <div className="relative w-full max-w-xl">
+              <input
+                value={titleDraft}
+                onChange={event => updateTitleDraft(event.target.value)}
+                className="w-full rounded bg-gray-800 px-2 text-2xl font-bold
+                  text-purple-400 focus:outline-none sm:text-3xl"
+                autoFocus
+                onBlur={saveProjectTitle}
+                onKeyUp={event => {
+                  if (event.key === 'Enter') saveProjectTitle()
+                }}
+              />
+              {showForbiddenHint && (
+                <p
+                  className="absolute left-0 top-full z-10 mt-1 rounded border border-red-400/50
+                    bg-gray-900 px-2 py-1 text-xs text-red-300 shadow-lg"
+                >
+                  Caractères interdits : {FORBIDDEN_TITLE_CHARS_LABEL}
+                </p>
+              )}
+            </div>
+          ) : (
+            <h1
+              ref={titleTooltip}
+              className="cursor-pointer truncate text-2xl font-bold text-purple-400 sm:text-3xl"
+              onClick={startEditingTitle}
+            >
+              {projectTitle}
+            </h1>
+          )}
         </div>
 
         <div className="space-y-6">
