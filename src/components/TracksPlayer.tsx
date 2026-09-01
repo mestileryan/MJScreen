@@ -1,16 +1,10 @@
 'use client'
 
 import { useState, type RefObject } from 'react'
-import {
-  CirclePause,
-  CirclePlay,
-  CircleX,
-  MonitorPlay,
-  SquareDashedMousePointer,
-  SquareMousePointer,
-} from 'lucide-react'
+import { CirclePause, CirclePlay, CircleX, MonitorPlay, Zap, ZapOff } from 'lucide-react'
 import TrackPlayer, { type TrackControls } from './TrackPlayer'
 import { useAudioOutputs } from '@/hooks/useAudioOutputs'
+import { useTooltip } from '@/hooks/useTooltip'
 import { DEFAULT_WAVEFORM_OPTIONS } from '@/hooks/useAudioWaveform'
 import type Track from '@/models/Track'
 
@@ -46,6 +40,18 @@ export default function TracksPlayer({
   const [autoPlayMode, setAutoPlayMode] = useState(true)
   const { outputChannels, selectedOutputChannel, setSelectedOutputChannel } = useAudioOutputs()
 
+  // Infobulles tippy de l'application : instantanées, là où le `title` natif
+  // laisse l'utilisateur deviner pendant une seconde.
+  const viewerTooltip = useTooltip('Ouvrir l’écran de présentation')
+  const autoPlayTooltip = useTooltip(
+    autoPlayMode
+      ? 'Lecture automatique à l’ajout — cliquer pour désactiver'
+      : 'Lecture automatique désactivée — les pistes ajoutées attendent',
+  )
+  const playAllTooltip = useTooltip('Tout lire')
+  const pauseAllTooltip = useTooltip('Tout mettre en pause')
+  const clearTooltip = useTooltip('Vider la file')
+
   function playAll() {
     controls.current.forEach(trackControls => trackControls.play())
   }
@@ -64,30 +70,49 @@ export default function TracksPlayer({
     <div className="flex flex-col items-center gap-6 min-h-full">
       <div className="flex items-center justify-center gap-4 sm:gap-6">
         <button
+          ref={viewerTooltip}
           onClick={onOpenViewer}
           className="rounded-full hover:bg-blue-400/20 transition-colors"
+          aria-label="Ouvrir l’écran de présentation"
         >
           <MonitorPlay className="w-8 h-8 text-blue-400" />
         </button>
+        {/* L'éclair, métaphore des modes « auto » : allumé, une piste ajoutée
+            démarre toute seule ; barré, elle attend son bouton Play. */}
         <button
+          ref={autoPlayTooltip}
           onClick={() => setAutoPlayMode(mode => !mode)}
           className="rounded-full hover:bg-gray-600/20 transition-colors"
+          aria-pressed={autoPlayMode}
+          aria-label="Lecture automatique à l’ajout"
         >
           {autoPlayMode ? (
-            <SquareMousePointer className="w-8 h-8 text-purple-400" />
+            <Zap className="w-8 h-8 text-purple-400" />
           ) : (
-            <SquareDashedMousePointer className="w-8 h-8 text-gray-600" />
+            <ZapOff className="w-8 h-8 text-gray-600" />
           )}
         </button>
-        <button onClick={playAll} className="rounded-full hover:bg-gray-400/20 transition-colors">
+        <button
+          ref={playAllTooltip}
+          onClick={playAll}
+          className="rounded-full hover:bg-gray-400/20 transition-colors"
+          aria-label="Tout lire"
+        >
           <CirclePlay className="w-8 h-8 text-green-400" />
         </button>
-        <button onClick={pauseAll} className="rounded-full hover:bg-white/20 transition-colors">
+        <button
+          ref={pauseAllTooltip}
+          onClick={pauseAll}
+          className="rounded-full hover:bg-white/20 transition-colors"
+          aria-label="Tout mettre en pause"
+        >
           <CirclePause className="w-8 h-8 text-white" />
         </button>
         <button
+          ref={clearTooltip}
           onClick={onRemoveAllTracks}
           className="rounded-full hover:bg-red-400/20 transition-colors"
+          aria-label="Vider la file"
         >
           {/* `CircleX` vient de la même famille que CirclePlay et CirclePause :
               cercle rigoureusement identique, sans composition à ajuster. */}
