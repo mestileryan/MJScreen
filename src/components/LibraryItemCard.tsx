@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, type ChangeEvent, type DragEvent, type MouseEvent } from 'react'
+import { useState, type ChangeEvent, type MouseEvent } from 'react'
 import { createPortal } from 'react-dom'
 import {
   GripVertical,
@@ -122,11 +122,6 @@ export default function LibraryItemCard({
     await saveItem({ ...fileTrack, iconName: payload.iconName, iconColor: payload.color })
   }
 
-  function onDragStart(event: DragEvent<HTMLDivElement>) {
-    if (!event.dataTransfer) return
-    event.dataTransfer.setData('application/json', JSON.stringify(item))
-  }
-
   async function toggleLoop() {
     if (!isAudio) return
     await saveItem({ ...fileTrack, loop: !fileTrack.loop })
@@ -170,8 +165,6 @@ export default function LibraryItemCard({
             className={`track-drag-handle p-1 mr-2 rounded hover:bg-gray-600/25 ${
               dragDisabled ? 'cursor-default' : 'cursor-move'
             }`}
-            draggable
-            onDragStart={onDragStart}
           >
             <GripVertical
               className={`w-4 h-4 ${dragDisabled ? 'text-gray-600' : 'text-gray-400'}`}
@@ -295,8 +288,6 @@ export default function LibraryItemCard({
           className={`track-drag-handle text-white rounded float-left w-12 ml-[2px] mb-[1px] h-12
        flex flex-col items-center justify-center cursor-pointer hover:bg-gray-600
        transition-colors relative ${dragDisabled ? 'bg-gray-700' : 'bg-gray-600'}`}
-          draggable
-          onDragStart={onDragStart}
           onClick={() => (isAudio ? onPlay() : onOpenImageClick())}
         >
           {isAudio ? (

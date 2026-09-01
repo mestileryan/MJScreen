@@ -49,6 +49,24 @@ export function useSortable(
     if (!element) return
 
     const instance = Sortable.create(element, {
+      // Pas de drag natif HTML5 : pendant un drag natif le navigateur coupe les
+      // événements de molette, impossible donc de faire défiler la bibliothèque
+      // en cours de glissement. Le mode fallback (déjà celui du tactile) simule
+      // le drag aux événements souris et laisse la molette vivre normalement.
+      forceFallback: true,
+      // Le clone qui suit le curseur est posé sur <body> : il échappe ainsi au
+      // rognage des conteneurs `overflow-auto` et à leurs styles hérités.
+      fallbackOnBody: true,
+      // Quelques pixels de jeu pour distinguer un clic (lecture d'une piste en
+      // mode soundboard) d'un début de glissement.
+      fallbackTolerance: 3,
+      // Défilement automatique près des bords pendant un glissement, sur tous
+      // les ancêtres scrollables (`bubbleScroll`, actif d'office). Zone de
+      // déclenchement élargie et vitesse relevée : un glissement d'une playlist
+      // à l'autre traverse de longues listes.
+      scroll: true,
+      scrollSensitivity: 80,
+      scrollSpeed: 15,
       ...optionsRef.current,
       onEnd(evt) {
         const { from, to, oldIndex, newIndex } = evt
