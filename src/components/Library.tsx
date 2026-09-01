@@ -1,8 +1,16 @@
 'use client'
 
 import { useEffect, useRef, useState, type MouseEvent } from 'react'
-import { CirclePlay, GripVertical, HelpCircle, Plus, Trash2 } from 'lucide-react'
+import {
+  CirclePlay,
+  GripVertical,
+  HelpCircle,
+  Plus,
+  SlidersHorizontal,
+  Trash2,
+} from 'lucide-react'
 import PlaylistItems, { visibleItems } from './PlaylistItems'
+import PlaylistSettingsPanel, { isPlaylistTweaked } from './PlaylistSettingsPanel'
 import Uploader from './Uploader'
 import ImportFileDragOverlay from './ImportFileDragOverlay'
 import ViewModePlayerToggle from './ViewModePlayerToggle'
@@ -89,6 +97,7 @@ export default function Library({ onPlayAudio, onOpenImage }: LibraryProps) {
   const [searchTerm, setSearchTerm] = useState('')
   const [editingPlaylistId, setEditingPlaylistId] = useState<number | null>(null)
   const [editingName, setEditingName] = useState('')
+  const [settingsPlaylistId, setSettingsPlaylistId] = useState<number | null>(null)
 
   const helpRef = useTooltip(HELP_TEXT)
   const playlistsContainer = useRef<HTMLDivElement>(null)
@@ -211,6 +220,14 @@ export default function Library({ onPlayAudio, onOpenImage }: LibraryProps) {
     const updated = { ...playlist, name }
     setPlaylists(current =>
       current.map(candidate => (candidate.id === playlist.id ? updated : candidate)),
+    )
+    await DB_UpdatePlaylist(updated)
+  }
+
+  /** Réglages de lecture (mode, fondus par défaut) : appliqués et persistés. */
+  async function savePlaylistSettings(updated: Playlist) {
+    setPlaylists(current =>
+      current.map(candidate => (candidate.id === updated.id ? updated : candidate)),
     )
     await DB_UpdatePlaylist(updated)
   }
@@ -383,22 +400,56 @@ export default function Library({ onPlayAudio, onOpenImage }: LibraryProps) {
 
                 {/* Lecture de toute la playlist. Le bouton porte sur ce qui est
                     affiché : pendant une recherche, il ne lance pas les pistes
-                    masquées. Elles démarrent ensemble, la file du lecteur étant
-                    faite pour superposer les sons. */}
+                    masquées. En mode libre elles démarrent ensemble, la file du
+                    lecteur étant faite pour superposer les sons ; dans les modes
+                    exclusifs on ne lance que la première, chaque ajout arrêtant
+                    le précédent — les lancer toutes n'aurait aucun sens. */}
                 {(() => {
                   const playable = visibleItems(playlist.items, searchTerm).filter(isAudio)
                   if (!playable.length) return null
+                  const together = playlist.mode === 'libre'
+                  const title = together
+                    ? `Lancer les ${playable.length} pistes de la playlist`
+                    : 'Lancer la playlist depuis sa première piste'
                   return (
                     <button
                       className="ml-3 rounded-full p-2 transition-colors hover:bg-green-400/20"
-                      onClick={() => playable.forEach(track => onPlayAudio(track))}
-                      title={`Lancer les ${playable.length} pistes de la playlist`}
-                      aria-label={`Lancer les ${playable.length} pistes de la playlist`}
+                      onClick={() =>
+                        together
+                          ? playable.forEach(track => onPlayAudio(track))
+                          : onPlayAudio(playable[0])
+                      }
+                      title={title}
+                      aria-label={title}
                     >
                       <CirclePlay className="w-5 h-5 text-green-400" />
                     </button>
                   )
                 })()}
+
+                {/* Réglages de lecture de la playlist — l'icône vire au violet
+                    dès que la configuration s'écarte du mode libre sans fondu. */}
+                <button
+                  className={`rounded-full p-2 transition-colors ${
+                    isPlaylistTweaked(playlist)
+                      ? 'hover:bg-purple-400/20'
+                      : 'hover:bg-gray-400/20'
+                  }`}
+                  onClick={() =>
+                    setSettingsPlaylistId(current =>
+                      current === playlist.id ? null : (playlist.id ?? null),
+                    )
+                  }
+                  aria-expanded={settingsPlaylistId === playlist.id}
+                  title="Réglages de la playlist"
+                  aria-label="Réglages de la playlist"
+                >
+                  <SlidersHorizontal
+                    className={`w-5 h-5 ${
+                      isPlaylistTweaked(playlist) ? 'text-purple-400' : 'text-gray-400'
+                    }`}
+                  />
+                </button>
 
                 {playlist.items.length === 0 && (
                   <button
@@ -409,6 +460,13 @@ export default function Library({ onPlayAudio, onOpenImage }: LibraryProps) {
                   </button>
                 )}
               </div>
+
+              {settingsPlaylistId === playlist.id && (
+                <PlaylistSettingsPanel
+                  playlist={playlist}
+                  onChange={updated => void savePlaylistSettings(updated)}
+                />
+              )}
 
               <PlaylistItems
                 playlist={playlist}

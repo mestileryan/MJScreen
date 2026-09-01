@@ -15,8 +15,8 @@ export function usePlayerQueue() {
     tracksRef.current = tracks
   }, [tracks])
 
-  const addTrack = useCallback((fileTrack: FileTrack) => {
-    setTracks(current => [...current, createTrack(fileTrack)])
+  const addTrack = useCallback((fileTrack: FileTrack, forceAutoPlay = false) => {
+    setTracks(current => [...current, createTrack(fileTrack, forceAutoPlay)])
   }, [])
 
   const updateTrack = useCallback((track: Track) => {

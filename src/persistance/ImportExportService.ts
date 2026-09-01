@@ -14,6 +14,7 @@ import { createGalleryImage } from '@/models/GalleryImage'
 import type GalleryImage from '@/models/GalleryImage'
 import { createPlaylist } from '@/models/Playlist'
 import type Playlist from '@/models/Playlist'
+import type { PlaylistMode } from '@/models/Playlist'
 import { createFileTrack, DEFAULT_ICON_COLOR } from '@/models/FileTrack'
 import type LibraryItem from '@/models/LibraryItem'
 import type TrackEffects from '@/models/TrackEffects'
@@ -60,8 +61,16 @@ interface ExportImageMeta {
 interface ExportData {
   // Numéro de version pour la compatibilité future
   version: number
-  // Liste des playlists enregistrées
-  playlists: { name: string; width?: number | null; order?: number }[]
+  // Liste des playlists enregistrées. Mode et fondus par défaut sont absents
+  // des archives antérieures à la version 6.
+  playlists: {
+    name: string
+    width?: number | null
+    order?: number
+    mode?: PlaylistMode
+    fadeIn?: number
+    fadeOut?: number
+  }[]
   // Liste des métadonnées de morceaux
   tracks: ExportTrackMeta[]
   // Liste des images de la galerie (optionnel pour rétrocompatibilité)
@@ -78,11 +87,16 @@ export async function exportLibrary(): Promise<Blob> {
     // incrémenter si le format change à l'avenir
     // v4 : ajout des crêtes de forme d'onde pré-calculées (`peaksPath`)
     // v5 : ajout des réglages avancés par piste (`effects`)
-    version: 5,
+    // v6 : mode de lecture et fondus par défaut des playlists ; les fondus de
+    //      piste absents des `effects` sont hérités de la playlist
+    version: 6,
     playlists: playlists.map(pl => ({
       name: pl.name,
       width: pl.width ?? null,
       order: pl.order,
+      mode: pl.mode,
+      fadeIn: pl.fadeIn,
+      fadeOut: pl.fadeOut,
     })),
     tracks: [],
     images: [],
@@ -295,6 +309,9 @@ export async function importLibrary(blob: Blob): Promise<void> {
     const pl: Playlist = {
       ...createPlaylist(plData.name, plData.order ?? index),
       width: plData.width ?? undefined,
+      mode: plData.mode ?? 'libre',
+      fadeIn: plData.fadeIn ?? 0,
+      fadeOut: plData.fadeOut ?? 0,
     }
     pl.id = await DB_AddPlaylist(pl)
     playlists.push(pl)
@@ -313,6 +330,15 @@ export async function importLibrary(blob: Blob): Promise<void> {
     const file = new File([trackBlob], trackMeta.name, { type: trackMeta.type })
     const playlist = playlists[trackMeta.playlistIndex] ?? playlists[0]
 
+    // Archives ≤ v5 : un fondu à 0 n'était pas un choix, juste la valeur neutre
+    // de l'époque. On l'efface pour que la piste suive le fondu de sa playlist,
+    // comme la migration Dexie v3 le fait pour la base locale.
+    const effects = trackMeta.effects ? { ...trackMeta.effects } : undefined
+    if (effects && data.version < 6) {
+      if (effects.fadeIn === 0) delete effects.fadeIn
+      if (effects.fadeOut === 0) delete effects.fadeOut
+    }
+
     const trackId = await DB_AddTrack({
       ...createFileTrack(file, trackMeta.name),
       initialVolume: trackMeta.initialVolume ?? 0.8,
@@ -321,7 +347,7 @@ export async function importLibrary(blob: Blob): Promise<void> {
       order: trackMeta.order ?? 0,
       playlistId: playlist?.id,
       loop: trackMeta.loop ?? false,
-      effects: trackMeta.effects,
+      effects,
     })
 
     // Crêtes pré-calculées (archives v4+) : restaurées telles quelles, la piste

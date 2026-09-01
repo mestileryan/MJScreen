@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useRef, useState } from 'react'
+import { useState, type RefObject } from 'react'
 import {
   CirclePause,
   CirclePlay,
@@ -16,32 +16,35 @@ import type Track from '@/models/Track'
 
 interface TracksPlayerProps {
   tracks: Track[]
+  /**
+   * Registre des commandes des pistes, détenu par le parent : les enchaînements
+   * de playlist s'en servent pour arrêter une piste avec son fondu. On passe par
+   * ces commandes plutôt que par l'élément <audio> pour que « tout jouer » et
+   * « tout mettre en pause » respectent aussi les fondus.
+   */
+  controls: RefObject<Map<number, TrackControls>>
+  registerControls: (id: number, controls: TrackControls | null) => void
   onUpdateTrack: (track: Track) => void
   onRemoveTrack: (track: Track) => void
   onRemoveAllTracks: () => void
+  /** Une piste est arrivée au bout sans boucler (enchaînement automatique). */
+  onTrackEnded: (track: Track) => void
   onOpenViewer: () => void
 }
 
 export default function TracksPlayer({
   tracks,
+  controls,
+  registerControls,
   onUpdateTrack,
   onRemoveTrack,
   onRemoveAllTracks,
+  onTrackEnded,
   onOpenViewer,
 }: TracksPlayerProps) {
   // Contrôle global de l'autoplay : actif par défaut, une piste ajoutée démarre seule.
   const [autoPlayMode, setAutoPlayMode] = useState(true)
   const { outputChannels, selectedOutputChannel, setSelectedOutputChannel } = useAudioOutputs()
-
-  // Chaque TrackPlayer enregistre ses commandes pour permettre le pilotage global.
-  // On passe par elles plutôt que par l'élément <audio> pour que « tout jouer » et
-  // « tout mettre en pause » respectent aussi les fondus.
-  const controls = useRef(new Map<number, TrackControls>())
-
-  const registerControls = useCallback((id: number, trackControls: TrackControls | null) => {
-    if (trackControls) controls.current.set(id, trackControls)
-    else controls.current.delete(id)
-  }, [])
 
   function playAll() {
     controls.current.forEach(trackControls => trackControls.play())
@@ -106,6 +109,7 @@ export default function TracksPlayer({
             sinkId={selectedOutputChannel}
             onChange={onUpdateTrack}
             onRemove={() => onRemoveTrack(track)}
+            onEnded={() => onTrackEnded(track)}
             registerControls={registerControls}
           />
         </div>

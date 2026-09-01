@@ -10,18 +10,25 @@ export default interface Track {
   volume: number
   loop: boolean
   name: string
+  /**
+   * Démarre dès l'ajout, même si l'autoplay global du lecteur est désactivé.
+   * Posé par les enchaînements de playlist : la piste remplace une lecture en
+   * cours, la faire attendre n'aurait pas de sens.
+   */
+  forceAutoPlay: boolean
   fileTrack: FileTrack
 }
 
 let nextTrackId = 0
 
-export function createTrack(fileTrack: FileTrack): Track {
+export function createTrack(fileTrack: FileTrack, forceAutoPlay = false): Track {
   return {
     id: ++nextTrackId,
     src: URL.createObjectURL(fileTrack.file),
     volume: fileTrack.initialVolume,
     loop: fileTrack.loop,
     name: fileTrack.name,
+    forceAutoPlay,
     fileTrack,
   }
 }

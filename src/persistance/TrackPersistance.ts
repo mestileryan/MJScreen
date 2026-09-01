@@ -26,6 +26,26 @@ export class TrackLibrary extends Dexie {
             if (tr.loop === undefined) tr.loop = false
           })
       })
+
+    // v3 : les fondus absents signifient désormais « hérite du fondu de la
+    // playlist ». Les anciens enregistrements portaient un 0 explicite dès qu'un
+    // autre effet était réglé ; comme aucune playlist n'a encore de fondu par
+    // défaut au moment de cette migration, effacer ces 0 ne change rien à la
+    // lecture mais rend ces pistes sensibles aux futurs réglages de playlist.
+    this.version(3)
+      .stores({
+        tracks: '++id,name,loop',
+      })
+      .upgrade(tx => {
+        return tx
+          .table('tracks')
+          .toCollection()
+          .modify(tr => {
+            if (!tr.effects) return
+            if (tr.effects.fadeIn === 0) delete tr.effects.fadeIn
+            if (tr.effects.fadeOut === 0) delete tr.effects.fadeOut
+          })
+      })
   }
 }
 

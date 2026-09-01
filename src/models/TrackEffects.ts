@@ -4,10 +4,13 @@
  * avant l'existence de cette fonctionnalité, sans passer par la Web Audio API.
  */
 export default interface TrackEffects {
-  /** Fondu d'entrée à la lecture, en secondes. 0 = aucun. */
-  fadeIn: number
-  /** Fondu de sortie à l'arrêt, en secondes. 0 = aucun. */
-  fadeOut: number
+  /**
+   * Fondu d'entrée à la lecture, en secondes. 0 = aucun.
+   * Absent = la piste suit le fondu par défaut de sa playlist.
+   */
+  fadeIn?: number
+  /** Fondu de sortie à l'arrêt, en secondes. Mêmes conventions que `fadeIn`. */
+  fadeOut?: number
   /** Latéralisation, de -1 (gauche) à 1 (droite). 0 = centre. */
   pan: number
   /** Désaccordage en demi-tons. Modifie aussi la vitesse, comme une bande. */
@@ -34,9 +37,10 @@ export const LOWPASS_OFF = 20000
 export const MIN_DETUNE = -12
 export const MAX_DETUNE = 12
 
+/** Effets dont les fondus sont résolus : l'héritage playlist est déjà appliqué. */
+export type ResolvedTrackEffects = TrackEffects & { fadeIn: number; fadeOut: number }
+
 export const DEFAULT_EFFECTS: TrackEffects = {
-  fadeIn: 0,
-  fadeOut: 0,
   pan: 0,
   detune: 0,
   reverbMix: 0,
@@ -48,9 +52,31 @@ export const DEFAULT_EFFECTS: TrackEffects = {
   distortion: 0,
 }
 
-/** Complète un enregistrement partiel ou absent avec les valeurs neutres. */
+/**
+ * Complète un enregistrement partiel ou absent avec les valeurs neutres.
+ * Les fondus restent volontairement absents s'ils ne sont pas enregistrés :
+ * cette absence signifie « hérite de la playlist », voir `resolveFades`.
+ */
 export function withDefaults(effects?: Partial<TrackEffects> | null): TrackEffects {
   return effects ? { ...DEFAULT_EFFECTS, ...effects } : DEFAULT_EFFECTS
+}
+
+/** Fondus par défaut d'une playlist, tels qu'attendus par `resolveFades`. */
+export interface PlaylistFades {
+  fadeIn: number
+  fadeOut: number
+}
+
+/**
+ * Applique l'héritage des fondus : la valeur de la piste si elle en a une,
+ * sinon celle de la playlist, sinon aucun fondu.
+ */
+export function resolveFades(fx: TrackEffects, playlist?: PlaylistFades): ResolvedTrackEffects {
+  return {
+    ...fx,
+    fadeIn: fx.fadeIn ?? playlist?.fadeIn ?? 0,
+    fadeOut: fx.fadeOut ?? playlist?.fadeOut ?? 0,
+  }
 }
 
 /**
@@ -62,8 +88,8 @@ export function withDefaults(effects?: Partial<TrackEffects> | null): TrackEffec
  */
 export function needsAudioGraph(fx: TrackEffects): boolean {
   return (
-    fx.fadeIn > 0 ||
-    fx.fadeOut > 0 ||
+    (fx.fadeIn ?? 0) > 0 ||
+    (fx.fadeOut ?? 0) > 0 ||
     fx.pan !== 0 ||
     fx.reverbMix > 0 ||
     fx.lowpass < LOWPASS_OFF ||
@@ -72,7 +98,20 @@ export function needsAudioGraph(fx: TrackEffects): boolean {
   )
 }
 
-/** Vrai si la piste est dans son état d'origine (bouton « Réinitialiser » inutile). */
+/**
+ * Vrai si la piste est dans son état d'origine (bouton « Réinitialiser » inutile).
+ * À évaluer sur les réglages *enregistrés*, pas résolus : un fondu à 0 explicite
+ * écrase le fondu de la playlist, ce n'est plus un état neutre.
+ */
 export function isNeutral(fx: TrackEffects): boolean {
-  return !needsAudioGraph(fx) && fx.detune === 0
+  return (
+    fx.fadeIn === undefined &&
+    fx.fadeOut === undefined &&
+    fx.pan === 0 &&
+    fx.detune === 0 &&
+    fx.reverbMix === 0 &&
+    fx.lowpass >= LOWPASS_OFF &&
+    fx.echoMix === 0 &&
+    fx.distortion === 0
+  )
 }

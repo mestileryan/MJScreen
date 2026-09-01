@@ -26,13 +26,15 @@ import {
   type TrackAudioGraph,
 } from '@/lib/audioGraph'
 import { gainForPosition, positionForGain } from '@/lib/loudness'
-import { isNeutral, needsAudioGraph, withDefaults } from '@/models/TrackEffects'
+import { isNeutral, needsAudioGraph, resolveFades, withDefaults } from '@/models/TrackEffects'
 import type TrackEffects from '@/models/TrackEffects'
 import type Track from '@/models/Track'
 
 export interface TrackControls {
   play: () => void
   pause: () => void
+  /** Fondu de sortie s'il y en a un, puis retrait de la file. */
+  stopAndRemove: () => void
 }
 
 interface TrackPlayerProps {
@@ -41,6 +43,8 @@ interface TrackPlayerProps {
   sinkId: string
   onChange: (track: Track) => void
   onRemove: () => void
+  /** La piste est arrivée au bout sans boucler — avant son retrait de la file. */
+  onEnded: () => void
   /** Permet au parent de piloter « tout jouer / tout mettre en pause ». */
   registerControls: (id: number, controls: TrackControls | null) => void
 }
@@ -65,9 +69,10 @@ export default function TrackPlayer({
   sinkId,
   onChange,
   onRemove,
+  onEnded,
   registerControls,
 }: TrackPlayerProps) {
-  const { findTrack, saveItem } = useLibrary()
+  const { findTrack, saveItem, playlists } = useLibrary()
   const player = useRef<HTMLAudioElement>(null)
   const canvas = useRef<HTMLCanvasElement>(null)
   const [isPlaying, setIsPlaying] = useState(false)
@@ -81,7 +86,20 @@ export default function TrackPlayer({
   // Les réglages suivent la piste de la bibliothèque ; on retombe sur l'instantané
   // de la file si elle en a été retirée.
   const storedEffects = live?.effects ?? track.fileTrack.effects
-  const effects = useMemo(() => withDefaults(storedEffects), [storedEffects])
+  const stored = useMemo(() => withDefaults(storedEffects), [storedEffects])
+
+  // Fondus par défaut de la playlist d'origine, appliqués aux pistes qui n'ont
+  // pas écrasé le réglage. `stored` reste la vérité de ce que porte la piste,
+  // `effects` est la version résolue que joue le lecteur.
+  const playlist = playlists.find(
+    candidate => candidate.id === (live?.playlistId ?? track.fileTrack.playlistId),
+  )
+  const playlistFadeIn = playlist?.fadeIn ?? 0
+  const playlistFadeOut = playlist?.fadeOut ?? 0
+  const effects = useMemo(
+    () => resolveFades(stored, { fadeIn: playlistFadeIn, fadeOut: playlistFadeOut }),
+    [stored, playlistFadeIn, playlistFadeOut],
+  )
 
   // Les crêtes sont persistées par piste dans Dexie : après le premier décodage
   // (à l'upload ou en backfill), l'affichage de la forme d'onde est immédiat.
@@ -191,20 +209,23 @@ export default function TrackPlayer({
     graph.current?.cancelFade()
   }
 
-  // Le parent pilote « tout jouer / tout mettre en pause » à travers ces
-  // enveloppes stables, qui relisent les handlers courants à chaque appel — et
-  // passent donc bien par les fondus.
+  // Le parent pilote « tout jouer / tout mettre en pause » — et les enchaînements
+  // de playlist — à travers ces enveloppes stables, qui relisent les handlers
+  // courants à chaque appel : elles passent donc bien par les fondus.
   const playRef = useRef(startPlayback)
   const pauseRef = useRef(stopPlayback)
+  const removeRef = useRef(() => Promise.resolve())
   useEffect(() => {
     playRef.current = startPlayback
     pauseRef.current = stopPlayback
+    removeRef.current = removeWithFade
   })
 
   useEffect(() => {
     registerControls(track.id, {
       play: () => playRef.current(),
       pause: () => void pauseRef.current(),
+      stopAndRemove: () => void removeRef.current(),
     })
     return () => registerControls(track.id, null)
   }, [track.id, registerControls])
@@ -220,7 +241,7 @@ export default function TrackPlayer({
     // piste reste en file, en pause, avec le bouton Play affiché.
     // Démarrage différé d'une micro-tâche : `startPlayback` publie l'état du fondu,
     // ce qui n'a pas sa place dans le corps synchrone d'un effet.
-    if (autoPlay) queueMicrotask(startPlayback)
+    if (autoPlay || track.forceAutoPlay) queueMicrotask(startPlayback)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -335,16 +356,23 @@ export default function TrackPlayer({
     onRemove()
   }
 
-  // Gère la fin de la lecture : la piste quitte la file si elle ne boucle pas
+  // Gère la fin de la lecture : la piste quitte la file si elle ne boucle pas.
+  // `onEnded` part avant le retrait, pour qu'une playlist en mode classique
+  // puisse enchaîner sur la piste suivante.
   function handleTrackEnd() {
     setIsPlaying(false)
     fadeRun.current++
     clearFadeTimer()
     setFading(null)
-    if (!track.loop) onRemove()
+    if (!track.loop) {
+      onEnded()
+      onRemove()
+    }
   }
 
-  const tweaked = !isNeutral(effects)
+  // Le chevron signale les réglages propres à la piste : un fondu simplement
+  // hérité de la playlist n'en fait pas partie.
+  const tweaked = !isNeutral(stored)
 
   // Le halo de survol reprend la teinte de l'icône, comme la rangée d'outils du haut.
   // Les classes sont écrites en entier : Tailwind ne peut pas les deviner à l'exécution.
@@ -497,7 +525,13 @@ export default function TrackPlayer({
         </button>
       </div>
 
-      {showEffects && <TrackEffectsPanel effects={effects} onChange={updateEffects} />}
+      {showEffects && (
+        <TrackEffectsPanel
+          effects={stored}
+          inheritedFades={{ fadeIn: playlistFadeIn, fadeOut: playlistFadeOut }}
+          onChange={updateEffects}
+        />
+      )}
     </>
   )
 }

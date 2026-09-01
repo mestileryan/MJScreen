@@ -12,6 +12,9 @@ export async function DB_AddPlaylist(playlist: Playlist): Promise<number> {
     name: playlist.name,
     width: playlist.width,
     order: playlist.order,
+    mode: playlist.mode,
+    fadeIn: playlist.fadeIn,
+    fadeOut: playlist.fadeOut,
   }
 
   // Dexie renvoie l'ID nouvellement inséré
@@ -29,6 +32,9 @@ export async function DB_UpdatePlaylist(playlist: Playlist): Promise<void> {
     name: playlist.name,
     width: playlist.width,
     order: playlist.order,
+    mode: playlist.mode,
+    fadeIn: playlist.fadeIn,
+    fadeOut: playlist.fadeOut,
   })
 }
 
@@ -60,5 +66,8 @@ export async function DB_GetPlaylists(): Promise<Playlist[]> {
     ...createPlaylist(stored.name, stored.order ?? index),
     id: stored.id,
     width: stored.width ?? undefined,
+    mode: stored.mode ?? 'libre',
+    fadeIn: stored.fadeIn ?? 0,
+    fadeOut: stored.fadeOut ?? 0,
   }))
 }
