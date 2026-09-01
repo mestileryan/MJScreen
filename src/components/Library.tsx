@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type DragEvent, type MouseEvent } from 'react'
 import {
+  Archive,
   ChevronDown,
   ChevronRight,
   CirclePlay,
@@ -106,6 +107,15 @@ export default function Library({ onPlayAudio, onOpenImage }: LibraryProps) {
     new Set(),
   )
 
+  // Les archives ont leur propre repli, fermé par défaut : c'est une remise,
+  // pas une playlist de travail.
+  const [archiveOpen, setArchiveOpen] = useState(false)
+
+  // La playlist d'archives vit dans le même state que les autres (déplacements
+  // et persistance identiques) mais est rendue à part, en bas.
+  const archivePlaylist = playlists.find(playlist => playlist.archive)
+  const regularPlaylists = playlists.filter(playlist => !playlist.archive)
+
   function toggleCollapsed(playlist: Playlist) {
     const id = playlist.id
     if (id == null) return
@@ -157,7 +167,8 @@ export default function Library({ onPlayAudio, onOpenImage }: LibraryProps) {
       next = [defaultPlaylist]
     }
 
-    let target: Playlist | undefined = next[0]
+    // Jamais les archives par défaut : un import atterrit dans une vraie playlist.
+    let target: Playlist | undefined = next.find(playlist => !playlist.archive) ?? next[0]
 
     if (targetPlaylistId != null) {
       // Déposé sur une playlist précise : ce geste explicite prime sur le
@@ -293,12 +304,19 @@ export default function Library({ onPlayAudio, onOpenImage }: LibraryProps) {
   }
 
   function handlePlaylistsMove({ oldIndex, newIndex }: SortableMove) {
-    const next = playlistsRef.current.slice()
-    const [moved] = next.splice(oldIndex, 1)
+    // Les indices de SortableJS portent sur les playlists affichées dans le
+    // conteneur triable — donc sans les archives, rendues à part et toujours
+    // recollées en fin de liste.
+    const regular = playlistsRef.current.filter(playlist => !playlist.archive)
+    const archives = playlistsRef.current.filter(playlist => playlist.archive)
+    const [moved] = regular.splice(oldIndex, 1)
     if (!moved) return
-    next.splice(newIndex, 0, moved)
+    regular.splice(newIndex, 0, moved)
 
-    const ordered = next.map((playlist, index) => ({ ...playlist, order: index }))
+    const ordered = [...regular, ...archives].map((playlist, index) => ({
+      ...playlist,
+      order: index,
+    }))
     setPlaylists(ordered)
     void persistPlaylists(ordered)
   }
@@ -359,6 +377,25 @@ export default function Library({ onPlayAudio, onOpenImage }: LibraryProps) {
     setPlaylists(next)
     await persistItems(source.items)
     await persistItems(target.items)
+  }
+
+  /**
+   * Archive une piste : déplacement vers la playlist d'archives, créée à la
+   * première occasion. Elle restera en base même vidée, simplement masquée.
+   */
+  async function archiveItem(item: LibraryItem) {
+    let archive = playlistsRef.current.find(playlist => playlist.archive)
+    if (!archive) {
+      archive = {
+        ...createPlaylist('Archives', playlistsRef.current.length),
+        archive: true,
+      }
+      archive.id = await DB_AddPlaylist(archive)
+      const next = [...playlistsRef.current, archive]
+      playlistsRef.current = next
+      setPlaylists(next)
+    }
+    if (archive.id != null) await moveItemToPlaylist(item, archive.id)
   }
 
   async function removeItem(playlist: Playlist, item: LibraryItem) {
@@ -442,7 +479,7 @@ export default function Library({ onPlayAudio, onOpenImage }: LibraryProps) {
         </div>
 
         <div ref={playlistsContainer}>
-          {playlists.map(playlist => {
+          {regularPlaylists.map(playlist => {
             const collapsed = playlist.id != null && collapsedPlaylistIds.has(playlist.id)
             const settingsOpen = settingsPlaylistId === playlist.id
             return (
@@ -607,6 +644,7 @@ export default function Library({ onPlayAudio, onOpenImage }: LibraryProps) {
                     searchTerm={searchTerm}
                     onMove={handleItemsMove}
                     onMoveToPlaylist={(item, targetId) => void moveItemToPlaylist(item, targetId)}
+                    onArchiveItem={item => void archiveItem(item)}
                     onRemoveItem={removeItem}
                     onPlayAudio={onPlayAudio}
                     onOpenImage={onOpenImage}
@@ -629,6 +667,58 @@ export default function Library({ onPlayAudio, onOpenImage }: LibraryProps) {
         >
           <Plus className="w-6 h-6 text-purple-500" />
         </div>
+
+        {/* Archives : tout en bas, invisibles tant que rien n'y est rangé.
+            Volontairement dépouillées — ni lecture globale, ni réglages, ni
+            suppression, ni poignée : on y consulte, on en ressort des pistes
+            (menu « Déplacer vers… »), c'est tout. */}
+        {archivePlaylist && archivePlaylist.items.length > 0 && (
+          <div className="mt-1 mb-1 flex flex-col rounded bg-gray-700/25 p-3">
+            <div className="flex items-center">
+              <button
+                className="mr-2 rounded-full p-1 transition-colors hover:bg-gray-400/20"
+                onClick={() => setArchiveOpen(open => !open)}
+                aria-expanded={archiveOpen}
+                title={archiveOpen ? 'Replier les archives' : 'Déplier les archives'}
+                aria-label={archiveOpen ? 'Replier les archives' : 'Déplier les archives'}
+              >
+                {archiveOpen ? (
+                  <ChevronDown className="w-5 h-5 text-gray-400" />
+                ) : (
+                  <ChevronRight className="w-5 h-5 text-gray-400" />
+                )}
+              </button>
+              <Archive className="mr-2 w-4 h-4 text-gray-400" />
+              {/* Tons gris : une remise, pas une playlist comme les autres. */}
+              <p className="font-semibold text-gray-400">
+                {archivePlaylist.name}{' '}
+                <span className="text-sm font-normal">({archivePlaylist.items.length})</span>
+              </p>
+            </div>
+
+            <div
+              className="grid transition-[grid-template-rows] duration-300 ease-in-out"
+              style={{ gridTemplateRows: archiveOpen ? '1fr' : '0fr' }}
+              inert={!archiveOpen}
+            >
+              <div className="min-h-0 overflow-hidden">
+                <div className="pt-2">
+                  <PlaylistItems
+                    playlist={archivePlaylist}
+                    isListView={isListView}
+                    searchTerm={searchTerm}
+                    onMove={handleItemsMove}
+                    onMoveToPlaylist={(item, targetId) => void moveItemToPlaylist(item, targetId)}
+                    onArchiveItem={item => void archiveItem(item)}
+                    onRemoveItem={removeItem}
+                    onPlayAudio={onPlayAudio}
+                    onOpenImage={onOpenImage}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </ImportFileDragOverlay>
     </div>
   )

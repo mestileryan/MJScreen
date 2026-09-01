@@ -15,6 +15,7 @@ export async function DB_AddPlaylist(playlist: Playlist): Promise<number> {
     mode: playlist.mode,
     fadeIn: playlist.fadeIn,
     fadeOut: playlist.fadeOut,
+    archive: playlist.archive,
   }
 
   // Dexie renvoie l'ID nouvellement inséré
@@ -35,6 +36,7 @@ export async function DB_UpdatePlaylist(playlist: Playlist): Promise<void> {
     mode: playlist.mode,
     fadeIn: playlist.fadeIn,
     fadeOut: playlist.fadeOut,
+    archive: playlist.archive,
   })
 }
 
@@ -56,6 +58,8 @@ export async function DB_GetPlaylists(): Promise<Playlist[]> {
   const storedPlaylists: PlaylistDB[] = await playlistLibraryDB().playlists.toArray()
 
   storedPlaylists.sort((a, b) => {
+    // Les archives ferment toujours la marche, quel que soit leur `order`.
+    if (Boolean(a.archive) !== Boolean(b.archive)) return a.archive ? 1 : -1
     const orderA = a.order ?? Number.MAX_SAFE_INTEGER
     const orderB = b.order ?? Number.MAX_SAFE_INTEGER
     if (orderA !== orderB) return orderA - orderB
@@ -69,5 +73,6 @@ export async function DB_GetPlaylists(): Promise<Playlist[]> {
     mode: stored.mode ?? 'libre',
     fadeIn: stored.fadeIn ?? 0,
     fadeOut: stored.fadeOut ?? 0,
+    archive: stored.archive ?? false,
   }))
 }

@@ -27,6 +27,12 @@ export default interface Playlist {
    */
   fadeIn: number
   fadeOut: number
+  /**
+   * Playlist d'archives : rangée à part en bas de la bibliothèque, créée à la
+   * première piste archivée, masquée quand elle est vide. Ni supprimable, ni
+   * configurable, ni jouable globalement. Une seule par bibliothèque.
+   */
+  archive?: boolean
   items: LibraryItem[]
 }
 

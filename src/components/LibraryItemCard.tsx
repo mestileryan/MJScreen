@@ -3,6 +3,8 @@
 import { useState, type ChangeEvent, type MouseEvent } from 'react'
 import { createPortal } from 'react-dom'
 import {
+  Archive,
+  EllipsisVertical,
   FolderInput,
   GripVertical,
   Link,
@@ -38,6 +40,8 @@ interface LibraryItemCardProps {
   onRemove: () => void
   /** Déplacement vers une autre playlist choisie dans le menu contextuel. */
   onMoveToPlaylist: (targetPlaylistId: number) => void
+  /** Rangement dans les archives, via le même menu. */
+  onArchive: () => void
   onPlayAudio: (track: FileTrack) => void
   onOpenImage: (image: GalleryImage) => void
 }
@@ -56,6 +60,7 @@ export default function LibraryItemCard({
   dragDisabled = false,
   onRemove,
   onMoveToPlaylist,
+  onArchive,
   onPlayAudio,
   onOpenImage,
 }: LibraryItemCardProps) {
@@ -65,10 +70,18 @@ export default function LibraryItemCard({
   const [isSelectingIcon, setIsSelectingIcon] = useState(false)
   const [hoverPreview, setHoverPreview] = useState<HoverPreview | null>(null)
   const [editableName, setEditableName] = useState(item.name)
-  // Position (viewport) du menu « déplacer vers » ; null = fermé. Le menu est
-  // porté par un portail en position fixe : ancré au conteneur, il serait rogné
-  // par l'`overflow-hidden` du tiroir de repli des playlists.
-  const [moveMenu, setMoveMenu] = useState<{ x: number; y: number } | null>(null)
+  // Position (viewport) du menu contextuel ; null = fermé. Le menu est porté
+  // par un portail en position fixe : ancré au conteneur, il serait rogné par
+  // l'`overflow-hidden` du tiroir de repli des playlists. `kind` distingue le
+  // menu « déplacer » du bouton dédié et le menu ⋮ mobile, qui ajoute
+  // Archiver et Supprimer aux destinations.
+  const [moveMenu, setMoveMenu] = useState<{
+    x: number
+    y: number
+    kind: 'move' | 'actions'
+    /** Ouvert vers le haut, quand le bouton est trop près du bas de l'écran. */
+    up: boolean
+  } | null>(null)
 
   const tooltipRef = useTooltip(item.name)
 
@@ -77,6 +90,9 @@ export default function LibraryItemCard({
   const galleryImage = item as GalleryImage
   const fileSizeInMB = (item.file.size / 1024 / 1024).toFixed(2)
   const imageUrl = isAudio ? undefined : objectUrlFor(galleryImage.file)
+  const archived = playlists.some(
+    playlist => playlist.archive && playlist.id === item.playlistId,
+  )
 
   function startEditing() {
     setIsEditing(true)
@@ -130,9 +146,16 @@ export default function LibraryItemCard({
     await saveItem({ ...fileTrack, iconName: payload.iconName, iconColor: payload.color })
   }
 
-  function toggleMoveMenu(event: MouseEvent<HTMLButtonElement>) {
+  function toggleMoveMenu(event: MouseEvent<HTMLButtonElement>, kind: 'move' | 'actions') {
     const rect = event.currentTarget.getBoundingClientRect()
-    setMoveMenu(current => (current ? null : { x: rect.right, y: rect.bottom + 4 }))
+    // Hauteur maximale possible du menu (max-h-64 + intitulé + marges) : s'il ne
+    // tient pas sous le bouton, il se déploie au-dessus.
+    const up = window.innerHeight - rect.bottom < 320
+    setMoveMenu(current =>
+      current
+        ? null
+        : { x: rect.right, y: up ? rect.top - 4 : rect.bottom + 4, kind, up },
+    )
   }
 
   function moveTo(targetPlaylistId: number | undefined) {
@@ -275,20 +298,45 @@ export default function LibraryItemCard({
                     className={`w-5 h-5 ${fileTrack.loop ? 'text-purple-400' : 'text-gray-400'}`}
                   />
                 </button>
+                {/* Sur grand écran, chaque action a son bouton ; sur mobile la
+                    rangée est à l'étroit, elles se replient dans le menu ⋮. */}
+                <div className="hidden items-center gap-1 sm:flex">
+                  <button
+                    className="p-1 rounded-full hover:bg-purple-400/20 transition-colors"
+                    onClick={event => toggleMoveMenu(event, 'move')}
+                    aria-expanded={moveMenu !== null}
+                    title="Déplacer vers une autre playlist"
+                    aria-label="Déplacer vers une autre playlist"
+                  >
+                    <FolderInput className="w-5 h-5 text-purple-300" />
+                  </button>
+                  <button
+                    className="p-1 rounded-full hover:bg-purple-400/20 transition-colors
+                      disabled:opacity-40 disabled:hover:bg-transparent"
+                    onClick={onArchive}
+                    disabled={archived}
+                    title={archived ? 'Déjà archivée' : 'Archiver'}
+                    aria-label={archived ? 'Déjà archivée' : 'Archiver'}
+                  >
+                    <Archive className="w-5 h-5 text-purple-300" />
+                  </button>
+                  <button
+                    onClick={onRemove}
+                    className="p-1 hover:bg-red-700/20 rounded-full transition-colors"
+                    title="Supprimer"
+                    aria-label="Supprimer"
+                  >
+                    <Trash2 className="w-5 h-5 text-red-400" />
+                  </button>
+                </div>
                 <button
-                  className="p-1 rounded-full hover:bg-purple-400/20 transition-colors"
-                  onClick={toggleMoveMenu}
+                  className="p-1 rounded-full hover:bg-gray-400/20 transition-colors sm:hidden"
+                  onClick={event => toggleMoveMenu(event, 'actions')}
                   aria-expanded={moveMenu !== null}
-                  title="Déplacer vers une autre playlist"
-                  aria-label="Déplacer vers une autre playlist"
+                  title="Plus d’actions"
+                  aria-label="Plus d’actions"
                 >
-                  <FolderInput className="w-5 h-5 text-purple-300" />
-                </button>
-                <button
-                  onClick={onRemove}
-                  className="p-1 hover:bg-red-700/20 rounded-full transition-colors"
-                >
-                  <Trash2 className="w-5 h-5 text-red-400" />
+                  <EllipsisVertical className="w-5 h-5 text-gray-400" />
                 </button>
               </div>
             </>
@@ -352,8 +400,10 @@ export default function LibraryItemCard({
               style={{
                 top: `${moveMenu.y}px`,
                 left: `${moveMenu.x}px`,
-                // Aligné sur le bord droit du bouton, qui vit près du bord de l'écran.
-                transform: 'translateX(-100%)',
+                // Aligné sur le bord droit du bouton, qui vit près du bord de
+                // l'écran ; remonté d'une hauteur de menu quand il s'ouvre vers
+                // le haut.
+                transform: moveMenu.up ? 'translate(-100%, -100%)' : 'translateX(-100%)',
               }}
             >
               {/* Intitulé du menu : retrait moindre que les entrées pour se lire
@@ -364,21 +414,55 @@ export default function LibraryItemCard({
                 <span className="truncate text-gray-200">{item.name}</span>
                 <span className="shrink-0">&nbsp;vers…</span>
               </p>
-              {playlists.map(playlist => {
-                const current = playlist.id === item.playlistId
-                return (
+              {/* Les archives ne figurent pas parmi les destinations : elles ont
+                  leur entrée dédiée sous le trait. */}
+              {playlists
+                .filter(playlist => !playlist.archive)
+                .map(playlist => {
+                  const current = playlist.id === item.playlistId
+                  return (
+                    <button
+                      key={playlist.id}
+                      disabled={current}
+                      className={`block w-full truncate py-1.5 pl-5 pr-3 text-left ${
+                        current ? 'cursor-default text-gray-500' : 'hover:bg-gray-700'
+                      }`}
+                      onClick={() => moveTo(playlist.id)}
+                    >
+                      {playlist.name}
+                    </button>
+                  )
+                })}
+              {/* Le menu ⋮ mobile complète les destinations avec les actions
+                  qui ont leur propre bouton sur grand écran. */}
+              {moveMenu.kind === 'actions' && (
+                <>
                   <button
-                    key={playlist.id}
-                    disabled={current}
-                    className={`block w-full truncate py-1.5 pl-5 pr-3 text-left ${
-                      current ? 'cursor-default text-gray-500' : 'hover:bg-gray-700'
+                    disabled={archived}
+                    className={`flex w-full items-center gap-1.5 border-t border-gray-700 py-1.5 pl-5 pr-3 text-left ${
+                      archived ? 'cursor-default text-gray-500' : 'hover:bg-gray-700'
                     }`}
-                    onClick={() => moveTo(playlist.id)}
+                    onClick={() => {
+                      setMoveMenu(null)
+                      onArchive()
+                    }}
                   >
-                    {playlist.name}
+                    <Archive className="h-3.5 w-3.5 shrink-0" />
+                    {archived ? 'Déjà archivée' : 'Archiver'}
                   </button>
-                )
-              })}
+                  <button
+                    className="flex w-full items-center gap-1.5 py-1.5 pl-5 pr-3 text-left
+                      text-red-400 hover:bg-gray-700"
+                    onClick={() => {
+                      setMoveMenu(null)
+                      onRemove()
+                    }}
+                  >
+                    <Trash2 className="h-3.5 w-3.5 shrink-0" />
+                    Supprimer
+                  </button>
+                </>
+              )}
             </div>
           </>,
           document.body,

@@ -70,6 +70,7 @@ interface ExportData {
     mode?: PlaylistMode
     fadeIn?: number
     fadeOut?: number
+    archive?: boolean
   }[]
   // Liste des métadonnées de morceaux
   tracks: ExportTrackMeta[]
@@ -97,6 +98,7 @@ export async function exportLibrary(): Promise<Blob> {
       mode: pl.mode,
       fadeIn: pl.fadeIn,
       fadeOut: pl.fadeOut,
+      archive: pl.archive,
     })),
     tracks: [],
     images: [],
@@ -312,6 +314,7 @@ export async function importLibrary(blob: Blob): Promise<void> {
       mode: plData.mode ?? 'libre',
       fadeIn: plData.fadeIn ?? 0,
       fadeOut: plData.fadeOut ?? 0,
+      archive: plData.archive ?? false,
     }
     pl.id = await DB_AddPlaylist(pl)
     playlists.push(pl)

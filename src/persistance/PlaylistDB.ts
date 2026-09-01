@@ -16,5 +16,7 @@ export interface PlaylistDB {
   /** Fondus par défaut en secondes. Non indexés eux aussi ; absents = 0. */
   fadeIn?: number;
   fadeOut?: number;
+  /** Playlist d'archives (voir le modèle). Non indexé ; absent = non. */
+  archive?: boolean;
 }
 
