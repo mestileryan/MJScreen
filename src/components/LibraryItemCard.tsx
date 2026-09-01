@@ -190,6 +190,52 @@ export default function LibraryItemCard({
     setHoverPreview(null)
   }
 
+  // Actions communes aux pistes et aux images : sur grand écran chaque action a
+  // son bouton ; sur mobile la rangée est à l'étroit, elles se replient dans le
+  // menu ⋮. « Archivée » s'accorde avec les deux : une piste, une image.
+  const rowActions = (
+    <>
+      <div className="hidden items-center gap-1 sm:flex">
+        <TooltipButton
+          className="p-1 rounded-full hover:bg-purple-400/20 transition-colors"
+          onClick={event => toggleMoveMenu(event, 'move')}
+          aria-expanded={moveMenu !== null}
+          tooltip="Déplacer vers une autre playlist"
+          aria-label="Déplacer vers une autre playlist"
+        >
+          <FolderInput className="w-5 h-5 text-purple-300" />
+        </TooltipButton>
+        <TooltipButton
+          className="p-1 rounded-full hover:bg-purple-400/20 transition-colors
+            disabled:opacity-40 disabled:hover:bg-transparent"
+          onClick={onArchive}
+          disabled={archived}
+          tooltip={archived ? 'Déjà archivée' : 'Archiver'}
+          aria-label={archived ? 'Déjà archivée' : 'Archiver'}
+        >
+          <Archive className="w-5 h-5 text-purple-300" />
+        </TooltipButton>
+        <TooltipButton
+          onClick={onRemove}
+          className="p-1 hover:bg-red-700/20 rounded-full transition-colors"
+          tooltip="Supprimer"
+          aria-label="Supprimer"
+        >
+          <Trash2 className="w-5 h-5 text-red-400" />
+        </TooltipButton>
+      </div>
+      <TooltipButton
+        className="p-1 rounded-full hover:bg-gray-400/20 transition-colors sm:hidden"
+        onClick={event => toggleMoveMenu(event, 'actions')}
+        aria-expanded={moveMenu !== null}
+        tooltip="Plus d’actions"
+        aria-label="Plus d’actions"
+      >
+        <EllipsisVertical className="w-5 h-5 text-gray-400" />
+      </TooltipButton>
+    </>
+  )
+
   const trackIcon = (className: string) =>
     fileTrack.iconName ? (
       <svg className={className} style={{ color: fileTrack.iconColor }}>
@@ -299,46 +345,7 @@ export default function LibraryItemCard({
                     className={`w-5 h-5 ${fileTrack.loop ? 'text-purple-400' : 'text-gray-400'}`}
                   />
                 </button>
-                {/* Sur grand écran, chaque action a son bouton ; sur mobile la
-                    rangée est à l'étroit, elles se replient dans le menu ⋮. */}
-                <div className="hidden items-center gap-1 sm:flex">
-                  <TooltipButton
-                    className="p-1 rounded-full hover:bg-purple-400/20 transition-colors"
-                    onClick={event => toggleMoveMenu(event, 'move')}
-                    aria-expanded={moveMenu !== null}
-                    tooltip="Déplacer vers une autre playlist"
-                    aria-label="Déplacer vers une autre playlist"
-                  >
-                    <FolderInput className="w-5 h-5 text-purple-300" />
-                  </TooltipButton>
-                  <TooltipButton
-                    className="p-1 rounded-full hover:bg-purple-400/20 transition-colors
-                      disabled:opacity-40 disabled:hover:bg-transparent"
-                    onClick={onArchive}
-                    disabled={archived}
-                    tooltip={archived ? 'Déjà archivée' : 'Archiver'}
-                    aria-label={archived ? 'Déjà archivée' : 'Archiver'}
-                  >
-                    <Archive className="w-5 h-5 text-purple-300" />
-                  </TooltipButton>
-                  <TooltipButton
-                    onClick={onRemove}
-                    className="p-1 hover:bg-red-700/20 rounded-full transition-colors"
-                    tooltip="Supprimer"
-                    aria-label="Supprimer"
-                  >
-                    <Trash2 className="w-5 h-5 text-red-400" />
-                  </TooltipButton>
-                </div>
-                <TooltipButton
-                  className="p-1 rounded-full hover:bg-gray-400/20 transition-colors sm:hidden"
-                  onClick={event => toggleMoveMenu(event, 'actions')}
-                  aria-expanded={moveMenu !== null}
-                  tooltip="Plus d’actions"
-                  aria-label="Plus d’actions"
-                >
-                  <EllipsisVertical className="w-5 h-5 text-gray-400" />
-                </TooltipButton>
+                {rowActions}
               </div>
             </>
           ) : (
@@ -349,12 +356,7 @@ export default function LibraryItemCard({
               >
                 <Play className="w-5 h-5 text-green-400" />
               </button>
-              <button
-                onClick={onRemove}
-                className="p-1 hover:bg-red-700/20 rounded-full transition-colors"
-              >
-                <Trash2 className="w-5 h-5 text-red-400" />
-              </button>
+              {rowActions}
             </div>
           )}
         </div>
