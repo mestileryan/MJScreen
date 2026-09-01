@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import PlaylistItems, { visibleItems } from './PlaylistItems'
 import PlaylistSettingsPanel, { isPlaylistTweaked } from './PlaylistSettingsPanel'
+import TooltipButton from './TooltipButton'
 import Uploader from './Uploader'
 import ImportFileDragOverlay from './ImportFileDragOverlay'
 import ViewModePlayerToggle from './ViewModePlayerToggle'
@@ -128,6 +129,7 @@ export default function Library({ onPlayAudio, onOpenImage }: LibraryProps) {
   }
 
   const helpRef = useTooltip(HELP_TEXT)
+  const addPlaylistTooltip = useTooltip('Ajouter une playlist')
   const playlistsContainer = useRef<HTMLDivElement>(null)
 
   // Le mode soundboard dispose les playlists en colonnes flottantes de largeur fixe,
@@ -511,11 +513,11 @@ export default function Library({ onPlayAudio, onOpenImage }: LibraryProps) {
                 </div>
 
                 {/* Repli de la playlist — état de session uniquement, non persisté. */}
-                <button
+                <TooltipButton
                   className="mr-2 rounded-full p-1 transition-colors hover:bg-gray-400/20"
                   onClick={() => toggleCollapsed(playlist)}
                   aria-expanded={!collapsed}
-                  title={collapsed ? 'Déplier la playlist' : 'Replier la playlist'}
+                  tooltip={collapsed ? 'Déplier la playlist' : 'Replier la playlist'}
                   aria-label={collapsed ? 'Déplier la playlist' : 'Replier la playlist'}
                 >
                   {collapsed ? (
@@ -523,7 +525,7 @@ export default function Library({ onPlayAudio, onOpenImage }: LibraryProps) {
                   ) : (
                     <ChevronDown className="w-5 h-5 text-gray-400" />
                   )}
-                </button>
+                </TooltipButton>
 
                 <div className="flex-1">
                   {editingPlaylistId === playlist.id ? (
@@ -567,18 +569,18 @@ export default function Library({ onPlayAudio, onOpenImage }: LibraryProps) {
                     ? `Lancer les ${playable.length} pistes de la playlist`
                     : 'Lancer la playlist depuis sa première piste'
                   return (
-                    <button
+                    <TooltipButton
                       className="ml-3 rounded-full p-2 transition-colors hover:bg-green-400/20"
                       onClick={() =>
                         together
                           ? playable.forEach(track => onPlayAudio(track))
                           : onPlayAudio(playable[0])
                       }
-                      title={title}
+                      tooltip={title}
                       aria-label={title}
                     >
                       <CirclePlay className="w-5 h-5 text-green-400" />
-                    </button>
+                    </TooltipButton>
                   )
                 })()}
 
@@ -588,7 +590,7 @@ export default function Library({ onPlayAudio, onOpenImage }: LibraryProps) {
                     Masqué quand la playlist est repliée : le panneau ne
                     s'afficherait pas de toute façon. */}
                 {!collapsed && (
-                  <button
+                  <TooltipButton
                     className={`rounded-full p-2 transition-colors ${
                       isPlaylistTweaked(playlist)
                         ? `hover:bg-purple-400/20 ${settingsOpen ? 'bg-purple-400/20' : ''}`
@@ -600,7 +602,7 @@ export default function Library({ onPlayAudio, onOpenImage }: LibraryProps) {
                       )
                     }
                     aria-expanded={settingsOpen}
-                    title="Réglages de la playlist"
+                    tooltip="Réglages de la playlist"
                     aria-label="Réglages de la playlist"
                   >
                     <SlidersHorizontal
@@ -608,16 +610,18 @@ export default function Library({ onPlayAudio, onOpenImage }: LibraryProps) {
                         isPlaylistTweaked(playlist) ? 'text-purple-400' : 'text-gray-400'
                       }`}
                     />
-                  </button>
+                  </TooltipButton>
                 )}
 
                 {playlist.items.length === 0 && (
-                  <button
+                  <TooltipButton
                     className="p-2 hover:bg-red-700/20 rounded-full transition-colors ml-3"
                     onClick={() => void removePlaylist(playlist)}
+                    tooltip="Supprimer la playlist"
+                    aria-label="Supprimer la playlist"
                   >
                     <Trash2 className="w-5 h-5 text-red-400" />
-                  </button>
+                  </TooltipButton>
                 )}
               </div>
 
@@ -663,7 +667,7 @@ export default function Library({ onPlayAudio, onOpenImage }: LibraryProps) {
          flex items-center justify-center
          cursor-pointer hover:bg-gray-800/25 transition-colors"
           onClick={() => void addPlaylist()}
-          title="Ajouter une playlist"
+          ref={addPlaylistTooltip}
         >
           <Plus className="w-6 h-6 text-purple-500" />
         </div>
@@ -675,11 +679,11 @@ export default function Library({ onPlayAudio, onOpenImage }: LibraryProps) {
         {archivePlaylist && archivePlaylist.items.length > 0 && (
           <div className="mt-1 mb-1 flex flex-col rounded bg-gray-700/25 p-3">
             <div className="flex items-center">
-              <button
+              <TooltipButton
                 className="mr-2 rounded-full p-1 transition-colors hover:bg-gray-400/20"
                 onClick={() => setArchiveOpen(open => !open)}
                 aria-expanded={archiveOpen}
-                title={archiveOpen ? 'Replier les archives' : 'Déplier les archives'}
+                tooltip={archiveOpen ? 'Replier les archives' : 'Déplier les archives'}
                 aria-label={archiveOpen ? 'Replier les archives' : 'Déplier les archives'}
               >
                 {archiveOpen ? (
@@ -687,7 +691,7 @@ export default function Library({ onPlayAudio, onOpenImage }: LibraryProps) {
                 ) : (
                   <ChevronRight className="w-5 h-5 text-gray-400" />
                 )}
-              </button>
+              </TooltipButton>
               <Archive className="mr-2 w-4 h-4 text-gray-400" />
               {/* Tons gris : une remise, pas une playlist comme les autres. */}
               <p className="font-semibold text-gray-400">

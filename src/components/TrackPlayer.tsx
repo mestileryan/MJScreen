@@ -19,6 +19,7 @@ import {
 import { useLibrary } from '@/context/LibraryContext'
 import { useAudioWaveform, DEFAULT_WAVEFORM_OPTIONS } from '@/hooks/useAudioWaveform'
 import TrackEffectsPanel from './TrackEffectsPanel'
+import TooltipButton from './TooltipButton'
 import {
   createTrackGraph,
   resumePlaybackContext,
@@ -423,18 +424,19 @@ export default function TrackPlayer({
 
       {/* Boutons Play/Pause et Boucler */}
       <div className="flex gap-1">
-        <button
+        <TooltipButton
           className="rounded-full hover:bg-purple-400/20 transition-colors"
           onClick={rewind}
-          title="Revenir au début"
+          tooltip="Revenir au début"
           aria-label="Revenir au début"
         >
           <SkipBack className="w-5 h-5 text-purple-400" />
-        </button>
-        <button
+        </TooltipButton>
+        <TooltipButton
           className={`rounded-full transition-colors ${playHalo}`}
           onClick={togglePlay}
-          title={fadeTitle}
+          tooltip={fadeTitle ?? (isPlaying ? 'Mettre en pause' : 'Lire')}
+          aria-label={isPlaying ? 'Mettre en pause' : 'Lire'}
         >
           {fading ? (
             // Le son monte ou descend : l'attente reprend la couleur de l'action
@@ -449,11 +451,11 @@ export default function TrackPlayer({
           ) : (
             <Play className="w-5 h-5 text-green-400" />
           )}
-        </button>
-        <button
+        </TooltipButton>
+        <TooltipButton
           className="rounded-full hover:bg-red-400/20 transition-colors"
           onClick={() => void stopAndRewind()}
-          title={fadeTitle ?? 'Arrêter et revenir au début'}
+          tooltip={fadeTitle ?? 'Arrêter et revenir au début'}
           aria-label="Arrêter et revenir au début"
         >
           {/* L'attente garde ici la teinte du bouton : l'arrêt reste l'arrêt,
@@ -463,30 +465,32 @@ export default function TrackPlayer({
           ) : (
             <Square className="w-5 h-5 text-red-400" />
           )}
-        </button>
+        </TooltipButton>
         {/* Retrait de la file, dans le groupe de transport : au bord droit il
             était trop excentré pour une action courante. À gauche du repeat, il
             prolonge le duo rouge arrêt/retrait plutôt que de fermer la rangée. */}
-        <button
+        <TooltipButton
           className="rounded-full transition-colors hover:bg-red-400/20"
           onClick={() => void removeWithFade()}
-          title="Retirer de la file"
+          tooltip="Retirer de la file"
           aria-label="Retirer de la file"
         >
           <X className="w-5 h-5 text-red-400" />
-        </button>
-        <button
+        </TooltipButton>
+        <TooltipButton
           className={`rounded-full transition-colors ${loopHalo}`}
           onClick={toggleLoop}
+          tooltip={track.loop ? 'Ne plus boucler' : 'Boucler la piste'}
+          aria-label={track.loop ? 'Ne plus boucler' : 'Boucler la piste'}
         >
           <Repeat1 className={`w-5 h-5 ${track.loop ? 'text-purple-400' : 'text-gray-400'}`} />
-        </button>
+        </TooltipButton>
 
         {/* L'indicateur de volume coupe et rétablit le son d'un clic. */}
-        <button
+        <TooltipButton
           className={`ml-1 mr-1 rounded-full transition-colors ${volumeHalo}`}
           onClick={toggleMute}
-          title={track.volume === 0 ? 'Rétablir le son' : 'Couper le son'}
+          tooltip={track.volume === 0 ? 'Rétablir le son' : 'Couper le son'}
           aria-label={track.volume === 0 ? 'Rétablir le son' : 'Couper le son'}
         >
           {/* L'icône suit la position du curseur, pas l'amplitude brute. */}
@@ -498,7 +502,7 @@ export default function TrackPlayer({
             <Volume1 className="w-5 h-5 text-purple-400" />
           )}
           {volumePosition > 0.66 && <Volume2 className="w-5 h-5 text-purple-400" />}
-        </button>
+        </TooltipButton>
 
         <input
           className="w-20"
@@ -513,19 +517,19 @@ export default function TrackPlayer({
         />
 
         {/* Réglages avancés — le chevron vire au violet dès qu'un effet est actif */}
-        <button
+        <TooltipButton
           className={`ml-auto rounded-full transition-colors ${effectsHalo}`}
           onClick={() => setShowEffects(open => !open)}
           aria-expanded={showEffects}
           aria-label="Réglages avancés"
-          title="Réglages avancés"
+          tooltip="Réglages avancés"
         >
           {showEffects ? (
             <ChevronDown className={`w-5 h-5 ${tweaked ? 'text-purple-400' : 'text-gray-400'}`} />
           ) : (
             <ChevronRight className={`w-5 h-5 ${tweaked ? 'text-purple-400' : 'text-gray-400'}`} />
           )}
-        </button>
+        </TooltipButton>
 
       </div>
 

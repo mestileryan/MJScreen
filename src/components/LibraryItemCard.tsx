@@ -18,6 +18,7 @@ import {
   VolumeOff,
 } from 'lucide-react'
 import IconSelector from './IconSelector'
+import TooltipButton from './TooltipButton'
 import { useLibrary } from '@/context/LibraryContext'
 import { useTooltip } from '@/hooks/useTooltip'
 import { objectUrlFor } from '@/lib/objectUrl'
@@ -301,43 +302,43 @@ export default function LibraryItemCard({
                 {/* Sur grand écran, chaque action a son bouton ; sur mobile la
                     rangée est à l'étroit, elles se replient dans le menu ⋮. */}
                 <div className="hidden items-center gap-1 sm:flex">
-                  <button
+                  <TooltipButton
                     className="p-1 rounded-full hover:bg-purple-400/20 transition-colors"
                     onClick={event => toggleMoveMenu(event, 'move')}
                     aria-expanded={moveMenu !== null}
-                    title="Déplacer vers une autre playlist"
+                    tooltip="Déplacer vers une autre playlist"
                     aria-label="Déplacer vers une autre playlist"
                   >
                     <FolderInput className="w-5 h-5 text-purple-300" />
-                  </button>
-                  <button
+                  </TooltipButton>
+                  <TooltipButton
                     className="p-1 rounded-full hover:bg-purple-400/20 transition-colors
                       disabled:opacity-40 disabled:hover:bg-transparent"
                     onClick={onArchive}
                     disabled={archived}
-                    title={archived ? 'Déjà archivée' : 'Archiver'}
+                    tooltip={archived ? 'Déjà archivée' : 'Archiver'}
                     aria-label={archived ? 'Déjà archivée' : 'Archiver'}
                   >
                     <Archive className="w-5 h-5 text-purple-300" />
-                  </button>
-                  <button
+                  </TooltipButton>
+                  <TooltipButton
                     onClick={onRemove}
                     className="p-1 hover:bg-red-700/20 rounded-full transition-colors"
-                    title="Supprimer"
+                    tooltip="Supprimer"
                     aria-label="Supprimer"
                   >
                     <Trash2 className="w-5 h-5 text-red-400" />
-                  </button>
+                  </TooltipButton>
                 </div>
-                <button
+                <TooltipButton
                   className="p-1 rounded-full hover:bg-gray-400/20 transition-colors sm:hidden"
                   onClick={event => toggleMoveMenu(event, 'actions')}
                   aria-expanded={moveMenu !== null}
-                  title="Plus d’actions"
+                  tooltip="Plus d’actions"
                   aria-label="Plus d’actions"
                 >
                   <EllipsisVertical className="w-5 h-5 text-gray-400" />
-                </button>
+                </TooltipButton>
               </div>
             </>
           ) : (

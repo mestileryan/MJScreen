@@ -93,16 +93,17 @@ export function Row({
   children: ReactNode
 }) {
   const tooltip = useTooltip(hint)
+  const resetTooltip = useTooltip(`Réinitialiser ${label}`)
 
   return (
     <div className="flex items-center gap-2">
       <button
+        ref={resetTooltip}
         className="shrink-0 rounded p-0.5 text-gray-500 transition-colors hover:bg-gray-700
           hover:text-white disabled:opacity-20 disabled:hover:bg-transparent"
         onClick={onReset}
         disabled={!modified}
         aria-label={`Réinitialiser ${label}`}
-        title={`Réinitialiser ${label}`}
       >
         <RotateCcw className="h-3 w-3" />
       </button>
@@ -136,11 +137,10 @@ export function FadeStepper({
   const nudge = (delta: number) =>
     onChange(Math.min(MAX_FADE, Math.max(0, Math.round((value + delta) * 10) / 10)))
 
+  const tooltip = useTooltip(inherited ? `${title} — suit le réglage de la playlist` : title)
+
   return (
-    <div
-      className="flex items-center gap-0.5"
-      title={inherited ? `${title} — suit le réglage de la playlist` : title}
-    >
+    <div ref={tooltip} className="flex items-center gap-0.5">
       <span className="text-gray-500">{label}</span>
       <button
         className="rounded p-0.5 text-gray-400 hover:bg-gray-700 hover:text-white disabled:opacity-30"

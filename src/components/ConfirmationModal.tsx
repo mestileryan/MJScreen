@@ -1,6 +1,7 @@
 'use client'
 
 import { CircleX } from 'lucide-react'
+import TooltipButton from './TooltipButton'
 
 interface ConfirmationModalProps {
   message: string
@@ -32,14 +33,14 @@ export default function ConfirmationModal({
             Elle occupe sa propre ligne plutôt qu'un placement absolu : un
             message long viendrait sinon buter dessus. */}
         <div className="mb-1 flex justify-end">
-          <button
+          <TooltipButton
             onClick={onCancel}
             className="text-white transition-colors hover:text-red-400"
-            title="Annuler"
+            tooltip="Annuler"
             aria-label="Annuler"
           >
             <CircleX className="h-5 w-5" />
-          </button>
+          </TooltipButton>
         </div>
 
         <p className="mb-4 text-white">{message}</p>
