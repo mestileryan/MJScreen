@@ -13,6 +13,8 @@ interface PlaylistItemsProps {
   isListView: boolean
   searchTerm: string
   onMove: (move: SortableMove) => void
+  /** Déplacement vers une autre playlist via le menu, sans glisser-déposer. */
+  onMoveToPlaylist: (item: LibraryItem, targetPlaylistId: number) => void
   onRemoveItem: (playlist: Playlist, item: LibraryItem) => void
   onPlayAudio: (track: FileTrack) => void
   onOpenImage: (image: GalleryImage) => void
@@ -40,6 +42,7 @@ export default function PlaylistItems({
   isListView,
   searchTerm,
   onMove,
+  onMoveToPlaylist,
   onRemoveItem,
   onPlayAudio,
   onOpenImage,
@@ -71,6 +74,7 @@ export default function PlaylistItems({
             isListView={isListView}
             dragDisabled={dragDisabled}
             onRemove={() => onRemoveItem(playlist, item)}
+            onMoveToPlaylist={targetId => onMoveToPlaylist(item, targetId)}
             onPlayAudio={onPlayAudio}
             onOpenImage={onOpenImage}
           />

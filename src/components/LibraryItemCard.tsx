@@ -3,6 +3,7 @@
 import { useState, type ChangeEvent, type MouseEvent } from 'react'
 import { createPortal } from 'react-dom'
 import {
+  FolderInput,
   GripVertical,
   Link,
   Music,
@@ -35,6 +36,8 @@ interface LibraryItemCardProps {
   isListView: boolean
   dragDisabled?: boolean
   onRemove: () => void
+  /** Déplacement vers une autre playlist choisie dans le menu contextuel. */
+  onMoveToPlaylist: (targetPlaylistId: number) => void
   onPlayAudio: (track: FileTrack) => void
   onOpenImage: (image: GalleryImage) => void
 }
@@ -52,15 +55,20 @@ export default function LibraryItemCard({
   isListView,
   dragDisabled = false,
   onRemove,
+  onMoveToPlaylist,
   onPlayAudio,
   onOpenImage,
 }: LibraryItemCardProps) {
-  const { patchItem, saveItem } = useLibrary()
+  const { playlists, patchItem, saveItem } = useLibrary()
 
   const [isEditing, setIsEditing] = useState(false)
   const [isSelectingIcon, setIsSelectingIcon] = useState(false)
   const [hoverPreview, setHoverPreview] = useState<HoverPreview | null>(null)
   const [editableName, setEditableName] = useState(item.name)
+  // Position (viewport) du menu « déplacer vers » ; null = fermé. Le menu est
+  // porté par un portail en position fixe : ancré au conteneur, il serait rogné
+  // par l'`overflow-hidden` du tiroir de repli des playlists.
+  const [moveMenu, setMoveMenu] = useState<{ x: number; y: number } | null>(null)
 
   const tooltipRef = useTooltip(item.name)
 
@@ -120,6 +128,16 @@ export default function LibraryItemCard({
     if (!isAudio) return
     setIsSelectingIcon(false)
     await saveItem({ ...fileTrack, iconName: payload.iconName, iconColor: payload.color })
+  }
+
+  function toggleMoveMenu(event: MouseEvent<HTMLButtonElement>) {
+    const rect = event.currentTarget.getBoundingClientRect()
+    setMoveMenu(current => (current ? null : { x: rect.right, y: rect.bottom + 4 }))
+  }
+
+  function moveTo(targetPlaylistId: number | undefined) {
+    setMoveMenu(null)
+    if (targetPlaylistId != null) onMoveToPlaylist(targetPlaylistId)
   }
 
   async function toggleLoop() {
@@ -258,6 +276,15 @@ export default function LibraryItemCard({
                   />
                 </button>
                 <button
+                  className="p-1 rounded-full hover:bg-purple-400/20 transition-colors"
+                  onClick={toggleMoveMenu}
+                  aria-expanded={moveMenu !== null}
+                  title="Déplacer vers une autre playlist"
+                  aria-label="Déplacer vers une autre playlist"
+                >
+                  <FolderInput className="w-5 h-5 text-purple-300" />
+                </button>
+                <button
                   onClick={onRemove}
                   className="p-1 hover:bg-red-700/20 rounded-full transition-colors"
                 >
@@ -313,6 +340,49 @@ export default function LibraryItemCard({
           )}
         </div>
       )}
+
+      {moveMenu &&
+        createPortal(
+          <>
+            {/* Voile transparent : tout clic hors du menu le referme. */}
+            <div className="fixed inset-0 z-40" onClick={() => setMoveMenu(null)} />
+            <div
+              className="fixed z-50 max-h-64 min-w-[11rem] max-w-[16rem] overflow-auto rounded border
+                border-gray-600 bg-gray-800 py-1 text-sm text-white shadow-lg"
+              style={{
+                top: `${moveMenu.y}px`,
+                left: `${moveMenu.x}px`,
+                // Aligné sur le bord droit du bouton, qui vit près du bord de l'écran.
+                transform: 'translateX(-100%)',
+              }}
+            >
+              {/* Intitulé du menu : retrait moindre que les entrées pour se lire
+                  comme un libellé, pas comme un choix. Seul le nom de la piste
+                  est tronqué, pour que le « vers… » reste toujours visible. */}
+              <p className="flex border-b border-gray-700 px-2 py-1 text-xs text-gray-400">
+                <span className="shrink-0">Déplacer&nbsp;</span>
+                <span className="truncate text-gray-200">{item.name}</span>
+                <span className="shrink-0">&nbsp;vers…</span>
+              </p>
+              {playlists.map(playlist => {
+                const current = playlist.id === item.playlistId
+                return (
+                  <button
+                    key={playlist.id}
+                    disabled={current}
+                    className={`block w-full truncate py-1.5 pl-5 pr-3 text-left ${
+                      current ? 'cursor-default text-gray-500' : 'hover:bg-gray-700'
+                    }`}
+                    onClick={() => moveTo(playlist.id)}
+                  >
+                    {playlist.name}
+                  </button>
+                )
+              })}
+            </div>
+          </>,
+          document.body,
+        )}
 
       {hoverPreview &&
         createPortal(

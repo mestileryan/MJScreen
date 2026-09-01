@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState, type MouseEvent } from 'react'
+import { useEffect, useRef, useState, type DragEvent, type MouseEvent } from 'react'
 import {
   ChevronDown,
   ChevronRight,
@@ -141,7 +141,11 @@ export default function Library({ onPlayAudio, onOpenImage }: LibraryProps) {
 
   // ---------------------------------------------------------------- import
 
-  async function addFileTo(list: Playlist[], file: File): Promise<Playlist[]> {
+  async function addFileTo(
+    list: Playlist[],
+    file: File,
+    targetPlaylistId?: number,
+  ): Promise<Playlist[]> {
     const { playlistName, itemName } = parseName(file.name)
 
     let next = list
@@ -155,7 +159,11 @@ export default function Library({ onPlayAudio, onOpenImage }: LibraryProps) {
 
     let target: Playlist | undefined = next[0]
 
-    if (playlistName) {
+    if (targetPlaylistId != null) {
+      // Déposé sur une playlist précise : ce geste explicite prime sur le
+      // routage par préfixe « Playlist -- » du nom de fichier.
+      target = next.find(playlist => playlist.id === targetPlaylistId) ?? target
+    } else if (playlistName) {
       const existing = next.find(
         playlist => playlist.name.toLowerCase() === playlistName.toLowerCase(),
       )
@@ -197,15 +205,49 @@ export default function Library({ onPlayAudio, onOpenImage }: LibraryProps) {
     return next
   }
 
-  async function addFiles(files: File[]) {
+  async function addFiles(files: File[], targetPlaylistId?: number) {
     // Les ajouts sont enchaînés sur une valeur locale : `playlists` ne serait pas
     // encore rafraîchi entre deux fichiers.
     let current = playlistsRef.current
     for (const file of files) {
-      current = await addFileTo(current, file)
+      current = await addFileTo(current, file, targetPlaylistId)
     }
     playlistsRef.current = current
     setPlaylists(current)
+  }
+
+  // ------------------------------------------------- dépôt ciblé de fichiers
+
+  // Playlist survolée pendant un glissement de fichiers : elle recevra le dépôt.
+  // Les compteurs suivent le va-et-vient des `dragenter`/`dragleave`, émis pour
+  // chaque enfant traversé (même mécanique que l'overlay d'import).
+  const [dropPlaylistId, setDropPlaylistId] = useState<number | null>(null)
+  const dropCounters = useRef(new Map<number, number>())
+
+  function isFileDrag(event: DragEvent<HTMLDivElement>): boolean {
+    return Array.from(event.dataTransfer?.types ?? []).includes('Files')
+  }
+
+  function onPlaylistDragEnter(event: DragEvent<HTMLDivElement>, playlist: Playlist) {
+    if (playlist.id == null || !isFileDrag(event)) return
+    dropCounters.current.set(playlist.id, (dropCounters.current.get(playlist.id) ?? 0) + 1)
+    setDropPlaylistId(playlist.id)
+  }
+
+  function onPlaylistDragLeave(event: DragEvent<HTMLDivElement>, playlist: Playlist) {
+    const id = playlist.id
+    if (id == null || !isFileDrag(event)) return
+    const count = (dropCounters.current.get(id) ?? 0) - 1
+    dropCounters.current.set(id, Math.max(0, count))
+    if (count <= 0) setDropPlaylistId(current => (current === id ? null : current))
+  }
+
+  /** Le dépôt lui-même remonte à l'overlay global ; la cible est lue ici. */
+  function onFilesDropped(files: File[]) {
+    const target = dropPlaylistId
+    setDropPlaylistId(null)
+    dropCounters.current.clear()
+    void addFiles(files, target ?? undefined)
   }
 
   // ------------------------------------------------------------- playlists
@@ -289,6 +331,36 @@ export default function Library({ onPlayAudio, onOpenImage }: LibraryProps) {
     })()
   }
 
+  /**
+   * Déplacement sans glisser-déposer : l'élément rejoint la fin de la playlist
+   * choisie. Même mécanique que `handleItemsMove`, la position en moins.
+   */
+  async function moveItemToPlaylist(item: LibraryItem, targetPlaylistId: number) {
+    if (item.playlistId === targetPlaylistId) return
+
+    const next = playlistsRef.current.map(playlist => ({
+      ...playlist,
+      items: playlist.items.slice(),
+    }))
+    const source = next.find(playlist => playlist.id === item.playlistId)
+    const target = next.find(playlist => playlist.id === targetPlaylistId)
+    if (!source || !target) return
+
+    const index = source.items.findIndex(
+      candidate => candidate.kind === item.kind && candidate.id === item.id,
+    )
+    if (index === -1) return
+    const [moved] = source.items.splice(index, 1)
+    target.items.push(moved)
+
+    source.items = withOrders(source.items, source.id)
+    target.items = withOrders(target.items, target.id)
+
+    setPlaylists(next)
+    await persistItems(source.items)
+    await persistItems(target.items)
+  }
+
   async function removeItem(playlist: Playlist, item: LibraryItem) {
     const remaining = playlist.items.filter(candidate => candidate !== item)
     if (remaining.length === playlist.items.length) return
@@ -350,7 +422,7 @@ export default function Library({ onPlayAudio, onOpenImage }: LibraryProps) {
 
   return (
     <div className="w-full bg-gray-800 rounded-lg p-4 pt-2">
-      <ImportFileDragOverlay onFilesDropped={addFiles}>
+      <ImportFileDragOverlay onFilesDropped={onFilesDropped}>
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center">
             <h2 className="mr-2 text-xl font-bold text-purple-300">Bibliothèque</h2>
@@ -378,12 +450,16 @@ export default function Library({ onPlayAudio, onOpenImage }: LibraryProps) {
               key={playlist.id}
               className={`bg-gray-700/25 p-3 rounded mt-1 mb-1 flex flex-col relative ${
                 boardLayout ? 'float-left mr-2 border-r-[3px] border-purple-900' : ''
-              }`}
+              } ${dropPlaylistId === playlist.id ? 'ring-2 ring-purple-400 bg-purple-400/10' : ''}`}
               style={
                 boardLayout
                   ? { width: playlist.width ? `${playlist.width}px` : '100%' }
                   : undefined
               }
+              // Cible de dépôt de fichiers : repliée ou non, toute la zone de la
+              // playlist (en-tête compris) désigne où ranger l'import.
+              onDragEnter={event => onPlaylistDragEnter(event, playlist)}
+              onDragLeave={event => onPlaylistDragLeave(event, playlist)}
             >
               {boardLayout && (
                 <div
@@ -530,6 +606,7 @@ export default function Library({ onPlayAudio, onOpenImage }: LibraryProps) {
                     isListView={isListView}
                     searchTerm={searchTerm}
                     onMove={handleItemsMove}
+                    onMoveToPlaylist={(item, targetId) => void moveItemToPlaylist(item, targetId)}
                     onRemoveItem={removeItem}
                     onPlayAudio={onPlayAudio}
                     onOpenImage={onOpenImage}

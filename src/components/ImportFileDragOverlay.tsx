@@ -67,13 +67,20 @@ export default function ImportFileDragOverlay({
     >
       {children}
 
-      {/* Overlay semi-transparent (s'affiche uniquement pendant un survol de fichiers) */}
+      {/* Indication de survol de fichiers. `pointer-events-none` partout : un
+          voile qui capterait les événements empêcherait les playlists de savoir
+          laquelle est survolée — le liseré signale la zone, le bandeau (fixe,
+          toujours visible même bibliothèque défilée) explique le geste. */}
       {isDragOver && (
-        <div className="absolute inset-0 flex justify-center transition-all duration-300">
-          <div className="border-4 border-dashed bg-black bg-opacity-75 w-[80vw] h-[80vh] border-white rounded-lg p-10 text-white text-xl font-semibold text-center">
-            Déposez votre fichier ici
+        <>
+          <div className="pointer-events-none absolute inset-0 z-10 rounded-lg border-2 border-dashed border-purple-400/70" />
+          <div
+            className="pointer-events-none fixed top-4 left-1/2 z-50 -translate-x-1/2 rounded-lg
+              bg-gray-900/95 px-4 py-2 text-sm font-semibold text-white shadow-lg"
+          >
+            Déposez vos fichiers sur une playlist pour les y ranger
           </div>
-        </div>
+        </>
       )}
     </div>
   )
