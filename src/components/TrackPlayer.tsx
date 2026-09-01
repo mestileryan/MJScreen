@@ -396,19 +396,11 @@ export default function TrackPlayer({
 
   return (
     <>
-      {/* Le retrait est sorti de la rangée de transport, devenue trop chargée :
-          il vit en haut à droite du bloc, à hauteur du nom. */}
-      <div className="mb-1 flex items-center gap-2">
-        <p className="min-w-0 flex-1 truncate text-xs text-white">{track.name}</p>
-        <button
-          className="shrink-0 rounded-full p-0.5 transition-colors hover:bg-red-400/20"
-          onClick={() => void removeWithFade()}
-          title="Retirer de la file"
-          aria-label="Retirer de la file"
-        >
-          <X className="h-4 w-4 text-red-400" />
-        </button>
-      </div>
+      <p className="mb-1 truncate text-xs text-white">
+        {/* La playlist d'origine situe la piste d'un coup d'œil, en retrait
+            pour ne pas voler la vedette au titre. */}
+        {playlist && <span className="text-gray-400">({playlist.name})</span>} {track.name}
+      </p>
       {/* Player audio */}
       <audio
         ref={player}
@@ -472,6 +464,17 @@ export default function TrackPlayer({
             <Square className="w-5 h-5 text-red-400" />
           )}
         </button>
+        {/* Retrait de la file, dans le groupe de transport : au bord droit il
+            était trop excentré pour une action courante. À gauche du repeat, il
+            prolonge le duo rouge arrêt/retrait plutôt que de fermer la rangée. */}
+        <button
+          className="rounded-full transition-colors hover:bg-red-400/20"
+          onClick={() => void removeWithFade()}
+          title="Retirer de la file"
+          aria-label="Retirer de la file"
+        >
+          <X className="w-5 h-5 text-red-400" />
+        </button>
         <button
           className={`rounded-full transition-colors ${loopHalo}`}
           onClick={toggleLoop}
@@ -523,6 +526,7 @@ export default function TrackPlayer({
             <ChevronRight className={`w-5 h-5 ${tweaked ? 'text-purple-400' : 'text-gray-400'}`} />
           )}
         </button>
+
       </div>
 
       {showEffects && (
