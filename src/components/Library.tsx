@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState, type MouseEvent } from 'react'
 import {
+  ChevronDown,
+  ChevronRight,
   CirclePlay,
   GripVertical,
   HelpCircle,
@@ -98,6 +100,22 @@ export default function Library({ onPlayAudio, onOpenImage }: LibraryProps) {
   const [editingPlaylistId, setEditingPlaylistId] = useState<number | null>(null)
   const [editingName, setEditingName] = useState('')
   const [settingsPlaylistId, setSettingsPlaylistId] = useState<number | null>(null)
+  // Playlists repliées. Volontairement non persisté : au rechargement tout est
+  // déplié, le repli ne sert qu'à dégager la vue pendant la session.
+  const [collapsedPlaylistIds, setCollapsedPlaylistIds] = useState<ReadonlySet<number>>(
+    new Set(),
+  )
+
+  function toggleCollapsed(playlist: Playlist) {
+    const id = playlist.id
+    if (id == null) return
+    setCollapsedPlaylistIds(current => {
+      const next = new Set(current)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
 
   const helpRef = useTooltip(HELP_TEXT)
   const playlistsContainer = useRef<HTMLDivElement>(null)
@@ -352,7 +370,10 @@ export default function Library({ onPlayAudio, onOpenImage }: LibraryProps) {
         </div>
 
         <div ref={playlistsContainer}>
-          {playlists.map(playlist => (
+          {playlists.map(playlist => {
+            const collapsed = playlist.id != null && collapsedPlaylistIds.has(playlist.id)
+            const settingsOpen = settingsPlaylistId === playlist.id
+            return (
             <div
               key={playlist.id}
               className={`bg-gray-700/25 p-3 rounded mt-1 mb-1 flex flex-col relative ${
@@ -372,9 +393,24 @@ export default function Library({ onPlayAudio, onOpenImage }: LibraryProps) {
                 />
               )}
               <div className="flex items-center mb-2">
-                <div className="playlist-handle cursor-move p-1 mr-3 rounded hover:bg-gray-800/25">
+                <div className="playlist-handle cursor-move p-1 mr-1 rounded hover:bg-gray-800/25">
                   <GripVertical className="w-5 h-5 text-gray-400" />
                 </div>
+
+                {/* Repli de la playlist — état de session uniquement, non persisté. */}
+                <button
+                  className="mr-2 rounded-full p-1 transition-colors hover:bg-gray-400/20"
+                  onClick={() => toggleCollapsed(playlist)}
+                  aria-expanded={!collapsed}
+                  title={collapsed ? 'Déplier la playlist' : 'Replier la playlist'}
+                  aria-label={collapsed ? 'Déplier la playlist' : 'Replier la playlist'}
+                >
+                  {collapsed ? (
+                    <ChevronRight className="w-5 h-5 text-gray-400" />
+                  ) : (
+                    <ChevronDown className="w-5 h-5 text-gray-400" />
+                  )}
+                </button>
 
                 <div className="flex-1">
                   {editingPlaylistId === playlist.id ? (
@@ -394,6 +430,12 @@ export default function Library({ onPlayAudio, onOpenImage }: LibraryProps) {
                       onClick={() => startEditingName(playlist)}
                     >
                       {playlist.name}
+                      {/* Replié, le contenu est invisible : on rappelle ce qu'il contient. */}
+                      {collapsed && (
+                        <span className="ml-2 text-sm font-normal text-gray-400">
+                          ({playlist.items.length})
+                        </span>
+                      )}
                     </p>
                   )}
                 </div>
@@ -428,28 +470,33 @@ export default function Library({ onPlayAudio, onOpenImage }: LibraryProps) {
                 })()}
 
                 {/* Réglages de lecture de la playlist — l'icône vire au violet
-                    dès que la configuration s'écarte du mode libre sans fondu. */}
-                <button
-                  className={`rounded-full p-2 transition-colors ${
-                    isPlaylistTweaked(playlist)
-                      ? 'hover:bg-purple-400/20'
-                      : 'hover:bg-gray-400/20'
-                  }`}
-                  onClick={() =>
-                    setSettingsPlaylistId(current =>
-                      current === playlist.id ? null : (playlist.id ?? null),
-                    )
-                  }
-                  aria-expanded={settingsPlaylistId === playlist.id}
-                  title="Réglages de la playlist"
-                  aria-label="Réglages de la playlist"
-                >
-                  <SlidersHorizontal
-                    className={`w-5 h-5 ${
-                      isPlaylistTweaked(playlist) ? 'text-purple-400' : 'text-gray-400'
+                    dès que la configuration s'écarte du mode libre sans fondu,
+                    et le halo reste allumé tant que le panneau est ouvert.
+                    Masqué quand la playlist est repliée : le panneau ne
+                    s'afficherait pas de toute façon. */}
+                {!collapsed && (
+                  <button
+                    className={`rounded-full p-2 transition-colors ${
+                      isPlaylistTweaked(playlist)
+                        ? `hover:bg-purple-400/20 ${settingsOpen ? 'bg-purple-400/20' : ''}`
+                        : `hover:bg-gray-400/20 ${settingsOpen ? 'bg-gray-400/20' : ''}`
                     }`}
-                  />
-                </button>
+                    onClick={() =>
+                      setSettingsPlaylistId(current =>
+                        current === playlist.id ? null : (playlist.id ?? null),
+                      )
+                    }
+                    aria-expanded={settingsOpen}
+                    title="Réglages de la playlist"
+                    aria-label="Réglages de la playlist"
+                  >
+                    <SlidersHorizontal
+                      className={`w-5 h-5 ${
+                        isPlaylistTweaked(playlist) ? 'text-purple-400' : 'text-gray-400'
+                      }`}
+                    />
+                  </button>
+                )}
 
                 {playlist.items.length === 0 && (
                   <button
@@ -461,24 +508,37 @@ export default function Library({ onPlayAudio, onOpenImage }: LibraryProps) {
                 )}
               </div>
 
-              {settingsPlaylistId === playlist.id && (
-                <PlaylistSettingsPanel
-                  playlist={playlist}
-                  onChange={updated => void savePlaylistSettings(updated)}
-                />
-              )}
+              {/* Tiroir animé du repli : une ligne de grille qui passe de 1fr à
+                  0fr — la seule façon CSS d'animer vers une hauteur `auto`. Le
+                  contenu reste monté, c'est le wrapper qui l'écrase ; `inert`
+                  le sort du parcours clavier tant qu'il est replié. */}
+              <div
+                className="grid transition-[grid-template-rows] duration-300 ease-in-out"
+                style={{ gridTemplateRows: collapsed ? '0fr' : '1fr' }}
+                inert={collapsed}
+              >
+                <div className="min-h-0 overflow-hidden">
+                  {settingsOpen && (
+                    <PlaylistSettingsPanel
+                      playlist={playlist}
+                      onChange={updated => void savePlaylistSettings(updated)}
+                    />
+                  )}
 
-              <PlaylistItems
-                playlist={playlist}
-                isListView={isListView}
-                searchTerm={searchTerm}
-                onMove={handleItemsMove}
-                onRemoveItem={removeItem}
-                onPlayAudio={onPlayAudio}
-                onOpenImage={onOpenImage}
-              />
+                  <PlaylistItems
+                    playlist={playlist}
+                    isListView={isListView}
+                    searchTerm={searchTerm}
+                    onMove={handleItemsMove}
+                    onRemoveItem={removeItem}
+                    onPlayAudio={onPlayAudio}
+                    onOpenImage={onOpenImage}
+                  />
+                </div>
+              </div>
             </div>
-          ))}
+            )
+          })}
         </div>
         <div className="clear-both" />
 
