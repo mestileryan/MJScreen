@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { CircleX } from 'lucide-react'
 import iconList from '@/assets/icon-list.json'
+import TooltipButton from './TooltipButton'
+import { readCookie, writeCookie } from '@/lib/cookieStore'
 import { DEFAULT_ICON_COLOR } from '@/models/FileTrack'
 
 interface IconMeta {
@@ -31,6 +33,33 @@ const iconsArray: IconMeta[] = (iconList as string[]).map(name => ({
   name,
 }))
 
+/**
+ * Dernières couleurs réellement appliquées à une icône, pour uniformiser une
+ * playlist en deux clics. Persistées en cookie, plus récente en premier.
+ */
+const RECENT_COLORS_COOKIE = 'recentIconColors'
+const RECENT_COLORS_MAX = 5
+
+function readRecentColors(): string[] {
+  if (typeof document === 'undefined') return []
+  const raw = readCookie(RECENT_COLORS_COOKIE)
+  if (!raw) return []
+  return raw
+    .split(',')
+    .filter(color => /^#[0-9a-f]{6}$/i.test(color))
+    .slice(0, RECENT_COLORS_MAX)
+}
+
+function pushRecentColor(color: string): string[] {
+  const normalized = color.toLowerCase()
+  const next = [
+    normalized,
+    ...readRecentColors().filter(candidate => candidate !== normalized),
+  ].slice(0, RECENT_COLORS_MAX)
+  writeCookie(RECENT_COLORS_COOKIE, next.join(','))
+  return next
+}
+
 export default function IconSelector({
   initialSearch,
   initialColor,
@@ -41,6 +70,8 @@ export default function IconSelector({
   const [searchTerm, setSearchTerm] = useState(initialSearch ?? '')
   const [selectedColor, setSelectedColor] = useState(initialColor || DEFAULT_ICON_COLOR)
   const [visibleCount, setVisibleCount] = useState(INITIAL_ICONS)
+  // Lu paresseusement : la modale n'est montée que côté client, sur un clic.
+  const [recentColors, setRecentColors] = useState<string[]>(readRecentColors)
 
   const searchInput = useRef<HTMLInputElement>(null)
   /** Détecter le scroll */
@@ -64,6 +95,12 @@ export default function IconSelector({
   function handleSearchChange(value: string) {
     setSearchTerm(value)
     setVisibleCount(INITIAL_ICONS)
+  }
+
+  /** Choisir une icône enregistre aussi sa couleur parmi les récentes. */
+  function chooseIcon(iconName: string) {
+    setRecentColors(pushRecentColor(selectedColor))
+    onIconChosen({ iconName, color: selectedColor })
   }
 
   function handleScroll() {
@@ -94,6 +131,25 @@ export default function IconSelector({
             className="min-w-0 flex-1 rounded bg-gray-700 p-2 text-white sm:mr-4 sm:flex-none"
             placeholder="Rechercher une icône..."
           />
+          {/* Couleurs récentes : un clic reprend la teinte d'une icône déjà
+              réglée, pour garder une playlist homogène. */}
+          {recentColors.length > 0 && (
+            <div className="flex items-center gap-1.5 mr-1">
+              {recentColors.map(color => (
+                <TooltipButton
+                  key={color}
+                  tooltip={`Réutiliser ${color}`}
+                  aria-label={`Réutiliser la couleur ${color}`}
+                  onClick={() => setSelectedColor(color)}
+                  className={`h-5 w-5 rounded-full border border-gray-500 transition-transform
+                    hover:scale-110 ${
+                      color === selectedColor.toLowerCase() ? 'ring-2 ring-white/70' : ''
+                    }`}
+                  style={{ backgroundColor: color }}
+                />
+              ))}
+            </div>
+          )}
           <input
             type="color"
             value={selectedColor}
@@ -116,7 +172,7 @@ export default function IconSelector({
           <div
             key={icon.path}
             className="flex flex-col items-center cursor-pointer text-gray-400 hover:text-purple-300"
-            onClick={() => onIconChosen({ iconName: icon.name, color: selectedColor })}
+            onClick={() => chooseIcon(icon.name)}
           >
             <svg className="w-8 h-8 text-purple-400" style={{ color: selectedColor }}>
               <use href={`#${icon.name}`} />
