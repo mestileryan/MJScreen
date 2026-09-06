@@ -20,7 +20,6 @@ import { useLibrary } from '@/context/LibraryContext'
 import { useAudioWaveform, DEFAULT_WAVEFORM_OPTIONS } from '@/hooks/useAudioWaveform'
 import TrackEffectsPanel from './TrackEffectsPanel'
 import TooltipButton from './TooltipButton'
-import { useAppMode } from '@/hooks/useAppMode'
 import {
   createTrackGraph,
   resumePlaybackContext,
@@ -75,8 +74,6 @@ export default function TrackPlayer({
   registerControls,
 }: TrackPlayerProps) {
   const { findTrack, saveItem, playlists } = useLibrary()
-  // En mode jeu on pilote la lecture mais on ne règle plus les effets.
-  const { gameMode } = useAppMode()
   const player = useRef<HTMLAudioElement>(null)
   const canvas = useRef<HTMLCanvasElement>(null)
   const [isPlaying, setIsPlaying] = useState(false)
@@ -519,25 +516,25 @@ export default function TrackPlayer({
           onKeyUp={commitVolume}
         />
 
-        {/* Réglages avancés — le chevron vire au violet dès qu'un effet est actif */}
-        {!gameMode && (
-          <TooltipButton
-            className={`ml-auto rounded-full transition-colors ${effectsHalo}`}
-            onClick={() => setShowEffects(open => !open)}
-            aria-expanded={showEffects}
-            aria-label="Réglages avancés"
-            tooltip="Réglages avancés"
-          >
-            {showEffects ? (
-              <ChevronDown className={`w-5 h-5 ${tweaked ? 'text-purple-400' : 'text-gray-400'}`} />
-            ) : (
-              <ChevronRight className={`w-5 h-5 ${tweaked ? 'text-purple-400' : 'text-gray-400'}`} />
-            )}
-          </TooltipButton>
-        )}
+        {/* Réglages avancés — le chevron vire au violet dès qu'un effet est actif.
+            Conservés même en mode jeu : ajuster un fondu ou une réverb en pleine
+            séance fait partie du jeu, contrairement au rangement de la bibliothèque. */}
+        <TooltipButton
+          className={`ml-auto rounded-full transition-colors ${effectsHalo}`}
+          onClick={() => setShowEffects(open => !open)}
+          aria-expanded={showEffects}
+          aria-label="Réglages avancés"
+          tooltip="Réglages avancés"
+        >
+          {showEffects ? (
+            <ChevronDown className={`w-5 h-5 ${tweaked ? 'text-purple-400' : 'text-gray-400'}`} />
+          ) : (
+            <ChevronRight className={`w-5 h-5 ${tweaked ? 'text-purple-400' : 'text-gray-400'}`} />
+          )}
+        </TooltipButton>
       </div>
 
-      {showEffects && !gameMode && (
+      {showEffects && (
         <TrackEffectsPanel
           effects={stored}
           inheritedFades={{ fadeIn: playlistFadeIn, fadeOut: playlistFadeOut }}
