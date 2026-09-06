@@ -16,10 +16,43 @@ import {
   titleFromFileName,
 } from '@/lib/projectTitle'
 import ConfirmationModal from './ConfirmationModal'
+import { LAYOUT_WIDTH_CHOICES, useDisplayPrefs } from '@/hooks/useDisplayPrefs'
 
 interface SettingsModalProps {
   isOpen: boolean
   onClose: () => void
+}
+
+/** Interrupteur libellé, pour les préférences d'affichage. */
+function Switch({
+  label,
+  checked,
+  onChange,
+}: {
+  label: string
+  checked: boolean
+  onChange: (checked: boolean) => void
+}) {
+  return (
+    <label className="flex cursor-pointer items-center justify-between gap-3 text-sm text-gray-200">
+      <span>{label}</span>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        onClick={() => onChange(!checked)}
+        className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${
+          checked ? 'bg-purple-600' : 'bg-gray-600'
+        }`}
+      >
+        <span
+          className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${
+            checked ? 'translate-x-4' : ''
+          }`}
+        />
+      </button>
+    </label>
+  )
 }
 
 /** Déclenche le téléchargement d'un blob sous le nom donné. */
@@ -39,6 +72,16 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const [showClearConfirmation, setShowClearConfirmation] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const {
+    showFileSize,
+    setShowFileSize,
+    showLinkIcon,
+    setShowLinkIcon,
+    showIconPicker,
+    setShowIconPicker,
+    layoutWidth,
+    setLayoutWidth,
+  } = useDisplayPrefs()
 
   // Génère l'archive et déclenche le téléchargement
   async function triggerExport() {
@@ -135,6 +178,44 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
               >
                 <CircleX />
               </button>
+            </div>
+
+            {/* Préférences d'affichage des cartes — cookie, pas base de données.
+                Le trait les sépare des actions sur la bibliothèque, d'une autre
+                nature : elles écrivent en base, voire l'effacent. */}
+            <div className="mb-5 flex flex-col gap-2 border-b border-gray-700 pb-5">
+              <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">
+                Affichage
+              </p>
+              <Switch
+                label="Taille des fichiers"
+                checked={showFileSize}
+                onChange={setShowFileSize}
+              />
+              <Switch
+                label="Icône de lien des pistes"
+                checked={showLinkIcon}
+                onChange={setShowLinkIcon}
+              />
+              <Switch
+                label="Icônes des pistes"
+                checked={showIconPicker}
+                onChange={setShowIconPicker}
+              />
+              <label className="flex items-center justify-between gap-3 text-sm text-gray-200">
+                <span>Largeur maximale</span>
+                <select
+                  value={layoutWidth}
+                  onChange={event => setLayoutWidth(event.target.value)}
+                  className="rounded bg-gray-700 px-2 py-1 text-sm text-white"
+                >
+                  {LAYOUT_WIDTH_CHOICES.map(choice => (
+                    <option key={choice.value} value={choice.value}>
+                      {choice.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
             </div>
 
             <div className="flex flex-col gap-3">

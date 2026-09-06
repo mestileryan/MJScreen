@@ -20,6 +20,7 @@ import {
 import IconSelector from './IconSelector'
 import TooltipButton from './TooltipButton'
 import { useLibrary } from '@/context/LibraryContext'
+import { useDisplayPrefs } from '@/hooks/useDisplayPrefs'
 import { useTooltip } from '@/hooks/useTooltip'
 import { objectUrlFor } from '@/lib/objectUrl'
 import { gainForPosition, positionForGain } from '@/lib/loudness'
@@ -66,6 +67,7 @@ export default function LibraryItemCard({
   onOpenImage,
 }: LibraryItemCardProps) {
   const { playlists, patchItem, saveItem } = useLibrary()
+  const { showFileSize, showLinkIcon, showIconPicker } = useDisplayPrefs()
 
   const [isEditing, setIsEditing] = useState(false)
   const [isSelectingIcon, setIsSelectingIcon] = useState(false)
@@ -261,19 +263,26 @@ export default function LibraryItemCard({
 
           {isAudio ? (
             <>
-              <button
-                className="p-1 rounded-full hover:bg-purple-400/20 transition-colors"
-                onClick={copyLink}
-                disabled={!fileTrack.id}
-              >
-                <Link className="w-3 h-3 text-purple-300" />
-              </button>
-              <div
-                className="mr-3 cursor-pointer hover:bg-purple-400/20 rounded-full ml-2"
-                onClick={() => setIsSelectingIcon(true)}
-              >
-                {trackIcon(fileTrack.iconName ? 'w-6 h-6' : 'w-5 h-5')}
-              </div>
+              {/* Lien et icône sont des options d'affichage (roue crantée) : la
+                  vue liste se dépouille pour ceux qui ne s'en servent pas. Le mode
+                  soundboard, lui, repose sur l'icône et n'est pas concerné. */}
+              {showLinkIcon && (
+                <button
+                  className="p-1 rounded-full hover:bg-purple-400/20 transition-colors"
+                  onClick={copyLink}
+                  disabled={!fileTrack.id}
+                >
+                  <Link className="w-3 h-3 text-purple-300" />
+                </button>
+              )}
+              {showIconPicker && (
+                <div
+                  className="mr-3 cursor-pointer hover:bg-purple-400/20 rounded-full ml-2"
+                  onClick={() => setIsSelectingIcon(true)}
+                >
+                  {trackIcon(fileTrack.iconName ? 'w-6 h-6' : 'w-5 h-5')}
+                </div>
+              )}
             </>
           ) : (
             <div className="mr-3 ml-2">
@@ -303,10 +312,13 @@ export default function LibraryItemCard({
             ) : (
               <p className="flex min-w-0 cursor-pointer items-center gap-2 font-medium text-white">
                 <span className="truncate">{item.name}</span>
-                {/* La taille est le premier détail sacrifié quand la place manque. */}
-                <span className="hidden shrink-0 text-sm text-gray-400 sm:inline">
-                  ({fileSizeInMB} Mo)
-                </span>
+                {/* La taille est le premier détail sacrifié quand la place manque,
+                    et masquée d'office sauf demande dans la roue crantée. */}
+                {showFileSize && (
+                  <span className="hidden shrink-0 text-sm text-gray-400 sm:inline">
+                    ({fileSizeInMB} Mo)
+                  </span>
+                )}
               </p>
             )}
           </div>
