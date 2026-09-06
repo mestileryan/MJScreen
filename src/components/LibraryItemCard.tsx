@@ -238,13 +238,14 @@ export default function LibraryItemCard({
     </>
   )
 
+  // `track-icon` : en mode clair, un filtre assombrit la couleur (voir globals.css).
   const trackIcon = (className: string) =>
     fileTrack.iconName ? (
-      <svg className={className} style={{ color: fileTrack.iconColor }}>
+      <svg className={`track-icon ${className}`} style={{ color: fileTrack.iconColor }}>
         <use href={`#${fileTrack.iconName}`} />
       </svg>
     ) : (
-      <Music className={className} style={{ color: fileTrack.iconColor }} />
+      <Music className={`track-icon ${className}`} style={{ color: fileTrack.iconColor }} />
     )
 
   return (
@@ -276,8 +277,11 @@ export default function LibraryItemCard({
                 </button>
               )}
               {showIconPicker && (
+                // Même fond que les tuiles du soundboard : une icône claire sur
+                // une rangée claire serait invisible sans lui.
                 <div
-                  className="mr-3 cursor-pointer hover:bg-purple-400/20 rounded-full ml-2"
+                  className="ml-2 mr-3 flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center
+                    rounded bg-tile transition-colors hover:bg-tile-hover"
                   onClick={() => setIsSelectingIcon(true)}
                 >
                   {trackIcon(fileTrack.iconName ? 'w-6 h-6' : 'w-5 h-5')}
@@ -376,8 +380,8 @@ export default function LibraryItemCard({
         <div
           ref={tooltipRef}
           className={`track-drag-handle text-white rounded float-left w-12 ml-[2px] mb-[1px] h-12
-       flex flex-col items-center justify-center cursor-pointer hover:bg-gray-600
-       transition-colors relative ${dragDisabled ? 'bg-gray-700' : 'bg-gray-600'}`}
+       flex flex-col items-center justify-center cursor-pointer hover:bg-tile-hover
+       transition-colors relative ${dragDisabled ? 'bg-gray-700' : 'bg-tile'}`}
           onClick={() => (isAudio ? onPlay() : onOpenImageClick())}
         >
           {isAudio ? (

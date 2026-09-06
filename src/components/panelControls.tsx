@@ -44,7 +44,7 @@ function SegmentedButton({
       onClick={onClick}
       className={`flex-1 px-1 py-0.5 tabular-nums transition-colors ${
         divided ? 'border-l border-gray-700' : ''
-      } ${selected ? 'bg-purple-600 text-white' : 'text-gray-300 hover:bg-gray-700'}`}
+      } ${selected ? 'bg-purple-600 text-on-accent' : 'text-gray-300 hover:bg-gray-700'}`}
     >
       {children}
     </button>

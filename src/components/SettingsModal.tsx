@@ -81,6 +81,8 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     setShowIconPicker,
     layoutWidth,
     setLayoutWidth,
+    lightMode,
+    setLightMode,
   } = useDisplayPrefs()
 
   // Génère l'archive et déclenche le téléchargement
@@ -187,6 +189,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
               <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">
                 Affichage
               </p>
+              <Switch label="Mode clair" checked={lightMode} onChange={setLightMode} />
               <Switch
                 label="Taille des fichiers"
                 checked={showFileSize}
@@ -223,7 +226,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
               <button
                 onClick={triggerExport}
                 disabled={busy}
-                className="flex items-center justify-center gap-2 rounded bg-purple-600 px-3 py-2 text-white
+                className="flex items-center justify-center gap-2 rounded bg-purple-600 px-3 py-2 text-on-accent
                   transition-colors hover:bg-purple-500 disabled:opacity-50"
               >
                 {busy && <LoaderCircle className="h-4 w-4 animate-spin" />}
@@ -231,7 +234,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
               </button>
 
               {/* Sélecteur de fichier pour l'import */}
-              <label className="cursor-pointer rounded bg-purple-600 px-3 py-2 text-center text-white transition-colors hover:bg-purple-500">
+              <label className="cursor-pointer rounded bg-purple-600 px-3 py-2 text-center text-on-accent transition-colors hover:bg-purple-500">
                 Importer
                 <input type="file" className="hidden" onChange={onFileChange} />
               </label>
@@ -239,7 +242,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
               <button
                 onClick={triggerSharedExport}
                 disabled={busy}
-                className="flex items-center justify-center gap-2 rounded bg-purple-600 px-3 py-2 text-white
+                className="flex items-center justify-center gap-2 rounded bg-purple-600 px-3 py-2 text-on-accent
                   transition-colors hover:bg-purple-500 disabled:opacity-50"
               >
                 {busy && <LoaderCircle className="h-4 w-4 animate-spin" />}
@@ -254,7 +257,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                 onClick={() => setShowClearConfirmation(true)}
                 disabled={busy}
                 className="mt-2 rounded border border-red-700 px-3 py-2 text-red-400 transition-colors
-                  hover:bg-red-700 hover:text-white disabled:opacity-50"
+                  hover:bg-red-700 hover:text-on-accent disabled:opacity-50"
               >
                 Vider la bibliothèque
               </button>

@@ -17,7 +17,7 @@ export default function ViewModePlayerToggle({
       {/* Bouton "Liste" */}
       <button
         className={`px-3 py-2 rounded-l-full flex items-center justify-center transition-colors ${
-          isListView ? 'bg-purple-600 text-white' : 'text-gray-200 hover:bg-gray-600'
+          isListView ? 'bg-purple-600 text-on-accent' : 'text-gray-200 hover:bg-gray-600'
         }`}
         onClick={() => onChange(true)}
       >
@@ -27,7 +27,7 @@ export default function ViewModePlayerToggle({
       {/* Bouton "Grille" */}
       <button
         className={`px-3 py-2 rounded-r-full flex items-center justify-center transition-colors ${
-          !isListView ? 'bg-purple-600 text-white' : 'text-gray-200 hover:bg-gray-600'
+          !isListView ? 'bg-purple-600 text-on-accent' : 'text-gray-200 hover:bg-gray-600'
         }`}
         onClick={() => onChange(false)}
       >

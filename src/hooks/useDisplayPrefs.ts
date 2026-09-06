@@ -33,8 +33,11 @@ export function useDisplayPrefs() {
     BOOLEAN_COOKIE,
   )
   const [layoutWidth, setLayoutWidth] = useCookieText('layoutMaxWidth', DEFAULT_LAYOUT_WIDTH)
+  const [lightMode, setLightMode] = useCookieState('lightMode', false, BOOLEAN_COOKIE)
 
   return {
+    lightMode,
+    setLightMode,
     showFileSize,
     setShowFileSize,
     showLinkIcon,

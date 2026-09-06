@@ -19,12 +19,20 @@ export interface WaveformOptions {
   playtimeFontColor: string
 }
 
+// Les couleurs sont des variables CSS (voir globals.css) : le canvas ne suit
+// pas le thème tout seul, on les résout au moment de dessiner.
 export const DEFAULT_WAVEFORM_OPTIONS: WaveformOptions = {
   canvWidth: 300,
   canvHeight: 25,
-  playedLineColor: '#777',
-  noplayedLineColor: '#077',
-  playtimeFontColor: '#aaa',
+  playedLineColor: '--wave-played',
+  noplayedLineColor: '--wave-unplayed',
+  playtimeFontColor: '--wave-text',
+}
+
+/** Une couleur `--variable` est lue sur <html> ; toute autre valeur passe telle quelle. */
+function resolveColor(color: string): string {
+  if (!color.startsWith('--')) return color
+  return getComputedStyle(document.documentElement).getPropertyValue(color).trim() || '#777'
 }
 
 function formatTime(seconds: number): string {
@@ -56,8 +64,10 @@ export function useAudioWaveform(
     const ctx = canvas?.getContext('2d')
     if (!canvas || !ctx) return
 
-    const { canvWidth, canvHeight, playedLineColor, noplayedLineColor, playtimeFontColor } =
-      optionsRef.current
+    const { canvWidth, canvHeight } = optionsRef.current
+    const playedLineColor = resolveColor(optionsRef.current.playedLineColor)
+    const noplayedLineColor = resolveColor(optionsRef.current.noplayedLineColor)
+    const playtimeFontColor = resolveColor(optionsRef.current.playtimeFontColor)
     const peaks = peaksRef.current
     const duration = audio?.duration ?? 0
     const currentTime = audio?.currentTime ?? 0
@@ -139,6 +149,14 @@ export function useAudioWaveform(
       audio.removeEventListener('loadedmetadata', redraw)
     }
   }, [audioRef, file, draw])
+
+  // Changement de thème : les couleurs sont lues au dessin, mais une piste en
+  // pause ne se redessine pas seule — on guette la classe de <html>.
+  useEffect(() => {
+    const observer = new MutationObserver(() => draw())
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
+    return () => observer.disconnect()
+  }, [draw])
 
   // Clic sur le canvas : déplacement de la lecture
   useEffect(() => {

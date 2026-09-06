@@ -7,7 +7,6 @@ import {
   ChevronRight,
   CirclePlay,
   GripVertical,
-  HelpCircle,
   Plus,
   SlidersHorizontal,
   Trash2,
@@ -39,10 +38,6 @@ import type GalleryImage from '@/models/GalleryImage'
 import { isAudio } from '@/models/LibraryItem'
 import type LibraryItem from '@/models/LibraryItem'
 import { ensureTrackPeaks } from '@/lib/waveformPeaks'
-
-const HELP_TEXT =
-  'Pour ranger directement votre fichier dans une playlist en particulier, ' +
-  'préfixez son nom par "Nom_Playlist --". Exemple : "MaPlaylist -- MonFichier"'
 
 interface LibraryProps {
   onPlayAudio: (track: FileTrack) => void
@@ -128,7 +123,6 @@ export default function Library({ onPlayAudio, onOpenImage }: LibraryProps) {
     })
   }
 
-  const helpRef = useTooltip(HELP_TEXT)
   const addPlaylistTooltip = useTooltip('Ajouter une playlist')
   const playlistsContainer = useRef<HTMLDivElement>(null)
 
@@ -465,8 +459,10 @@ export default function Library({ onPlayAudio, onOpenImage }: LibraryProps) {
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center">
             <h2 className="mr-2 text-xl font-bold text-purple-300">Bibliothèque</h2>
+            {/* Le dépôt de fichiers sur une playlist a remplacé l'astuce du
+                préfixe « Playlist -- » ; le routage par nom reste géré, sans
+                être mis en avant. */}
             <Uploader onFileSelected={file => void addFiles([file])} />
-            <HelpCircle ref={helpRef} className="ml-1 w-5 cursor-help text-gray-400" />
           </div>
           <div className="flex min-w-0 flex-1 items-center justify-end gap-2">
             <input

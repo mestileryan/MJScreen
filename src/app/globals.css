@@ -4,6 +4,107 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * Palette de l'application, consommée par tailwind.config.ts (`rgb(var(--x))`).
+ * Le thème sombre reprend les valeurs Tailwind d'origine : l'application rend
+ * exactement comme avant. Le thème clair (`.light` sur <html>, réglé dans la
+ * roue crantée) remappe chaque cran à la main — ce n'est pas une inversion
+ * mécanique, les contrastes de texte et de surfaces sont choisis un à un.
+ */
+:root {
+  color-scheme: dark;
+
+  --gutter: 0 0 0;
+  --tile: 75 85 99;
+  --tile-hover: 75 85 99;
+  --white: 255 255 255;
+  --black: 0 0 0;
+
+  --gray-50: 249 250 251;
+  --gray-100: 243 244 246;
+  --gray-200: 229 231 235;
+  --gray-300: 209 213 219;
+  --gray-400: 156 163 175;
+  --gray-500: 107 114 128;
+  --gray-600: 75 85 99;
+  --gray-700: 55 65 81;
+  --gray-800: 31 41 55;
+  --gray-900: 17 24 39;
+  --gray-950: 3 7 18;
+
+  --purple-300: 216 180 254;
+  --purple-400: 192 132 252;
+  --purple-500: 168 85 247;
+  --purple-600: 147 51 234;
+  --green-400: 74 222 128;
+  --red-300: 252 165 165;
+  --red-400: 248 113 113;
+  --blue-400: 96 165 250;
+
+  /* Forme d'onde (canvas : couleurs lues à l'exécution, pas des classes). */
+  --wave-played: #777;
+  --wave-unplayed: #077;
+  --wave-text: #aaa;
+}
+
+:root.light {
+  color-scheme: light;
+
+  /* Fond de page gris clair franc et panneaux blancs, pour que les surfaces
+     se distinguent ; la hiérarchie sombre (page < panneau < rangée) est
+     conservée, inversée. gray-700 sert aussi de bordure aux panneaux de
+     réglages et gray-600 de fond aux tuiles du soundboard : tous deux sont
+     un peu plus soutenus que le simple miroir de l'échelle. */
+  --gutter: 209 213 219;
+  /* Tuiles douces : une tuile sombre sur des rangées claires faisait tache.
+     La lisibilité des icônes est assurée autrement, voir `.track-icon` plus
+     bas. Survol des rangées (gray-600) à peine plus foncé que la rangée. */
+  --tile: 203 208 217;
+  --tile-hover: 188 194 205;
+  --white: 17 24 39;
+  --black: 0 0 0;
+
+  --gray-50: 3 7 18;
+  --gray-100: 17 24 39;
+  --gray-200: 31 41 55;
+  --gray-300: 55 65 81;
+  --gray-400: 75 85 99;
+  --gray-500: 107 114 128;
+  --gray-600: 196 201 211;
+  --gray-700: 214 218 225;
+  --gray-800: 255 255 255;
+  --gray-900: 229 231 235;
+  --gray-950: 255 255 255;
+
+  /* Accents des boutons un cran plus clairs que le simple miroir : assez
+     foncés pour se lire sur blanc, sans virer à l'encre. */
+  --purple-300: 147 51 234;
+  --purple-400: 168 85 247;
+  /* Boutons pleins (ajout, bascule de vue, modale) un cran plus clairs. */
+  --purple-500: 192 132 252;
+  --purple-600: 168 85 247;
+  --green-400: 34 197 94;
+  --red-300: 220 38 38;
+  --red-400: 239 68 68;
+  --blue-400: 59 130 246;
+
+  /* Sur fond clair, un teal saturé hurle : on reste dans la famille, désaturé. */
+  --wave-played: #6b7280;
+  --wave-unplayed: #6ba3a8;
+  --wave-text: #111827;
+}
+
 .svg-sprite {
     display: none;
+}
+
+/*
+ * Les couleurs d'icônes sont choisies par l'utilisateur sur le thème sombre,
+ * souvent claires (violet pâle par défaut). Sur fond clair on les assombrit
+ * légèrement plutôt que de foncer les tuiles : la couleur reste reconnaissable,
+ * les rangées restent aérées. Appliqué aussi dans le sélecteur d'icônes, pour
+ * que l'aperçu corresponde au rendu.
+ */
+.light .track-icon {
+  filter: brightness(0.72) saturate(1.15);
 }

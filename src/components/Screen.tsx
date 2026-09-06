@@ -36,7 +36,14 @@ export default function Screen() {
     trueValue: 'true',
     falseValue: 'false',
   })
-  const { layoutMaxWidth } = useDisplayPrefs()
+  const { layoutMaxWidth, lightMode } = useDisplayPrefs()
+
+  // Le thème se pose sur <html> : la palette Tailwind est pilotée par des
+  // variables CSS que `.light` redéfinit (voir globals.css). Le HTML pré-rendu
+  // part sombre, le cookie n'étant lu qu'après hydratation.
+  useEffect(() => {
+    document.documentElement.classList.toggle('light', lightMode)
+  }, [lightMode])
 
   // Titre du projet : cosmétique, il donne son nom au fichier d'export et se
   // retrouve depuis le nom du fichier à l'import.
@@ -147,7 +154,7 @@ export default function Screen() {
     // étirée d'un bord à l'autre éloignait le nom de ses boutons. Les gouttières
     // sont horizontales seulement — le lecteur est collé en haut sur toute la
     // hauteur (`sticky`), un cadre vertical le ferait déborder.
-    <div className="min-h-screen bg-black md:px-4">
+    <div className="min-h-screen bg-gutter md:px-4">
       <div
         /* Sur téléphone la grille à deux colonnes est impossible : le lecteur devient
          un panneau fixé en bas de l'écran, la bibliothèque prend toute la largeur. */
@@ -161,7 +168,7 @@ export default function Screen() {
 
         {/* Error notification for invalid track links */}
         {toastMessage && (
-          <div className="fixed top-2 left-1/2 -translate-x-1/2 bg-red-600 text-white px-3 py-2 rounded z-50">
+          <div className="fixed top-2 left-1/2 -translate-x-1/2 bg-red-600 text-on-accent px-3 py-2 rounded z-50">
             {toastMessage}
           </div>
         )}

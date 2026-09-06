@@ -49,14 +49,14 @@ export default function ConfirmationModal({
           {secondaryLabel && onSecondary && (
             <button
               onClick={onSecondary}
-              className="rounded bg-purple-600 px-3 py-1 text-white transition-colors hover:bg-purple-500"
+              className="rounded bg-purple-600 px-3 py-1 text-on-accent transition-colors hover:bg-purple-500"
             >
               {secondaryLabel}
             </button>
           )}
           <button
             onClick={onConfirm}
-            className={`rounded px-3 py-1 text-white transition-colors ${
+            className={`rounded px-3 py-1 text-on-accent transition-colors ${
               confirmTone === 'danger'
                 ? 'bg-red-700 hover:bg-red-600'
                 : 'bg-purple-600 hover:bg-purple-500'

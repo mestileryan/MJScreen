@@ -174,7 +174,7 @@ export default function IconSelector({
             className="flex flex-col items-center cursor-pointer text-gray-400 hover:text-purple-300"
             onClick={() => chooseIcon(icon.name)}
           >
-            <svg className="w-8 h-8 text-purple-400" style={{ color: selectedColor }}>
+            <svg className="track-icon w-8 h-8 text-purple-400" style={{ color: selectedColor }}>
               <use href={`#${icon.name}`} />
             </svg>
             <span className="text-xs text-gray-300">{icon.name}</span>
