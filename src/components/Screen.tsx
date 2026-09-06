@@ -142,14 +142,16 @@ export default function Screen() {
   const { toastMessage, externalMessage } = useTrackLink(addTrack)
 
   return (
-    // Le fond couvre tout l'écran ; l'application, elle, est plafonnée (largeur
-    // réglable dans la roue crantée) et centrée : sur un très grand moniteur, une
-    // rangée de piste étirée d'un bord à l'autre éloignait le nom de ses boutons.
-    <div className="min-h-screen bg-gray-900">
+    // L'application est plafonnée (largeur réglable dans la roue crantée) et
+    // centrée sur un fond noir : sur un très grand moniteur, une rangée de piste
+    // étirée d'un bord à l'autre éloignait le nom de ses boutons. Les gouttières
+    // sont horizontales seulement — le lecteur est collé en haut sur toute la
+    // hauteur (`sticky`), un cadre vertical le ferait déborder.
+    <div className="min-h-screen bg-black md:px-4">
       <div
         /* Sur téléphone la grille à deux colonnes est impossible : le lecteur devient
          un panneau fixé en bas de l'écran, la bibliothèque prend toute la largeur. */
-        className={`mx-auto min-h-screen md:grid ${
+        className={`mx-auto min-h-screen bg-gray-900 md:grid ${
           isPlayerCollapsed ? 'md:grid-cols-[1fr_1.5rem]' : 'md:grid-cols-[1fr_24rem]'
         }`}
         style={{ maxWidth: layoutMaxWidth }}
