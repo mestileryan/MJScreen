@@ -4,11 +4,14 @@ import { useRef, useState, type DragEvent, type ReactNode } from 'react'
 
 interface ImportFileDragOverlayProps {
   onFilesDropped: (files: File[]) => void
+  /** Désactivé (mode jeu) : les fichiers glissés sont ignorés, sans indication. */
+  disabled?: boolean
   children: ReactNode
 }
 
 export default function ImportFileDragOverlay({
   onFilesDropped,
+  disabled = false,
   children,
 }: ImportFileDragOverlayProps) {
   const [isDragOver, setIsDragOver] = useState(false)
@@ -60,10 +63,10 @@ export default function ImportFileDragOverlay({
     // puisse se positionner par-dessus.
     <div
       className="relative"
-      onDragEnter={onDragEnter}
-      onDragOver={onDragOver}
-      onDragLeave={onDragLeave}
-      onDrop={onDrop}
+      onDragEnter={disabled ? undefined : onDragEnter}
+      onDragOver={disabled ? undefined : onDragOver}
+      onDragLeave={disabled ? undefined : onDragLeave}
+      onDrop={disabled ? undefined : onDrop}
     >
       {children}
 

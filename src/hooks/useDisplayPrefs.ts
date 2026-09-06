@@ -20,30 +20,18 @@ export const LAYOUT_WIDTH_CHOICES = [
 export const DEFAULT_LAYOUT_WIDTH = '1380'
 
 /**
- * Préférences d'affichage des cartes de la bibliothèque, réglées depuis la
- * roue crantée. Purement cosmétiques, elles vivent en cookie et non dans la
- * base : elles décrivent le poste, pas la bibliothèque.
+ * Préférences d'affichage, réglées depuis la roue crantée. Purement
+ * cosmétiques, elles vivent en cookie et non dans la base : elles décrivent le
+ * poste, pas la bibliothèque. Le détail des cartes (taille, lien…) n'est plus
+ * une préférence : il suit le mode Planification / Jeu.
  */
 export function useDisplayPrefs() {
-  const [showFileSize, setShowFileSize] = useCookieState('showFileSize', false, BOOLEAN_COOKIE)
-  const [showLinkIcon, setShowLinkIcon] = useCookieState('showLinkIcon', false, BOOLEAN_COOKIE)
-  const [showIconPicker, setShowIconPicker] = useCookieState(
-    'showIconPicker',
-    true,
-    BOOLEAN_COOKIE,
-  )
   const [layoutWidth, setLayoutWidth] = useCookieText('layoutMaxWidth', DEFAULT_LAYOUT_WIDTH)
   const [lightMode, setLightMode] = useCookieState('lightMode', false, BOOLEAN_COOKIE)
 
   return {
     lightMode,
     setLightMode,
-    showFileSize,
-    setShowFileSize,
-    showLinkIcon,
-    setShowLinkIcon,
-    showIconPicker,
-    setShowIconPicker,
     layoutWidth,
     setLayoutWidth,
     /** Valeur CSS prête à poser en `maxWidth` ; `undefined` = pas de plafond. */

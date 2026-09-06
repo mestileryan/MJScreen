@@ -72,18 +72,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const [showClearConfirmation, setShowClearConfirmation] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
-  const {
-    showFileSize,
-    setShowFileSize,
-    showLinkIcon,
-    setShowLinkIcon,
-    showIconPicker,
-    setShowIconPicker,
-    layoutWidth,
-    setLayoutWidth,
-    lightMode,
-    setLightMode,
-  } = useDisplayPrefs()
+  const { layoutWidth, setLayoutWidth, lightMode, setLightMode } = useDisplayPrefs()
 
   // Génère l'archive et déclenche le téléchargement
   async function triggerExport() {
@@ -190,21 +179,6 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                 Affichage
               </p>
               <Switch label="Mode clair" checked={lightMode} onChange={setLightMode} />
-              <Switch
-                label="Taille des fichiers"
-                checked={showFileSize}
-                onChange={setShowFileSize}
-              />
-              <Switch
-                label="Icône de lien des pistes"
-                checked={showLinkIcon}
-                onChange={setShowLinkIcon}
-              />
-              <Switch
-                label="Icônes des pistes"
-                checked={showIconPicker}
-                onChange={setShowIconPicker}
-              />
               <label className="flex items-center justify-between gap-3 text-sm text-gray-200">
                 <span>Largeur maximale</span>
                 <select

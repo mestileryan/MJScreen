@@ -15,6 +15,8 @@ import { usePresentationWindow } from '@/hooks/usePresentationWindow'
 import { useTrackLink } from '@/hooks/useTrackLink'
 import { useTooltip } from '@/hooks/useTooltip'
 import { useDisplayPrefs } from '@/hooks/useDisplayPrefs'
+import { useAppMode } from '@/hooks/useAppMode'
+import AppModeToggle from './AppModeToggle'
 import { useLibrary } from '@/context/LibraryContext'
 import {
   DEFAULT_PROJECT_TITLE,
@@ -37,6 +39,8 @@ export default function Screen() {
     falseValue: 'false',
   })
   const { layoutMaxWidth, lightMode } = useDisplayPrefs()
+  // En mode jeu, le titre du projet ne s'édite plus.
+  const { gameMode } = useAppMode()
 
   // Le thème se pose sur <html> : la palette Tailwind est pilotée par des
   // variables CSS que `.light` redéfinit (voir globals.css). Le HTML pré-rendu
@@ -191,7 +195,7 @@ export default function Screen() {
 
         {/* `pb-20` dégage la barre du lecteur, fixée en bas sur petit écran. */}
         <div className="overflow-auto p-4 pb-20 sm:p-6 sm:pb-20 md:min-w-[522px] md:p-8">
-          <div className="mb-4 flex items-center justify-between sm:mb-8">
+          <div className="mb-4 flex items-center justify-between gap-4 sm:mb-8">
             {isEditingTitle ? (
               <div className="relative w-full max-w-xl">
                 <input
@@ -216,13 +220,19 @@ export default function Screen() {
               </div>
             ) : (
               <h1
-                ref={titleTooltip}
-                className="cursor-pointer truncate text-2xl font-bold text-purple-400 sm:text-3xl"
-                onClick={startEditingTitle}
+                ref={gameMode ? undefined : titleTooltip}
+                className={`truncate text-2xl font-bold text-purple-400 sm:text-3xl ${
+                  gameMode ? '' : 'cursor-pointer'
+                }`}
+                onClick={gameMode ? undefined : startEditingTitle}
               >
                 {projectTitle}
               </h1>
             )}
+
+            {/* Planification / Jeu : la bascule vit dans l'en-tête, toujours
+                sous la main — c'est elle qui rend la configuration à l'interface. */}
+            <AppModeToggle />
           </div>
 
           <div className="space-y-6">

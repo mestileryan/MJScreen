@@ -20,7 +20,7 @@ import {
 import IconSelector from './IconSelector'
 import TooltipButton from './TooltipButton'
 import { useLibrary } from '@/context/LibraryContext'
-import { useDisplayPrefs } from '@/hooks/useDisplayPrefs'
+import { useAppMode } from '@/hooks/useAppMode'
 import { useTooltip } from '@/hooks/useTooltip'
 import { objectUrlFor } from '@/lib/objectUrl'
 import { gainForPosition, positionForGain } from '@/lib/loudness'
@@ -67,7 +67,10 @@ export default function LibraryItemCard({
   onOpenImage,
 }: LibraryItemCardProps) {
   const { playlists, patchItem, saveItem } = useLibrary()
-  const { showFileSize, showLinkIcon, showIconPicker } = useDisplayPrefs()
+  // En mode jeu la carte ne sert qu'à lancer (et boucler) : tout ce qui
+  // configure ou détaille — poignée, lien, taille, nom, volume, actions —
+  // s'efface. En planification, tout est là.
+  const { gameMode } = useAppMode()
 
   const [isEditing, setIsEditing] = useState(false)
   const [isSelectingIcon, setIsSelectingIcon] = useState(false)
@@ -251,23 +254,26 @@ export default function LibraryItemCard({
   return (
     <>
       {isListView ? (
-        <div className="flex items-center ml-2 sm:ml-5 rounded-lg bg-gray-700 hover:bg-gray-600 mb-1 shrink-0">
-          <div
-            className={`track-drag-handle p-1 mr-2 rounded hover:bg-gray-600/25 ${
-              dragDisabled ? 'cursor-default' : 'cursor-move'
-            }`}
-          >
-            <GripVertical
-              className={`w-4 h-4 ${dragDisabled ? 'text-gray-600' : 'text-gray-400'}`}
-            />
-          </div>
+        <div
+          className={`flex items-center ml-2 sm:ml-5 rounded-lg bg-gray-700 hover:bg-gray-600 mb-1 shrink-0 ${
+            gameMode ? 'py-0.5 pl-1' : ''
+          }`}
+        >
+          {!gameMode && (
+            <div
+              className={`track-drag-handle p-1 mr-2 rounded hover:bg-gray-600/25 ${
+                dragDisabled ? 'cursor-default' : 'cursor-move'
+              }`}
+            >
+              <GripVertical
+                className={`w-4 h-4 ${dragDisabled ? 'text-gray-600' : 'text-gray-400'}`}
+              />
+            </div>
+          )}
 
           {isAudio ? (
             <>
-              {/* Lien et icône sont des options d'affichage (roue crantée) : la
-                  vue liste se dépouille pour ceux qui ne s'en servent pas. Le mode
-                  soundboard, lui, repose sur l'icône et n'est pas concerné. */}
-              {showLinkIcon && (
+              {!gameMode && (
                 <button
                   className="p-1 rounded-full hover:bg-purple-400/20 transition-colors"
                   onClick={copyLink}
@@ -276,17 +282,18 @@ export default function LibraryItemCard({
                   <Link className="w-3 h-3 text-purple-300" />
                 </button>
               )}
-              {showIconPicker && (
-                // Même fond que les tuiles du soundboard : une icône claire sur
-                // une rangée claire serait invisible sans lui.
-                <div
-                  className="ml-2 mr-3 flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center
-                    rounded bg-tile transition-colors hover:bg-tile-hover"
-                  onClick={() => setIsSelectingIcon(true)}
-                >
-                  {trackIcon(fileTrack.iconName ? 'w-6 h-6' : 'w-5 h-5')}
-                </div>
-              )}
+              {/* Même fond que les tuiles du soundboard : une icône claire sur
+                  une rangée claire serait invisible sans lui. En mode jeu
+                  l'icône reste (repère visuel) mais ne s'édite plus. */}
+              <div
+                className={`ml-2 mr-3 flex h-8 w-8 shrink-0 items-center justify-center rounded
+                  bg-tile transition-colors ${
+                    gameMode ? '' : 'cursor-pointer hover:bg-tile-hover'
+                  }`}
+                onClick={gameMode ? undefined : () => setIsSelectingIcon(true)}
+              >
+                {trackIcon(fileTrack.iconName ? 'w-6 h-6' : 'w-5 h-5')}
+              </div>
             </>
           ) : (
             <div className="mr-3 ml-2">
@@ -301,7 +308,10 @@ export default function LibraryItemCard({
             </div>
           )}
 
-          <div className="min-w-0 flex-1 mr-2 sm:mr-5" onClick={startEditing}>
+          <div
+            className="min-w-0 flex-1 mr-2 sm:mr-5"
+            onClick={gameMode ? undefined : startEditing}
+          >
             {isEditing ? (
               <input
                 value={editableName}
@@ -314,11 +324,15 @@ export default function LibraryItemCard({
                 autoFocus
               />
             ) : (
-              <p className="flex min-w-0 cursor-pointer items-center gap-2 font-medium text-white">
+              <p
+                className={`flex min-w-0 items-center gap-2 font-medium text-white ${
+                  gameMode ? '' : 'cursor-pointer'
+                }`}
+              >
                 <span className="truncate">{item.name}</span>
                 {/* La taille est le premier détail sacrifié quand la place manque,
-                    et masquée d'office sauf demande dans la roue crantée. */}
-                {showFileSize && (
+                    et un détail de planification : absente en mode jeu. */}
+                {!gameMode && (
                   <span className="hidden shrink-0 text-sm text-gray-400 sm:inline">
                     ({fileSizeInMB} Mo)
                   </span>
@@ -329,23 +343,25 @@ export default function LibraryItemCard({
 
           {isAudio ? (
             <>
-              <div className="flex shrink-0 items-center">
-                <VolumeIcon
-                  position={positionForGain(fileTrack.initialVolume)}
-                  className="w-5 h-5 mr-1 sm:mr-3"
-                />
-                <input
-                  className="volume-slider w-14 sm:w-auto"
-                  type="range"
-                  min="0"
-                  max="1"
-                  step="0.01"
-                  value={positionForGain(fileTrack.initialVolume)}
-                  onChange={onVolumeInput}
-                  onPointerUp={commitVolume}
-                  onKeyUp={commitVolume}
-                />
-              </div>
+              {!gameMode && (
+                <div className="flex shrink-0 items-center">
+                  <VolumeIcon
+                    position={positionForGain(fileTrack.initialVolume)}
+                    className="w-5 h-5 mr-1 sm:mr-3"
+                  />
+                  <input
+                    className="volume-slider w-14 sm:w-auto"
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.01"
+                    value={positionForGain(fileTrack.initialVolume)}
+                    onChange={onVolumeInput}
+                    onPointerUp={commitVolume}
+                    onKeyUp={commitVolume}
+                  />
+                </div>
+              )}
               <div className="flex items-center gap-1 ml-2">
                 <button
                   className="p-1 rounded-full hover:bg-green-400/20 transition-colors"
@@ -353,6 +369,8 @@ export default function LibraryItemCard({
                 >
                   <Play className="w-5 h-5 text-green-400" />
                 </button>
+                {/* La boucle reste accessible en mode jeu : c'est le réglage
+                    qu'on oublie et dont on s'aperçoit en pleine séance. */}
                 <button
                   className="p-1 rounded-full hover:bg-blue-400/20 transition-colors"
                   onClick={toggleLoop}
@@ -361,7 +379,7 @@ export default function LibraryItemCard({
                     className={`w-5 h-5 ${fileTrack.loop ? 'text-purple-400' : 'text-gray-400'}`}
                   />
                 </button>
-                {rowActions}
+                {!gameMode && rowActions}
               </div>
             </>
           ) : (
@@ -372,25 +390,28 @@ export default function LibraryItemCard({
               >
                 <Play className="w-5 h-5 text-green-400" />
               </button>
-              {rowActions}
+              {!gameMode && rowActions}
             </div>
           )}
         </div>
       ) : (
+        // Tuile du soundboard : l'icône (ou la vignette) et, dessous, le nom en
+        // petit — sans lui on se perd vite dans une grille d'icônes. Le nom
+        // complet reste dans l'infobulle.
         <div
           ref={tooltipRef}
-          className={`track-drag-handle text-white rounded float-left w-12 ml-[2px] mb-[1px] h-12
-       flex flex-col items-center justify-center cursor-pointer hover:bg-tile-hover
+          className={`track-drag-handle text-white rounded float-left w-20 ml-[2px] mb-[2px] h-14
+       flex flex-col items-center justify-center gap-px px-1 cursor-pointer hover:bg-tile-hover
        transition-colors relative ${dragDisabled ? 'bg-gray-700' : 'bg-tile'}`}
           onClick={() => (isAudio ? onPlay() : onOpenImageClick())}
         >
           {isAudio ? (
-            trackIcon(fileTrack.iconName ? 'w-10 h-10 mb-1' : 'w-10 h-10')
+            trackIcon('w-8 h-8 shrink-0')
           ) : (
             <img
               src={imageUrl}
               alt={galleryImage.name}
-              className="w-11 h-11 object-cover rounded"
+              className="w-8 h-8 shrink-0 object-cover rounded"
               onMouseEnter={event => {
                 event.stopPropagation()
                 showPreview(event)
@@ -405,6 +426,9 @@ export default function LibraryItemCard({
               }}
             />
           )}
+          <span className="w-full truncate text-center text-[10px] leading-tight text-gray-100">
+            {item.name}
+          </span>
         </div>
       )}
 

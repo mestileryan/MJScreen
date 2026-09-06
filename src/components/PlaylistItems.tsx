@@ -3,6 +3,7 @@
 import { useRef } from 'react'
 import LibraryItemCard from './LibraryItemCard'
 import { useSortable, type SortableMove } from '@/hooks/useSortable'
+import { useAppMode } from '@/hooks/useAppMode'
 import type Playlist from '@/models/Playlist'
 import type LibraryItem from '@/models/LibraryItem'
 import type FileTrack from '@/models/FileTrack'
@@ -51,7 +52,9 @@ export default function PlaylistItems({
   onOpenImage,
 }: PlaylistItemsProps) {
   const containerRef = useRef<HTMLDivElement>(null)
-  const dragDisabled = searchTerm !== ''
+  const { gameMode } = useAppMode()
+  // Pas de réorganisation en mode jeu : la bibliothèque y est en lecture seule.
+  const dragDisabled = searchTerm !== '' || gameMode
 
   useSortable(containerRef, onMove, {
     group: 'library-items',

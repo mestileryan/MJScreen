@@ -17,6 +17,10 @@ export interface WaveformOptions {
   playedLineColor: string
   noplayedLineColor: string
   playtimeFontColor: string
+  /** Fond teinté sous la portion déjà lue : les barres seules ne suffisaient pas à la distinguer. */
+  playedBackground: string
+  /** Tête de lecture, trait vertical à la position courante. */
+  cursorColor: string
 }
 
 // Les couleurs sont des variables CSS (voir globals.css) : le canvas ne suit
@@ -27,6 +31,8 @@ export const DEFAULT_WAVEFORM_OPTIONS: WaveformOptions = {
   playedLineColor: '--wave-played',
   noplayedLineColor: '--wave-unplayed',
   playtimeFontColor: '--wave-text',
+  playedBackground: '--wave-played-bg',
+  cursorColor: '--wave-cursor',
 }
 
 /** Une couleur `--variable` est lue sur <html> ; toute autre valeur passe telle quelle. */
@@ -68,6 +74,8 @@ export function useAudioWaveform(
     const playedLineColor = resolveColor(optionsRef.current.playedLineColor)
     const noplayedLineColor = resolveColor(optionsRef.current.noplayedLineColor)
     const playtimeFontColor = resolveColor(optionsRef.current.playtimeFontColor)
+    const playedBackground = resolveColor(optionsRef.current.playedBackground)
+    const cursorColor = resolveColor(optionsRef.current.cursorColor)
     const peaks = peaksRef.current
     const duration = audio?.duration ?? 0
     const currentTime = audio?.currentTime ?? 0
@@ -76,11 +84,23 @@ export function useAudioWaveform(
 
     ctx.clearRect(0, 0, canvWidth, canvHeight)
 
+    // Fond de la portion lue, sous les barres.
+    if (playedColumns > 0) {
+      ctx.fillStyle = playedBackground
+      ctx.fillRect(0, 0, playedColumns, canvHeight)
+    }
+
     for (let i = 0; i < peaks.length; i++) {
       const height = Math.max(1, peaks[i] * canvHeight)
       const y = (canvHeight - height) / 2
       ctx.fillStyle = i < playedColumns ? playedLineColor : noplayedLineColor
       ctx.fillRect(i, y, 1, height)
+    }
+
+    // Tête de lecture, par-dessus les barres.
+    if (duration > 0 && progress > 0) {
+      ctx.fillStyle = cursorColor
+      ctx.fillRect(Math.min(playedColumns, canvWidth - 2), 0, 2, canvHeight)
     }
 
     if (duration > 0) {

@@ -21,6 +21,7 @@ import { useLibrary } from '@/context/LibraryContext'
 import { useSortable, type SortableMove } from '@/hooks/useSortable'
 import { useTooltip } from '@/hooks/useTooltip'
 import { useCookieState } from '@/hooks/useCookieState'
+import { useAppMode } from '@/hooks/useAppMode'
 import { useIsNarrow } from '@/hooks/useMediaQuery'
 import {
   DB_AddPlaylist,
@@ -88,6 +89,9 @@ async function persistPlaylists(list: Playlist[]) {
 
 export default function Library({ onPlayAudio, onOpenImage }: LibraryProps) {
   const { playlists, setPlaylists } = useLibrary()
+  // Mode jeu : bibliothèque en lecture seule — ni import, ni tri, ni réglages,
+  // ni renommage, ni suppression. Il ne reste que lancer, boucler, replier.
+  const { gameMode } = useAppMode()
 
   const [isListView, setIsListView] = useCookieState('viewMode', true, {
     trueValue: 'list',
@@ -143,6 +147,7 @@ export default function Library({ onPlayAudio, onOpenImage }: LibraryProps) {
   useSortable(playlistsContainer, handlePlaylistsMove, {
     handle: '.playlist-handle',
     animation: 700,
+    disabled: gameMode,
   })
 
   // ---------------------------------------------------------------- import
@@ -455,14 +460,14 @@ export default function Library({ onPlayAudio, onOpenImage }: LibraryProps) {
 
   return (
     <div className="w-full bg-gray-800 rounded-lg p-4 pt-2">
-      <ImportFileDragOverlay onFilesDropped={onFilesDropped}>
+      <ImportFileDragOverlay onFilesDropped={onFilesDropped} disabled={gameMode}>
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
           <div className="flex items-center">
             <h2 className="mr-2 text-xl font-bold text-purple-300">Bibliothèque</h2>
             {/* Le dépôt de fichiers sur une playlist a remplacé l'astuce du
                 préfixe « Playlist -- » ; le routage par nom reste géré, sans
                 être mis en avant. */}
-            <Uploader onFileSelected={file => void addFiles([file])} />
+            {!gameMode && <Uploader onFileSelected={file => void addFiles([file])} />}
           </div>
           <div className="flex min-w-0 flex-1 items-center justify-end gap-2">
             <input
@@ -484,7 +489,13 @@ export default function Library({ onPlayAudio, onOpenImage }: LibraryProps) {
             <div
               key={playlist.id}
               className={`bg-gray-700/25 p-3 rounded mt-1 mb-1 flex flex-col relative ${
-                boardLayout ? 'float-left mr-2 border-r-[3px] border-purple-900' : ''
+                boardLayout ? 'float-left mr-2 border-r-[3px]' : ''
+              } ${
+                // Le trait droit matérialise la poignée de redimensionnement ;
+                // sans elle (mode jeu), il n'a plus rien à signaler. Il reste
+                // en place, transparent : le retirer changerait la largeur
+                // utile et ferait sauter la mise en page d'un mode à l'autre.
+                gameMode ? 'border-transparent' : 'border-purple-900'
               } ${dropPlaylistId === playlist.id ? 'ring-2 ring-purple-400 bg-purple-400/10' : ''}`}
               style={
                 boardLayout
@@ -493,10 +504,10 @@ export default function Library({ onPlayAudio, onOpenImage }: LibraryProps) {
               }
               // Cible de dépôt de fichiers : repliée ou non, toute la zone de la
               // playlist (en-tête compris) désigne où ranger l'import.
-              onDragEnter={event => onPlaylistDragEnter(event, playlist)}
-              onDragLeave={event => onPlaylistDragLeave(event, playlist)}
+              onDragEnter={gameMode ? undefined : event => onPlaylistDragEnter(event, playlist)}
+              onDragLeave={gameMode ? undefined : event => onPlaylistDragLeave(event, playlist)}
             >
-              {boardLayout && (
+              {boardLayout && !gameMode && (
                 <div
                   className="absolute top-0 right-0 w-[10px] h-full cursor-col-resize"
                   style={{ right: '-6px' }}
@@ -504,9 +515,11 @@ export default function Library({ onPlayAudio, onOpenImage }: LibraryProps) {
                 />
               )}
               <div className="flex items-center mb-2">
-                <div className="playlist-handle cursor-move p-1 mr-1 rounded hover:bg-gray-800/25">
-                  <GripVertical className="w-5 h-5 text-gray-400" />
-                </div>
+                {!gameMode && (
+                  <div className="playlist-handle cursor-move p-1 mr-1 rounded hover:bg-gray-800/25">
+                    <GripVertical className="w-5 h-5 text-gray-400" />
+                  </div>
+                )}
 
                 {/* Repli de la playlist — état de session uniquement, non persisté. */}
                 <TooltipButton
@@ -537,8 +550,8 @@ export default function Library({ onPlayAudio, onOpenImage }: LibraryProps) {
                     />
                   ) : (
                     <p
-                      className="text-white font-semibold cursor-pointer"
-                      onClick={() => startEditingName(playlist)}
+                      className={`text-white font-semibold ${gameMode ? '' : 'cursor-pointer'}`}
+                      onClick={gameMode ? undefined : () => startEditingName(playlist)}
                     >
                       {playlist.name}
                       {/* Replié, le contenu est invisible : on rappelle ce qu'il contient. */}
@@ -585,7 +598,7 @@ export default function Library({ onPlayAudio, onOpenImage }: LibraryProps) {
                     et le halo reste allumé tant que le panneau est ouvert.
                     Masqué quand la playlist est repliée : le panneau ne
                     s'afficherait pas de toute façon. */}
-                {!collapsed && (
+                {!collapsed && !gameMode && (
                   <TooltipButton
                     className={`rounded-full p-2 transition-colors ${
                       isPlaylistTweaked(playlist)
@@ -609,7 +622,7 @@ export default function Library({ onPlayAudio, onOpenImage }: LibraryProps) {
                   </TooltipButton>
                 )}
 
-                {playlist.items.length === 0 && (
+                {playlist.items.length === 0 && !gameMode && (
                   <TooltipButton
                     className="p-2 hover:bg-red-700/20 rounded-full transition-colors ml-3"
                     onClick={() => void removePlaylist(playlist)}
@@ -657,16 +670,18 @@ export default function Library({ onPlayAudio, onOpenImage }: LibraryProps) {
         </div>
         <div className="clear-both" />
 
-        <div
-          className="bg-gray-700/25 p-3 rounded mt-1 mb-1
+        {!gameMode && (
+          <div
+            className="bg-gray-700/25 p-3 rounded mt-1 mb-1
          border-2 border-dashed border-gray-400
          flex items-center justify-center
          cursor-pointer hover:bg-gray-800/25 transition-colors"
-          onClick={() => void addPlaylist()}
-          ref={addPlaylistTooltip}
-        >
-          <Plus className="w-6 h-6 text-purple-500" />
-        </div>
+            onClick={() => void addPlaylist()}
+            ref={addPlaylistTooltip}
+          >
+            <Plus className="w-6 h-6 text-purple-500" />
+          </div>
+        )}
 
         {/* Archives : tout en bas, invisibles tant que rien n'y est rangé.
             Volontairement dépouillées — ni lecture globale, ni réglages, ni
