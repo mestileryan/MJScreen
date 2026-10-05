@@ -31,6 +31,11 @@ import { isNeutral, needsAudioGraph, resolveFades, withDefaults } from '@/models
 import type TrackEffects from '@/models/TrackEffects'
 import type Track from '@/models/Track'
 
+/** Largeur du bandeau de retrait, en pixels. La carte l'ajoute à la forme d'onde. */
+export const REMOVE_RAIL_WIDTH = 28
+/** Espace entre le lecteur et son bandeau (`gap-2`). */
+export const REMOVE_RAIL_GAP = 8
+
 export interface TrackControls {
   play: () => void
   pause: () => void
@@ -396,151 +401,163 @@ export default function TrackPlayer({
         : undefined
 
   return (
-    <>
-      <p className="mb-1 truncate text-xs text-white">
-        {/* La playlist d'origine situe la piste d'un coup d'œil, en retrait
-            pour ne pas voler la vedette au titre. */}
-        {playlist && <span className="text-gray-400">({playlist.name})</span>} {track.name}
-      </p>
-      {/* Player audio */}
-      <audio
-        ref={player}
-        src={track.src}
-        onPlay={() => setIsPlaying(true)}
-        onPause={() => setIsPlaying(false)}
-        onEnded={handleTrackEnd}
-        loop={track.loop}
-      />
+    // Deux colonnes : le bandeau de retrait sur toute la hauteur, puis le lecteur.
+    // Noyée parmi les boutons de transport, la croix de 20 px se cliquait mal ;
+    // un bandeau donne une cible haute, toujours au même endroit d'une carte à
+    // l'autre, et qui ne se confond pas avec les commandes de lecture. À gauche,
+    // il borde la file comme une poignée et laisse le chevron fermer la rangée.
+    <div className="flex items-stretch gap-2">
+      {/* Bandeau de retrait : invisible au repos, seule la croix grise le signale,
+          il ne se révèle en rouge qu'au survol pour ne pas alourdir la file. */}
+      <TooltipButton
+        className="flex shrink-0 items-center justify-center rounded-md text-gray-500 transition-colors hover:bg-red-400/20 hover:text-red-400"
+        style={{ width: REMOVE_RAIL_WIDTH }}
+        onClick={() => void removeWithFade()}
+        tooltip={fading === 'out' ? fadeTitle : 'Retirer de la file'}
+        aria-label="Retirer de la file"
+      >
+        {fading === 'out' ? (
+          <LoaderCircle className="w-4 h-4 animate-spin" />
+        ) : (
+          <X className="w-4 h-4" />
+        )}
+      </TooltipButton>
 
-      {/* Canvas pour la waveform */}
-      <canvas
-        ref={canvas}
-        width={DEFAULT_WAVEFORM_OPTIONS.canvWidth}
-        height={DEFAULT_WAVEFORM_OPTIONS.canvHeight}
-        /* `max-w-full` et non `w-full` : la forme d'onde garde sa taille native de
-           300 px sur grand écran, et ne rétrécit que si le panneau est plus étroit. */
-        className="max-w-full rounded bg-gray-600 mb-1"
-      />
-
-      {/* Boutons Play/Pause et Boucler */}
-      <div className="flex gap-1">
-        <TooltipButton
-          className="rounded-full hover:bg-purple-400/20 transition-colors"
-          onClick={rewind}
-          tooltip="Revenir au début"
-          aria-label="Revenir au début"
-        >
-          <SkipBack className="w-5 h-5 text-purple-400" />
-        </TooltipButton>
-        <TooltipButton
-          className={`rounded-full transition-colors ${playHalo}`}
-          onClick={togglePlay}
-          tooltip={fadeTitle ?? (isPlaying ? 'Mettre en pause' : 'Lire')}
-          aria-label={isPlaying ? 'Mettre en pause' : 'Lire'}
-        >
-          {fading ? (
-            // Le son monte ou descend : l'attente reprend la couleur de l'action
-            // en cours, vert pour un démarrage, gris pour un arrêt.
-            <LoaderCircle
-              className={`w-5 h-5 animate-spin ${
-                fading === 'in' ? 'text-green-400' : 'text-gray-400'
-              }`}
-            />
-          ) : isPlaying ? (
-            <Pause className="w-5 h-5 text-gray-400" />
-          ) : (
-            <Play className="w-5 h-5 text-green-400" />
-          )}
-        </TooltipButton>
-        <TooltipButton
-          className="rounded-full hover:bg-red-400/20 transition-colors"
-          onClick={() => void stopAndRewind()}
-          tooltip={fadeTitle ?? 'Arrêter et revenir au début'}
-          aria-label="Arrêter et revenir au début"
-        >
-          {/* L'attente garde ici la teinte du bouton : l'arrêt reste l'arrêt,
-              quel que soit le sens du fondu. */}
-          {fading ? (
-            <LoaderCircle className="w-5 h-5 animate-spin text-red-400" />
-          ) : (
-            <Square className="w-5 h-5 text-red-400" />
-          )}
-        </TooltipButton>
-        {/* Retrait de la file, dans le groupe de transport : au bord droit il
-            était trop excentré pour une action courante. À gauche du repeat, il
-            prolonge le duo rouge arrêt/retrait plutôt que de fermer la rangée. */}
-        <TooltipButton
-          className="rounded-full transition-colors hover:bg-red-400/20"
-          onClick={() => void removeWithFade()}
-          tooltip="Retirer de la file"
-          aria-label="Retirer de la file"
-        >
-          <X className="w-5 h-5 text-red-400" />
-        </TooltipButton>
-        <TooltipButton
-          className={`rounded-full transition-colors ${loopHalo}`}
-          onClick={toggleLoop}
-          tooltip={track.loop ? 'Ne plus boucler' : 'Boucler la piste'}
-          aria-label={track.loop ? 'Ne plus boucler' : 'Boucler la piste'}
-        >
-          <Repeat1 className={`w-5 h-5 ${track.loop ? 'text-purple-400' : 'text-gray-400'}`} />
-        </TooltipButton>
-
-        {/* L'indicateur de volume coupe et rétablit le son d'un clic. */}
-        <TooltipButton
-          className={`ml-1 mr-1 rounded-full transition-colors ${volumeHalo}`}
-          onClick={toggleMute}
-          tooltip={track.volume === 0 ? 'Rétablir le son' : 'Couper le son'}
-          aria-label={track.volume === 0 ? 'Rétablir le son' : 'Couper le son'}
-        >
-          {/* L'icône suit la position du curseur, pas l'amplitude brute. */}
-          {volumePosition === 0 && <VolumeOff className="w-5 h-5 text-red-400" />}
-          {volumePosition > 0 && volumePosition <= 0.33 && (
-            <Volume className="w-5 h-5 text-purple-400" />
-          )}
-          {volumePosition > 0.33 && volumePosition <= 0.66 && (
-            <Volume1 className="w-5 h-5 text-purple-400" />
-          )}
-          {volumePosition > 0.66 && <Volume2 className="w-5 h-5 text-purple-400" />}
-        </TooltipButton>
-
-        <input
-          className="w-20"
-          type="range"
-          min="0"
-          max="1"
-          step="0.01"
-          value={volumePosition}
-          onChange={event => updateVolume(gainForPosition(Number(event.target.value)))}
-          onPointerUp={commitVolume}
-          onKeyUp={commitVolume}
+      <div className="min-w-0 flex-1">
+        <p className="mb-1 truncate text-xs text-white">
+          {/* La playlist d'origine situe la piste d'un coup d'œil, en retrait
+              pour ne pas voler la vedette au titre. */}
+          {playlist && <span className="text-gray-400">({playlist.name})</span>} {track.name}
+        </p>
+        {/* Player audio */}
+        <audio
+          ref={player}
+          src={track.src}
+          onPlay={() => setIsPlaying(true)}
+          onPause={() => setIsPlaying(false)}
+          onEnded={handleTrackEnd}
+          loop={track.loop}
         />
 
-        {/* Réglages avancés — le chevron vire au violet dès qu'un effet est actif.
-            Conservés même en mode jeu : ajuster un fondu ou une réverb en pleine
-            séance fait partie du jeu, contrairement au rangement de la bibliothèque. */}
-        <TooltipButton
-          className={`ml-auto rounded-full transition-colors ${effectsHalo}`}
-          onClick={() => setShowEffects(open => !open)}
-          aria-expanded={showEffects}
-          aria-label="Réglages avancés"
-          tooltip="Réglages avancés"
-        >
-          {showEffects ? (
-            <ChevronDown className={`w-5 h-5 ${tweaked ? 'text-purple-400' : 'text-gray-400'}`} />
-          ) : (
-            <ChevronRight className={`w-5 h-5 ${tweaked ? 'text-purple-400' : 'text-gray-400'}`} />
-          )}
-        </TooltipButton>
+        {/* Canvas pour la waveform */}
+        <canvas
+          ref={canvas}
+          width={DEFAULT_WAVEFORM_OPTIONS.canvWidth}
+          height={DEFAULT_WAVEFORM_OPTIONS.canvHeight}
+          /* `max-w-full` et non `w-full` : la forme d'onde garde sa taille native de
+             300 px sur grand écran, et ne rétrécit que si le panneau est plus étroit. */
+          className="max-w-full rounded bg-gray-600 mb-1"
+        />
+
+        {/* Boutons Play/Pause et Boucler */}
+        <div className="flex gap-1">
+          <TooltipButton
+            className="rounded-full hover:bg-purple-400/20 transition-colors"
+            onClick={rewind}
+            tooltip="Revenir au début"
+            aria-label="Revenir au début"
+          >
+            <SkipBack className="w-5 h-5 text-purple-400" />
+          </TooltipButton>
+          <TooltipButton
+            className={`rounded-full transition-colors ${playHalo}`}
+            onClick={togglePlay}
+            tooltip={fadeTitle ?? (isPlaying ? 'Mettre en pause' : 'Lire')}
+            aria-label={isPlaying ? 'Mettre en pause' : 'Lire'}
+          >
+            {fading ? (
+              // Le son monte ou descend : l'attente reprend la couleur de l'action
+              // en cours, vert pour un démarrage, gris pour un arrêt.
+              <LoaderCircle
+                className={`w-5 h-5 animate-spin ${
+                  fading === 'in' ? 'text-green-400' : 'text-gray-400'
+                }`}
+              />
+            ) : isPlaying ? (
+              <Pause className="w-5 h-5 text-gray-400" />
+            ) : (
+              <Play className="w-5 h-5 text-green-400" />
+            )}
+          </TooltipButton>
+          <TooltipButton
+            className="rounded-full hover:bg-red-400/20 transition-colors"
+            onClick={() => void stopAndRewind()}
+            tooltip={fadeTitle ?? 'Arrêter et revenir au début'}
+            aria-label="Arrêter et revenir au début"
+          >
+            {/* L'attente garde ici la teinte du bouton : l'arrêt reste l'arrêt,
+                quel que soit le sens du fondu. */}
+            {fading ? (
+              <LoaderCircle className="w-5 h-5 animate-spin text-red-400" />
+            ) : (
+              <Square className="w-5 h-5 text-red-400" />
+            )}
+          </TooltipButton>
+          <TooltipButton
+            className={`rounded-full transition-colors ${loopHalo}`}
+            onClick={toggleLoop}
+            tooltip={track.loop ? 'Ne plus boucler' : 'Boucler la piste'}
+            aria-label={track.loop ? 'Ne plus boucler' : 'Boucler la piste'}
+          >
+            <Repeat1 className={`w-5 h-5 ${track.loop ? 'text-purple-400' : 'text-gray-400'}`} />
+          </TooltipButton>
+
+          {/* L'indicateur de volume coupe et rétablit le son d'un clic. */}
+          <TooltipButton
+            className={`ml-1 mr-1 rounded-full transition-colors ${volumeHalo}`}
+            onClick={toggleMute}
+            tooltip={track.volume === 0 ? 'Rétablir le son' : 'Couper le son'}
+            aria-label={track.volume === 0 ? 'Rétablir le son' : 'Couper le son'}
+          >
+            {/* L'icône suit la position du curseur, pas l'amplitude brute. */}
+            {volumePosition === 0 && <VolumeOff className="w-5 h-5 text-red-400" />}
+            {volumePosition > 0 && volumePosition <= 0.33 && (
+              <Volume className="w-5 h-5 text-purple-400" />
+            )}
+            {volumePosition > 0.33 && volumePosition <= 0.66 && (
+              <Volume1 className="w-5 h-5 text-purple-400" />
+            )}
+            {volumePosition > 0.66 && <Volume2 className="w-5 h-5 text-purple-400" />}
+          </TooltipButton>
+
+          <input
+            className="w-20"
+            type="range"
+            min="0"
+            max="1"
+            step="0.01"
+            value={volumePosition}
+            onChange={event => updateVolume(gainForPosition(Number(event.target.value)))}
+            onPointerUp={commitVolume}
+            onKeyUp={commitVolume}
+          />
+
+          {/* Réglages avancés — le chevron vire au violet dès qu'un effet est actif.
+              Conservés même en mode jeu : ajuster un fondu ou une réverb en pleine
+              séance fait partie du jeu, contrairement au rangement de la bibliothèque. */}
+          <TooltipButton
+            className={`ml-auto rounded-full transition-colors ${effectsHalo}`}
+            onClick={() => setShowEffects(open => !open)}
+            aria-expanded={showEffects}
+            aria-label="Réglages avancés"
+            tooltip="Réglages avancés"
+          >
+            {showEffects ? (
+              <ChevronDown className={`w-5 h-5 ${tweaked ? 'text-purple-400' : 'text-gray-400'}`} />
+            ) : (
+              <ChevronRight className={`w-5 h-5 ${tweaked ? 'text-purple-400' : 'text-gray-400'}`} />
+            )}
+          </TooltipButton>
+        </div>
+
+        {showEffects && (
+          <TrackEffectsPanel
+            effects={stored}
+            inheritedFades={{ fadeIn: playlistFadeIn, fadeOut: playlistFadeOut }}
+            onChange={updateEffects}
+          />
+        )}
       </div>
-
-      {showEffects && (
-        <TrackEffectsPanel
-          effects={stored}
-          inheritedFades={{ fadeIn: playlistFadeIn, fadeOut: playlistFadeOut }}
-          onChange={updateEffects}
-        />
-      )}
-    </>
+    </div>
   )
 }

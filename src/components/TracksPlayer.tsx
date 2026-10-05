@@ -2,7 +2,7 @@
 
 import { useState, type RefObject } from 'react'
 import { CirclePause, CirclePlay, CircleX, MonitorPlay, Zap, ZapOff } from 'lucide-react'
-import TrackPlayer, { type TrackControls } from './TrackPlayer'
+import TrackPlayer, { REMOVE_RAIL_GAP, REMOVE_RAIL_WIDTH, type TrackControls } from './TrackPlayer'
 import { useAudioOutputs } from '@/hooks/useAudioOutputs'
 import { useTooltip } from '@/hooks/useTooltip'
 import { DEFAULT_WAVEFORM_OPTIONS } from '@/hooks/useAudioWaveform'
@@ -122,11 +122,12 @@ export default function TracksPlayer({
 
       {tracks.map(track => (
         // Largeur calée sur la forme d'onde : sans elle le bloc se dimensionne sur son
-        // contenu, et un nom à rallonge l'élargit au lieu d'être tronqué.
+        // contenu, et un nom à rallonge l'élargit au lieu d'être tronqué. Le bandeau
+        // de retrait s'ajoute à droite, la forme d'onde garde sa taille native.
         <div
           key={track.id}
           className="mt-3 max-w-full"
-          style={{ width: DEFAULT_WAVEFORM_OPTIONS.canvWidth }}
+          style={{ width: DEFAULT_WAVEFORM_OPTIONS.canvWidth + REMOVE_RAIL_GAP + REMOVE_RAIL_WIDTH }}
         >
           <TrackPlayer
             track={track}
