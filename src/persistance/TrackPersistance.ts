@@ -1,11 +1,13 @@
 // db.ts
 import Dexie from 'dexie'
 import type { Table } from 'dexie'
-import type { TrackDB } from './TrackDB'
+import type { AudioBlobDB, TrackDB } from './TrackDB'
 
 export class TrackLibrary extends Dexie {
   // Table "tracks", type = TrackDB
   tracks!: Table<TrackDB>
+  // Table "blobs" : fichiers audio partagés entre une piste et ses doublons
+  blobs!: Table<AudioBlobDB>
 
   constructor() {
     super('TrackLibrary') // nom de la base
@@ -46,6 +48,15 @@ export class TrackLibrary extends Dexie {
             if (tr.effects.fadeOut === 0) delete tr.effects.fadeOut
           })
       })
+
+    // v4 : duplication de pistes. Les fichiers partagés vivent dans `blobs`,
+    // les pistes y renvoient par `blobId` (indexé pour compter les références).
+    // Pas de migration : les pistes existantes gardent leur `blob` en propre et
+    // ne basculent vers `blobs` qu'à leur première duplication.
+    this.version(4).stores({
+      tracks: '++id,name,loop,blobId',
+      blobs: '++id',
+    })
   }
 }
 

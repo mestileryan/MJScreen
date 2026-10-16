@@ -16,6 +16,8 @@ interface PlaylistItemsProps {
   onMove: (move: SortableMove) => void
   /** Déplacement vers une autre playlist via le menu, sans glisser-déposer. */
   onMoveToPlaylist: (item: LibraryItem, targetPlaylistId: number) => void
+  /** Duplication d'une piste dans une playlist, fichier audio partagé. */
+  onDuplicateToPlaylist: (item: LibraryItem, targetPlaylistId: number) => void
   /** Rangement dans la playlist d'archives via le même menu. */
   onArchiveItem: (item: LibraryItem) => void
   onRemoveItem: (playlist: Playlist, item: LibraryItem) => void
@@ -46,6 +48,7 @@ export default function PlaylistItems({
   searchTerm,
   onMove,
   onMoveToPlaylist,
+  onDuplicateToPlaylist,
   onArchiveItem,
   onRemoveItem,
   onPlayAudio,
@@ -81,6 +84,7 @@ export default function PlaylistItems({
             dragDisabled={dragDisabled}
             onRemove={() => onRemoveItem(playlist, item)}
             onMoveToPlaylist={targetId => onMoveToPlaylist(item, targetId)}
+            onDuplicateToPlaylist={targetId => onDuplicateToPlaylist(item, targetId)}
             onArchive={() => onArchiveItem(item)}
             onPlayAudio={onPlayAudio}
             onOpenImage={onOpenImage}

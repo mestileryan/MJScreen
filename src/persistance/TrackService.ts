@@ -6,13 +6,15 @@ import type { TrackDB } from './TrackDB'
 /**
  * Sauvegarde un FileTrack dans Dexie et retourne l'id attribué.
  * Le modèle étant immuable, c'est à l'appelant de reporter l'id sur sa copie.
+ * Avec `blobId`, la piste renvoie à un fichier déjà rangé dans `blobs` (voir
+ * `DB_AddSharedBlob`) au lieu d'en stocker une copie.
  */
-export async function DB_AddTrack(track: FileTrack): Promise<number> {
+export async function DB_AddTrack(track: FileTrack, blobId?: number): Promise<number> {
   // On construit l'objet qu'on veut stocker
   const stored: TrackDB = {
     name: track.name,
     initialVolume: track.initialVolume,
-    blob: track.file,
+    ...(blobId != null ? { blobId } : { blob: track.file }),
     iconName: track.iconName,
     iconColor: track.iconColor,
     order: track.order,
@@ -74,21 +76,68 @@ export async function DB_GetTrackIdsMissingPeaks(): Promise<number[]> {
   return stored.flatMap(row => (row.id != null && row.peaks == null ? [row.id] : []))
 }
 
+/** Range un fichier destiné à plusieurs pistes et retourne son id (import). */
+export async function DB_AddSharedBlob(blob: Blob): Promise<number> {
+  return trackLibraryDB().blobs.add({ blob })
+}
+
 /**
- * Supprime un enregistrement de la DB via son id
+ * Duplique une piste dans une playlist : réglages, icône et forme d'onde sont
+ * copiés, le fichier audio est partagé. À la première duplication, le fichier
+ * que la piste source portait en propre migre vers `blobs` ; il est déplacé,
+ * pas copié, et la base ne grossit pas.
+ * Retourne l'id du doublon, `undefined` si la source n'existe plus.
+ */
+export async function DB_DuplicateTrack(
+  sourceId: number,
+  playlistId: number | undefined,
+  order: number,
+): Promise<number | undefined> {
+  const db = trackLibraryDB()
+  return db.transaction('rw', db.tracks, db.blobs, async () => {
+    const source = await db.tracks.get(sourceId)
+    if (!source) return undefined
+
+    const { id, blob, ...rest } = source
+    let blobId = source.blobId
+    if (blobId == null) {
+      if (!blob) return undefined
+      blobId = await db.blobs.add({ blob })
+      await db.tracks.put({ ...rest, id, blobId })
+    }
+
+    return db.tracks.add({ ...rest, blobId, playlistId, order })
+  })
+}
+
+/**
+ * Supprime une piste. Si elle partageait son fichier, celui-ci n'est supprimé
+ * qu'avec la dernière piste qui y renvoie : le décompte se fait dans la même
+ * transaction que la suppression, aucun fichier ne peut rester orphelin.
  */
 export async function DB_RemoveTrack(track: FileTrack): Promise<void> {
   if (track.id == null) {
     // Pas d'id => rien à supprimer
     return
   }
-  await trackLibraryDB().tracks.delete(track.id)
+  const db = trackLibraryDB()
+  const id = track.id
+  await db.transaction('rw', db.tracks, db.blobs, async () => {
+    const stored = await db.tracks.get(id)
+    if (!stored) return
+    await db.tracks.delete(id)
+    if (stored.blobId == null) return
+    const remaining = await db.tracks.where('blobId').equals(stored.blobId).count()
+    if (remaining === 0) await db.blobs.delete(stored.blobId)
+  })
 }
 
 /** Reconstruit un FileTrack à partir d'une ligne de la base. */
-function fromStored(stored: TrackDB): FileTrack {
-  // On recrée un "File" depuis le Blob stocké en DB
-  const file = new File([stored.blob], stored.name, { type: stored.blob.type })
+function fromStored(stored: TrackDB, shared: Map<number, Blob>): FileTrack {
+  // On recrée un "File" depuis le Blob stocké en DB, propre ou partagé. Une
+  // référence introuvable donne un fichier vide plutôt qu'une piste perdue.
+  const blob = stored.blob ?? (stored.blobId != null ? shared.get(stored.blobId) : undefined)
+  const file = new File(blob ? [blob] : [], stored.name, { type: blob?.type ?? '' })
 
   return {
     ...createFileTrack(file, stored.name),
@@ -103,12 +152,36 @@ function fromStored(stored: TrackDB): FileTrack {
   }
 }
 
+/** Fichiers partagés référencés par ces pistes, indexés par id. */
+async function sharedBlobsFor(stored: TrackDB[]): Promise<Map<number, Blob>> {
+  const ids = [...new Set(stored.flatMap(row => (row.blobId != null ? [row.blobId] : [])))]
+  if (!ids.length) return new Map()
+  const rows = await trackLibraryDB().blobs.bulkGet(ids)
+  return new Map(rows.flatMap(row => (row?.id != null ? [[row.id, row.blob] as const] : [])))
+}
+
 /**
  * Charge tous les TrackDB depuis Dexie et les convertit en FileTrack
  */
 export async function DB_GetTracks(): Promise<FileTrack[]> {
   const storedTracks = await trackLibraryDB().tracks.toArray()
-  return storedTracks.map(fromStored)
+  const shared = await sharedBlobsFor(storedTracks)
+  return storedTracks.map(stored => fromStored(stored, shared))
+}
+
+/**
+ * Clé identifiant le fichier audio de chaque piste : les doublons partagent la
+ * même. Sert à l'export pour n'écrire chaque fichier qu'une fois.
+ */
+export async function DB_GetTrackFileKeys(): Promise<Map<number, string>> {
+  const storedTracks = await trackLibraryDB().tracks.toArray()
+  return new Map(
+    storedTracks.flatMap(row =>
+      row.id != null
+        ? [[row.id, row.blobId != null ? `blob-${row.blobId}` : `track-${row.id}`] as const]
+        : [],
+    ),
+  )
 }
 
 /**
@@ -117,5 +190,5 @@ export async function DB_GetTracks(): Promise<FileTrack[]> {
  */
 export async function DB_GetTrack(id: number): Promise<FileTrack | undefined> {
   const stored = await trackLibraryDB().tracks.get(id)
-  return stored ? fromStored(stored) : undefined
+  return stored ? fromStored(stored, await sharedBlobsFor([stored])) : undefined
 }

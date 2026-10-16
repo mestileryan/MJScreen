@@ -3,6 +3,8 @@ import { DB_GetPlaylists, DB_AddPlaylist } from './PlaylistService'
 import {
   DB_GetTracks,
   DB_AddTrack,
+  DB_AddSharedBlob,
+  DB_GetTrackFileKeys,
   DB_GetTrackPeaks,
   DB_SetTrackPeaks,
 } from './TrackService'
@@ -36,7 +38,8 @@ interface ExportTrackMeta {
   loop?: boolean
   // Mime type du fichier
   type: string
-  // Chemin du fichier dans l'archive
+  // Chemin du fichier dans l'archive. Depuis la version 7, les doublons d'une
+  // piste partagent le même chemin : le fichier n'est écrit qu'une fois.
   filePath: string
   // Chemin des crêtes de forme d'onde pré-calculées, si la piste a déjà été décodée.
   // Absent pour les archives antérieures à la version 4 : le décodage se fera alors
@@ -83,6 +86,7 @@ export async function exportLibrary(): Promise<Blob> {
   const playlists = await DB_GetPlaylists()
   const tracks = await DB_GetTracks()
   const images = await DB_GetImages()
+  const fileKeys = await DB_GetTrackFileKeys()
 
   const data: ExportData = {
     // incrémenter si le format change à l'avenir
@@ -90,7 +94,8 @@ export async function exportLibrary(): Promise<Blob> {
     // v5 : ajout des réglages avancés par piste (`effects`)
     // v6 : mode de lecture et fondus par défaut des playlists ; les fondus de
     //      piste absents des `effects` sont hérités de la playlist
-    version: 6,
+    // v7 : les doublons d'une piste partagent leur `filePath`
+    version: 7,
     playlists: playlists.map(pl => ({
       name: pl.name,
       width: pl.width ?? null,
@@ -105,6 +110,9 @@ export async function exportLibrary(): Promise<Blob> {
   }
 
   const zip = new JSZip()
+  // Chemin déjà attribué à chaque fichier audio : une piste et ses doublons
+  // renvoient au même, écrit une seule fois.
+  const writtenPaths = new Map<string, string>()
 
   // Ajout des fichiers audio dans l'archive
   for (const [idx, track] of tracks.entries()) {
@@ -112,9 +120,14 @@ export async function exportLibrary(): Promise<Blob> {
       0,
       playlists.findIndex(p => p.id === track.playlistId),
     )
-    const path = `tracks/${idx}`
-    // on stocke le fichier brut dans un dossier "tracks"
-    zip.file(path, track.file)
+    const fileKey = (track.id != null ? fileKeys.get(track.id) : undefined) ?? `index-${idx}`
+    let path = writtenPaths.get(fileKey)
+    if (!path) {
+      path = `tracks/${idx}`
+      writtenPaths.set(fileKey, path)
+      // on stocke le fichier brut dans un dossier "tracks"
+      zip.file(path, track.file)
+    }
 
     // Crêtes de forme d'onde (~2 Ko) : les embarquer évite de redécoder toute la
     // bibliothèque après un import. Les marqueurs d'échec (tableau vide) ne sont
@@ -272,6 +285,7 @@ export async function exportSharedArchive(): Promise<Blob> {
 export async function clearLibrary(): Promise<void> {
   await playlistLibraryDB().playlists.clear()
   await trackLibraryDB().tracks.clear()
+  await trackLibraryDB().blobs.clear()
   await imageLibraryDB().images.clear()
 }
 
@@ -321,7 +335,15 @@ export async function importLibrary(blob: Blob): Promise<void> {
     playlists.push(pl)
   }
 
-  // 5. Restauration des morceaux
+  // 5. Restauration des morceaux. Un chemin cité par plusieurs pistes (archives
+  // v7+) désigne un fichier partagé : rangé une fois dans `blobs`, référencé
+  // par chacune.
+  const pathUses = new Map<string, number>()
+  for (const trackMeta of data.tracks) {
+    pathUses.set(trackMeta.filePath, (pathUses.get(trackMeta.filePath) ?? 0) + 1)
+  }
+  const sharedBlobIds = new Map<string, number>()
+
   for (const trackMeta of data.tracks) {
     const trackFileEntry = zip.file(trackMeta.filePath)
     if (!trackFileEntry) {
@@ -343,6 +365,15 @@ export async function importLibrary(blob: Blob): Promise<void> {
       if (effects.fadeOut === 0) delete effects.fadeOut
     }
 
+    let blobId: number | undefined
+    if ((pathUses.get(trackMeta.filePath) ?? 0) > 1) {
+      blobId = sharedBlobIds.get(trackMeta.filePath)
+      if (blobId == null) {
+        blobId = await DB_AddSharedBlob(file)
+        sharedBlobIds.set(trackMeta.filePath, blobId)
+      }
+    }
+
     const trackId = await DB_AddTrack({
       ...createFileTrack(file, trackMeta.name),
       initialVolume: trackMeta.initialVolume ?? 0.8,
@@ -352,7 +383,7 @@ export async function importLibrary(blob: Blob): Promise<void> {
       playlistId: playlist?.id,
       loop: trackMeta.loop ?? false,
       effects,
-    })
+    }, blobId)
 
     // Crêtes pré-calculées (archives v4+) : restaurées telles quelles, la piste
     // s'affiche sans décodage. Une archive plus ancienne n'en a pas, le backfill

@@ -28,7 +28,12 @@ import {
   DB_RemovePlaylist,
   DB_UpdatePlaylist,
 } from '@/persistance/PlaylistService'
-import { DB_AddTrack, DB_RemoveTrack, DB_UpdateTrack } from '@/persistance/TrackService'
+import {
+  DB_AddTrack,
+  DB_DuplicateTrack,
+  DB_RemoveTrack,
+  DB_UpdateTrack,
+} from '@/persistance/TrackService'
 import { DB_AddImage, DB_RemoveImage, DB_UpdateImage } from '@/persistance/ImageService'
 import { createPlaylist } from '@/models/Playlist'
 import type Playlist from '@/models/Playlist'
@@ -381,6 +386,32 @@ export default function Library({ onPlayAudio, onOpenImage }: LibraryProps) {
   }
 
   /**
+   * Duplique une piste en fin de playlist. Le doublon a ses propres réglages
+   * (volume, icône, effets…) mais partage le fichier audio en base.
+   */
+  async function duplicateItem(item: LibraryItem, targetPlaylistId: number) {
+    if (!isAudio(item) || item.id == null) return
+    const target = playlistsRef.current.find(playlist => playlist.id === targetPlaylistId)
+    if (!target) return
+
+    const order = target.items.length
+    const id = await DB_DuplicateTrack(item.id, targetPlaylistId, order)
+    if (id == null) return
+    const copy: FileTrack = { ...item, id, playlistId: targetPlaylistId, order }
+
+    // Relu après l'attente : un autre changement a pu survenir entre-temps.
+    const current = playlistsRef.current.find(playlist => playlist.id === targetPlaylistId)
+    const next = replaceItems(playlistsRef.current, targetPlaylistId, [
+      ...(current?.items ?? []),
+      copy,
+    ])
+    playlistsRef.current = next
+    setPlaylists(next)
+    // Forme d'onde copiée avec la piste ; calculée ici si la source n'en avait pas.
+    void ensureTrackPeaks(id, copy.file).catch(() => {})
+  }
+
+  /**
    * Archive une piste : déplacement vers la playlist d'archives, créée à la
    * première occasion. Elle restera en base même vidée, simplement masquée.
    */
@@ -657,6 +688,7 @@ export default function Library({ onPlayAudio, onOpenImage }: LibraryProps) {
                     searchTerm={searchTerm}
                     onMove={handleItemsMove}
                     onMoveToPlaylist={(item, targetId) => void moveItemToPlaylist(item, targetId)}
+                    onDuplicateToPlaylist={(item, targetId) => void duplicateItem(item, targetId)}
                     onArchiveItem={item => void archiveItem(item)}
                     onRemoveItem={removeItem}
                     onPlayAudio={onPlayAudio}
@@ -724,6 +756,7 @@ export default function Library({ onPlayAudio, onOpenImage }: LibraryProps) {
                     searchTerm={searchTerm}
                     onMove={handleItemsMove}
                     onMoveToPlaylist={(item, targetId) => void moveItemToPlaylist(item, targetId)}
+                    onDuplicateToPlaylist={(item, targetId) => void duplicateItem(item, targetId)}
                     onArchiveItem={item => void archiveItem(item)}
                     onRemoveItem={removeItem}
                     onPlayAudio={onPlayAudio}

@@ -42,6 +42,8 @@ interface LibraryItemCardProps {
   onRemove: () => void
   /** Déplacement vers une autre playlist choisie dans le menu contextuel. */
   onMoveToPlaylist: (targetPlaylistId: number) => void
+  /** Duplication (pistes seulement) : le doublon partage le fichier audio. */
+  onDuplicateToPlaylist: (targetPlaylistId: number) => void
   /** Rangement dans les archives, via le même menu. */
   onArchive: () => void
   onPlayAudio: (track: FileTrack) => void
@@ -62,6 +64,7 @@ export default function LibraryItemCard({
   dragDisabled = false,
   onRemove,
   onMoveToPlaylist,
+  onDuplicateToPlaylist,
   onArchive,
   onPlayAudio,
   onOpenImage,
@@ -85,6 +88,8 @@ export default function LibraryItemCard({
     x: number
     y: number
     kind: 'move' | 'actions'
+    /** Case « Dupliquer » cochée : la piste est copiée au lieu d'être déplacée. */
+    duplicate: boolean
     /** Ouvert vers le haut, quand le bouton est trop près du bas de l'écran. */
     up: boolean
   } | null>(null)
@@ -160,13 +165,16 @@ export default function LibraryItemCard({
     setMoveMenu(current =>
       current
         ? null
-        : { x: rect.right, y: up ? rect.top - 4 : rect.bottom + 4, kind, up },
+        : { x: rect.right, y: up ? rect.top - 4 : rect.bottom + 4, kind, up, duplicate: false },
     )
   }
 
-  function moveTo(targetPlaylistId: number | undefined) {
+  function pickPlaylist(targetPlaylistId: number | undefined) {
+    const copying = moveMenu?.duplicate === true
     setMoveMenu(null)
-    if (targetPlaylistId != null) onMoveToPlaylist(targetPlaylistId)
+    if (targetPlaylistId == null) return
+    if (copying) onDuplicateToPlaylist(targetPlaylistId)
+    else onMoveToPlaylist(targetPlaylistId)
   }
 
   async function toggleLoop() {
@@ -453,16 +461,35 @@ export default function LibraryItemCard({
                   comme un libellé, pas comme un choix. Seul le nom de la piste
                   est tronqué, pour que le « vers… » reste toujours visible. */}
               <p className="flex border-b border-gray-700 px-2 py-1 text-xs text-gray-400">
-                <span className="shrink-0">Déplacer&nbsp;</span>
+                <span className="shrink-0">
+                  {moveMenu.duplicate ? 'Dupliquer' : 'Déplacer'}&nbsp;
+                </span>
                 <span className="truncate text-gray-200">{item.name}</span>
                 <span className="shrink-0">&nbsp;vers…</span>
               </p>
+              {/* Pistes seulement : le doublon garde ses propres réglages mais
+                  partage le fichier audio, la base ne grossit pas. */}
+              {isAudio && (
+                <label className="flex cursor-pointer items-center gap-1.5 border-b border-gray-700 px-2 py-1.5 text-xs text-gray-300 hover:bg-gray-700">
+                  <input
+                    type="checkbox"
+                    className="accent-purple-500"
+                    checked={moveMenu.duplicate}
+                    onChange={event => {
+                      const duplicate = event.target.checked
+                      setMoveMenu(current => (current ? { ...current, duplicate } : current))
+                    }}
+                  />
+                  Dupliquer plutôt que déplacer
+                </label>
+              )}
               {/* Les archives ne figurent pas parmi les destinations : elles ont
-                  leur entrée dédiée sous le trait. */}
+                  leur entrée dédiée sous le trait. Un doublon peut rejoindre
+                  sa propre playlist (variante aux réglages différents). */}
               {playlists
                 .filter(playlist => !playlist.archive)
                 .map(playlist => {
-                  const current = playlist.id === item.playlistId
+                  const current = !moveMenu.duplicate && playlist.id === item.playlistId
                   return (
                     <button
                       key={playlist.id}
@@ -470,7 +497,7 @@ export default function LibraryItemCard({
                       className={`block w-full truncate py-1.5 pl-5 pr-3 text-left ${
                         current ? 'cursor-default text-gray-500' : 'hover:bg-gray-700'
                       }`}
-                      onClick={() => moveTo(playlist.id)}
+                      onClick={() => pickPlaylist(playlist.id)}
                     >
                       {playlist.name}
                     </button>

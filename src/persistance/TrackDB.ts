@@ -4,7 +4,13 @@ export interface TrackDB {
   id?: number; // clé primaire auto-incrémentée
   name: string;
   initialVolume: number;
-  blob: Blob;  // On stocke le contenu en blob (ou File)
+  /**
+   * Contenu audio porté en propre. Absent quand la piste partage son fichier
+   * avec ses doublons : il vit alors dans la table `blobs`, via `blobId`.
+   */
+  blob?: Blob;
+  /** Référence vers `blobs`, posée à la première duplication de la piste. */
+  blobId?: number;
   iconName?: string;
   iconColor?: string;
   order: number;
@@ -23,3 +29,13 @@ export interface TrackDB {
   effects?: TrackEffects;
 }
 
+
+/**
+ * Fichier audio partagé par plusieurs pistes (une piste et ses doublons).
+ * Aucun compteur de références n'est stocké : on compte les pistes qui pointent
+ * dessus au moment d'en supprimer une, ce qui ne peut pas se désynchroniser.
+ */
+export interface AudioBlobDB {
+  id?: number;
+  blob: Blob;
+}
