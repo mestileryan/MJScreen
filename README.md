@@ -42,6 +42,47 @@ est déjà à jour.
 npm run lint
 ```
 
+### Tests unitaires avec [Vitest](https://vitest.dev/)
+
+```sh
+npm test             # une passe, comme en CI (la publication échoue si un test casse)
+npm run test:watch   # relance à chaque modification
+```
+
+Les tests (`src/**/*.test.ts`) tournent sous Node : IndexedDB est imité par
+`fake-indexeddb`, les dossiers locaux par `src/test/fakeFileSystem.ts`.
+
+## Bibliothèque de pistes
+
+Page autonome, servie sur `/MJScreen/trackslibrary/`. Elle gère une bibliothèque de
+fichiers audio rangée dans un stockage choisi par l'utilisateur. Le jukebox s'en
+servira plus tard comme source pour ajouter des pistes.
+
+Contrairement au jukebox, **aucune piste n'est stockée dans le navigateur**. Seul le
+handle du dossier local y est gardé (IndexedDB, base `FolderHandles`). Tout le reste vit
+dans le stockage :
+
+```
+<racine de la bibliothèque>/
+  .mjlib/config.json     configuration (nom, identifiant, sorties réservées)
+  .mjlib/index.json      métadonnées et tags de chaque piste, identifiants stables
+  .mjlib/sauvegardes/    copies faites avant toute réécriture d'un fichier abîmé ou migré
+  pistes/…               fichiers audio ajoutés depuis l'outil
+```
+
+Ces fichiers suffisent à recharger la bibliothèque à l'identique sur une autre machine
+ou un autre navigateur.
+
+- **Schémas versionnés** (`src/schemas/`) : chaque fichier porte un `schemaVersion`.
+  Un fichier plus ancien est migré en mémoire et ne sera réécrit qu'après sauvegarde.
+  Un fichier plus récent est signalé et n'est jamais écrasé.
+- **Stockage** (`src/storage/`) : interface `StorageProvider` commune à tous les
+  fournisseurs. Seul le dossier local existe pour l'instant (File System Access API,
+  Chromium seulement, accès à réautoriser à chaque session). Dropbox, Google Drive et
+  OneDrive viendront ensuite.
+- **Service** (`src/persistance/TracksLibraryService.ts`) : ouverture (sans écriture),
+  initialisation d'un dossier (sans toucher à ses fichiers) et réparation sur demande.
+
 ## Icônes
 
 Les icônes de jeu vivent dans `src/assets/game-icons/`. `npm run build-icons` les

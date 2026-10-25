@@ -20,6 +20,10 @@ jobs:
       - name: Install dependencies
         run: npm install
 
+      # Un test en échec bloque la publication.
+      - name: Run unit tests
+        run: npm test
+
       # Génère le sprite d'icônes puis exporte le site statique dans ./out
       - name: Build project
         run: npm run build
