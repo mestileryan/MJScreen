@@ -1,13 +1,13 @@
-import { isAudioPath } from '@/lib/audioFiles'
 import type TracksLibraryConfig from '@/models/TracksLibraryConfig'
 import { createTracksLibraryConfig } from '@/models/TracksLibraryConfig'
 import type TracksLibraryIndex from '@/models/TracksLibraryIndex'
-import { createTracksLibraryIndex } from '@/models/TracksLibraryIndex'
+import { createTracksLibraryIndex, type IndexedTrack } from '@/models/TracksLibraryIndex'
 import { tracksLibraryConfigSchema } from '@/schemas/tracksLibraryConfigSchema'
 import { parseDocument, serializeDocument, type DocumentSchema, type ParseResult } from '@/schemas/documentSchema'
 import { tracksLibraryIndexSchema } from '@/schemas/tracksLibraryIndexSchema'
 import { readText, type StorageProvider } from '@/storage/StorageProvider'
 import { backupFile, LIBRARY_CONFIG_PATH, LIBRARY_INDEX_PATH, MJLIB_DIR } from './TracksLibraryFiles'
+import { reconcileIndex, scanAudioFiles, type ReconcileReport } from './TracksLibraryIndexer'
 
 /** Bibliothèque ouverte : tout son état vient des fichiers du stockage. */
 export interface TracksLibrary {
@@ -151,6 +151,33 @@ function toProblem(file: TracksLibraryFile, result: ParseResult<unknown> | null)
 }
 
 async function countAudioFiles(storage: StorageProvider): Promise<number> {
-  const entries = await storage.list('', { recursive: true })
-  return entries.filter(entry => entry.kind === 'file' && isAudioPath(entry.path)).length
+  return (await scanAudioFiles(storage)).length
+}
+
+/**
+ * Parcourt le dossier et met l’index en face de son contenu réel : fichiers
+ * ajoutés, remplacés ou disparus hors de l’outil. L’index n’est réécrit que
+ * s’il a changé, et une entrée dont le fichier manque y reste.
+ */
+export async function refreshTracksLibrary(
+  library: TracksLibrary,
+): Promise<{ library: TracksLibrary; report: ReconcileReport }> {
+  const files = await scanAudioFiles(library.storage)
+  const { index, report } = reconcileIndex(library.index, files)
+  return { library: index === library.index ? library : await saveTracksLibraryIndex(library, index), report }
+}
+
+/** Retire des entrées de l’index (les fichiers audio, eux, ne sont pas touchés). */
+export async function removeTracksFromIndex(library: TracksLibrary, ids: Iterable<string>): Promise<TracksLibrary> {
+  const removed = new Set(ids)
+  const tracks = library.index.tracks.filter(track => !removed.has(track.id))
+  return tracks.length === library.index.tracks.length ? library : saveTracksLibraryIndex(library, { ...library.index, tracks })
+}
+
+/** Remplace des pistes par leur nouvelle version, à identifiant égal, et enregistre. */
+export async function updateTracks(library: TracksLibrary, updated: IndexedTrack[]): Promise<TracksLibrary> {
+  if (updated.length === 0) return library
+  const byId = new Map(updated.map(track => [track.id, track]))
+  const tracks = library.index.tracks.map(track => byId.get(track.id) ?? track)
+  return saveTracksLibraryIndex(library, { ...library.index, tracks })
 }
