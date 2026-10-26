@@ -49,8 +49,8 @@ export function reconcileIndex(
     byPath.delete(track.path)
     if (file.size === track.size && file.lastModified === track.lastModified) return track
     // Le fichier a été remplacé : la durée connue ne vaut plus, les tags restent.
-    const { duration: _duration, ...rest } = track
-    const changed: IndexedTrack = { ...rest, size: file.size, lastModified: file.lastModified }
+    const changed: IndexedTrack = { ...track, size: file.size, lastModified: file.lastModified }
+    delete changed.duration
     report.changed.push(changed)
     return changed
   })
