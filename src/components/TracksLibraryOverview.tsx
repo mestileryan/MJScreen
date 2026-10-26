@@ -2,6 +2,7 @@
 
 import { Library as LibraryIcon, LoaderCircle } from 'lucide-react'
 import type { ReadyState } from '@/hooks/useTracksLibrary'
+import type { IndexedTrack } from '@/models/TracksLibraryIndex'
 import { serializeDocument } from '@/schemas/documentSchema'
 import TracksLibraryTrackList from './TracksLibraryTrackList'
 import { ActionButton, TechnicalDetails } from './TracksLibraryUi'
@@ -12,6 +13,8 @@ interface TracksLibraryOverviewProps {
   onChange: () => void
   onForget: () => void
   onRemoveMissing: (ids: string[]) => void
+  onEdit: (id: string, patch: Pick<IndexedTrack, 'name' | 'tags'>) => void
+  onDelete: (id: string) => void
 }
 
 function trackCount(count: number): string {
@@ -26,6 +29,8 @@ export default function TracksLibraryOverview({
   onChange,
   onForget,
   onRemoveMissing,
+  onEdit,
+  onDelete,
 }: TracksLibraryOverviewProps) {
   const { library, report } = state
   const { config, index, storage, migratedFrom } = library
@@ -60,7 +65,14 @@ export default function TracksLibraryOverview({
         </TechnicalDetails>
       </section>
 
-      <TracksLibraryTrackList tracks={index.tracks} report={report} onRemoveMissing={onRemoveMissing} />
+      <TracksLibraryTrackList
+        storage={storage}
+        tracks={index.tracks}
+        report={report}
+        onEdit={onEdit}
+        onDelete={onDelete}
+        onRemoveMissing={onRemoveMissing}
+      />
     </div>
   )
 }

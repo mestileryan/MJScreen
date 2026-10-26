@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { createIndexedTrack, createTracksLibraryIndex, INDEX_SCHEMA_VERSION, trackNameFromPath } from '@/models/TracksLibraryIndex'
+import {
+  createIndexedTrack,
+  createTracksLibraryIndex,
+  INDEX_SCHEMA_VERSION,
+  parseTags,
+  trackNameFromPath,
+} from '@/models/TracksLibraryIndex'
 import { parseDocument, parseDocumentValue, serializeDocument } from './documentSchema'
 import { tracksLibraryIndexSchema } from './tracksLibraryIndexSchema'
 
@@ -47,6 +53,13 @@ describe('tracksLibraryIndexSchema', () => {
     ['avec un chemin en double', index(track, { ...track, id: 't2' })],
   ])('refuse un index %s', (_, document) => {
     expect(parseDocumentValue(tracksLibraryIndexSchema, document).status).toBe('invalid')
+  })
+})
+
+describe('parseTags', () => {
+  it('découpe, nettoie et dédoublonne sans tenir compte de la casse', () => {
+    expect(parseTags(' combat, Nuit ;forêt,, nuit ,')).toEqual(['combat', 'Nuit', 'forêt'])
+    expect(parseTags('')).toEqual([])
   })
 })
 

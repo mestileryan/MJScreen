@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { readAudioDuration } from '@/lib/audioDuration'
 import type { IndexedTrack } from '@/models/TracksLibraryIndex'
 import {
+  deleteTrack,
   initTracksLibrary,
   openTracksLibrary,
   refreshTracksLibrary,
@@ -218,6 +219,30 @@ export function useTracksLibrary() {
     [run, setReady],
   )
 
+  const editTrack = useCallback(
+    (id: string, patch: Pick<IndexedTrack, 'name' | 'tags'>) =>
+      run(async () => {
+        const current = latest.current
+        const track = current?.library.index.tracks.find(t => t.id === id)
+        if (!current || !track) return
+        setReady({ ...current, library: await updateTracks(current.library, [{ ...track, ...patch }]) })
+      }),
+    [run, setReady],
+  )
+
+  /** Suppression définitive : le fichier audio est effacé, puis la piste quitte la liste. */
+  const deleteTrackAction = useCallback(
+    (id: string) =>
+      run(async () => {
+        const current = latest.current
+        if (!current) return
+        const library = await deleteTrack(current.library, id)
+        const report = current.report && { ...current.report, missing: current.report.missing.filter(t => t.id !== id) }
+        setReady({ ...current, library, report })
+      }),
+    [run, setReady],
+  )
+
   const forget = useCallback(
     () =>
       run(async () => {
@@ -228,7 +253,19 @@ export function useTracksLibrary() {
     [run],
   )
 
-  return { state, notice, pick, reopen, reload: open, initialize, reset, removeMissing, forget }
+  return {
+    state,
+    notice,
+    pick,
+    reopen,
+    reload: open,
+    initialize,
+    reset,
+    removeMissing,
+    editTrack,
+    deleteTrack: deleteTrackAction,
+    forget,
+  }
 }
 
 /** Traduit une erreur en message courant ; le texte brut reste disponible dans `details`. */

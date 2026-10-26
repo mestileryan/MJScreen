@@ -41,6 +41,19 @@ export function trackNameFromPath(path: string): string {
   return dot > 0 ? name.slice(0, dot) : name
 }
 
+/** Étiquettes saisies « combat, nuit , forêt » → `['combat', 'nuit', 'forêt']`, sans doublon ni vide. */
+export function parseTags(text: string): string[] {
+  const seen = new Set<string>()
+  const tags: string[] = []
+  for (const raw of text.split(/[,;]/)) {
+    const tag = raw.trim()
+    if (!tag || seen.has(tag.toLowerCase())) continue
+    seen.add(tag.toLowerCase())
+    tags.push(tag)
+  }
+  return tags
+}
+
 export function createIndexedTrack(
   path: string,
   file: { size?: number; lastModified?: number } = {},

@@ -1,18 +1,23 @@
 'use client'
 
-import { FileQuestion, Music, Search } from 'lucide-react'
+import { Search } from 'lucide-react'
 import { useMemo, useState } from 'react'
-import { formatDuration } from '@/lib/audioDuration'
-import { parentPath } from '@/lib/storagePath'
+import { useTrackPreview } from '@/hooks/useTrackPreview'
 import type { IndexedTrack } from '@/models/TracksLibraryIndex'
 import type { ReconcileReport } from '@/persistance/TracksLibraryIndexer'
 import { isEmptyReport } from '@/persistance/TracksLibraryIndexer'
+import type { StorageProvider } from '@/storage/StorageProvider'
+import ConfirmationModal from './ConfirmationModal'
+import TracksLibraryTrackRow from './TracksLibraryTrackRow'
 import { ActionButton } from './TracksLibraryUi'
 
 interface TracksLibraryTrackListProps {
+  storage: StorageProvider
   tracks: IndexedTrack[]
   /** `null` tant que le dossier est en cours de parcours. */
   report: ReconcileReport | null
+  onEdit: (id: string, patch: Pick<IndexedTrack, 'name' | 'tags'>) => void
+  onDelete: (id: string) => void
   onRemoveMissing: (ids: string[]) => void
 }
 
@@ -36,9 +41,18 @@ function reportSummary(report: ReconcileReport): string {
   return parts.join(' · ')
 }
 
-export default function TracksLibraryTrackList({ tracks, report, onRemoveMissing }: TracksLibraryTrackListProps) {
+export default function TracksLibraryTrackList({
+  storage,
+  tracks,
+  report,
+  onEdit,
+  onDelete,
+  onRemoveMissing,
+}: TracksLibraryTrackListProps) {
   const [query, setQuery] = useState('')
+  const [deleting, setDeleting] = useState<IndexedTrack | null>(null)
   const missing = useMemo(() => new Set(report?.missing.map(t => t.id)), [report])
+  const { preview, volume, toggle, stop, seek, setVolume } = useTrackPreview(storage)
 
   const visible = useMemo(() => {
     const needle = fold(query.trim())
@@ -82,42 +96,36 @@ export default function TracksLibraryTrackList({ tracks, report, onRemoveMissing
         <p className="px-3 text-sm text-gray-400">Aucune piste ne correspond.</p>
       ) : (
         <ul className="divide-y divide-gray-700 rounded-lg bg-gray-800">
-          {visible.map(track => {
-            const lost = missing.has(track.id)
-            const folder = parentPath(track.path)
-            return (
-              <li key={track.id} className={`flex items-center gap-3 px-3 py-2 text-sm ${lost ? 'opacity-70' : ''}`}>
-                {lost ? (
-                  <FileQuestion className="h-5 w-5 shrink-0 text-red-400" />
-                ) : (
-                  <Music className="h-5 w-5 shrink-0 text-purple-400" />
-                )}
-                <div className="min-w-0 flex-1">
-                  <p className="truncate font-medium text-white">{track.name}</p>
-                  <p className="truncate text-xs text-gray-400">
-                    {lost ? 'Fichier introuvable' : folder ? `${folder}/` : ''}
-                  </p>
-                </div>
-                {track.tags.length > 0 && (
-                  <ul className="hidden flex-wrap gap-1 sm:flex">
-                    {track.tags.map(tag => (
-                      <li key={tag} className="rounded bg-gray-700 px-1.5 py-0.5 text-xs text-gray-300">
-                        {tag}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-                {lost ? (
-                  <ActionButton onClick={() => onRemoveMissing([track.id])}>Retirer</ActionButton>
-                ) : (
-                  <span className="w-12 text-right tabular-nums text-gray-400">
-                    {track.duration !== undefined ? formatDuration(track.duration) : '–'}
-                  </span>
-                )}
-              </li>
-            )
-          })}
+          {visible.map(track => (
+            <TracksLibraryTrackRow
+              key={track.id}
+              track={track}
+              missing={missing.has(track.id)}
+              preview={preview}
+              volume={volume}
+              onToggle={() => toggle(track)}
+              onSeek={seek}
+              onVolume={setVolume}
+              onEdit={patch => onEdit(track.id, patch)}
+              onDelete={() => setDeleting(track)}
+              onRemoveMissing={() => onRemoveMissing([track.id])}
+            />
+          ))}
         </ul>
+      )}
+
+      {deleting && (
+        <ConfirmationModal
+          message={`Supprimer définitivement « ${deleting.name} » ? Le fichier sera effacé du dossier.`}
+          confirmLabel="Supprimer"
+          confirmTone="danger"
+          onConfirm={() => {
+            if (preview?.trackId === deleting.id) stop()
+            onDelete(deleting.id)
+            setDeleting(null)
+          }}
+          onCancel={() => setDeleting(null)}
+        />
       )}
     </section>
   )

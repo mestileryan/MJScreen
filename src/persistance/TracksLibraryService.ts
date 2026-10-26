@@ -5,7 +5,7 @@ import { createTracksLibraryIndex, type IndexedTrack } from '@/models/TracksLibr
 import { tracksLibraryConfigSchema } from '@/schemas/tracksLibraryConfigSchema'
 import { parseDocument, serializeDocument, type DocumentSchema, type ParseResult } from '@/schemas/documentSchema'
 import { tracksLibraryIndexSchema } from '@/schemas/tracksLibraryIndexSchema'
-import { readText, type StorageProvider } from '@/storage/StorageProvider'
+import { isStorageError, readText, type StorageProvider } from '@/storage/StorageProvider'
 import { backupFile, LIBRARY_CONFIG_PATH, LIBRARY_INDEX_PATH, MJLIB_DIR } from './TracksLibraryFiles'
 import { reconcileIndex, scanAudioFiles, type ReconcileReport } from './TracksLibraryIndexer'
 
@@ -172,6 +172,21 @@ export async function removeTracksFromIndex(library: TracksLibrary, ids: Iterabl
   const removed = new Set(ids)
   const tracks = library.index.tracks.filter(track => !removed.has(track.id))
   return tracks.length === library.index.tracks.length ? library : saveTracksLibraryIndex(library, { ...library.index, tracks })
+}
+
+/**
+ * Suppression définitive : le fichier audio est effacé du dossier, puis la piste
+ * quitte l’index. Un fichier déjà disparu n’empêche pas de retirer la piste.
+ */
+export async function deleteTrack(library: TracksLibrary, id: string): Promise<TracksLibrary> {
+  const track = library.index.tracks.find(t => t.id === id)
+  if (!track) return library
+  try {
+    await library.storage.delete(track.path)
+  } catch (error) {
+    if (!isStorageError(error, 'not-found')) throw error
+  }
+  return removeTracksFromIndex(library, [id])
 }
 
 /** Remplace des pistes par leur nouvelle version, à identifiant égal, et enregistre. */
