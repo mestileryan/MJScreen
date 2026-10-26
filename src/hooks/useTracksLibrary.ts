@@ -23,21 +23,25 @@ import {
 } from '@/storage/local/localFolder'
 import { isStorageError } from '@/storage/StorageProvider'
 
+/** Message pour l’utilisateur, avec le détail technique à n’afficher que sur demande. */
+export interface UserMessage {
+  text: string
+  details?: string
+}
+
 export type TracksLibraryState =
   | { step: 'starting' }
-  /** Navigateur sans File System Access API (Firefox, Safari). */
-  | { step: 'unsupported' }
-  | { step: 'no-folder' }
+  /** Aucune bibliothèque mémorisée. `localAvailable` est faux sur Firefox et Safari. */
+  | { step: 'no-library'; localAvailable: boolean }
   /** Un dossier a été mémorisé, mais l’accès doit être redemandé pour cette session. */
   | { step: 'needs-permission'; handle: FileSystemDirectoryHandle; denied?: boolean }
   | { step: 'opening'; label: string }
   | { step: 'unmanaged'; storage: LocalFolderProvider; audioFileCount: number }
   | { step: 'problem'; storage: LocalFolderProvider; problems: FileProblem[] }
   | { step: 'ready'; storage: LocalFolderProvider; library: TracksLibrary }
-  | { step: 'error'; message: string; handle?: FileSystemDirectoryHandle }
+  | { step: 'error'; error: UserMessage; handle?: FileSystemDirectoryHandle }
 
-/** Message affiché après une action, par exemple l’emplacement d’une sauvegarde. */
-export type TracksLibraryNotice = { tone: 'info' | 'error'; text: string } | null
+export type TracksLibraryNotice = ({ tone: 'info' | 'error' } & UserMessage) | null
 
 /**
  * Cycle de vie de la bibliothèque de pistes en dossier local : rouvrir le dossier
@@ -66,7 +70,7 @@ export function useTracksLibrary() {
           break
       }
     } catch (error) {
-      setState({ step: 'error', message: describeError(error), handle })
+      setState({ step: 'error', error: describeError(error), handle })
     }
   }, [])
 
@@ -75,10 +79,10 @@ export function useTracksLibrary() {
   useEffect(() => {
     let cancelled = false
     void (async () => {
-      if (!isLocalFolderSupported()) return setState({ step: 'unsupported' })
-      const handle = await DB_GetTracksLibraryHandle().catch(() => undefined)
+      const localAvailable = isLocalFolderSupported()
+      const handle = localAvailable ? await DB_GetTracksLibraryHandle().catch(() => undefined) : undefined
       if (cancelled) return
-      if (!handle) return setState({ step: 'no-folder' })
+      if (!handle) return setState({ step: 'no-library', localAvailable })
       const permission = await queryFolderPermission(handle).catch(() => 'prompt' as const)
       if (cancelled) return
       if (permission === 'granted') await open(handle)
@@ -94,7 +98,7 @@ export function useTracksLibrary() {
     try {
       await action()
     } catch (error) {
-      setNotice({ tone: 'error', text: describeError(error) })
+      setNotice({ tone: 'error', ...describeError(error) })
     }
   }, [])
 
@@ -131,7 +135,7 @@ export function useTracksLibrary() {
       run(async () => {
         const backup = await resetTracksLibraryFile(storage, file)
         await open(storage.root)
-        if (backup) setNotice({ tone: 'info', text: `L’ancien fichier a été sauvegardé sous ${backup}.` })
+        if (backup) setNotice({ tone: 'info', text: 'Fichier recréé. L’ancien a été conservé.', details: backup })
       }),
     [open, run],
   )
@@ -140,7 +144,7 @@ export function useTracksLibrary() {
     () =>
       run(async () => {
         await DB_ClearTracksLibraryHandle()
-        setState({ step: 'no-folder' })
+        setState({ step: 'no-library', localAvailable: isLocalFolderSupported() })
       }),
     [run],
   )
@@ -148,12 +152,14 @@ export function useTracksLibrary() {
   return { state, notice, pick, reopen, reload: open, initialize, reset, forget }
 }
 
-function describeError(error: unknown): string {
+/** Traduit une erreur en message courant ; le texte brut reste disponible dans `details`. */
+function describeError(error: unknown): UserMessage {
+  const details = error instanceof Error ? `${error.name} : ${error.message}` : String(error)
   if (isStorageError(error, 'permission-denied')) {
-    return 'L’accès au dossier a été refusé ou retiré. Rouvrez-le pour l’autoriser à nouveau.'
+    return { text: 'L’accès au dossier a été refusé. Autorisez-le à nouveau pour continuer.', details }
   }
   if (isStorageError(error, 'not-found')) {
-    return 'Le dossier est introuvable : il a peut-être été déplacé, renommé ou supprimé.'
+    return { text: 'Le dossier est introuvable. Il a peut-être été déplacé ou supprimé.', details }
   }
-  return error instanceof Error ? error.message : String(error)
+  return { text: 'Quelque chose s’est mal passé.', details }
 }

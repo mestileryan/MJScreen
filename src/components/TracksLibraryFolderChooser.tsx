@@ -1,56 +1,61 @@
 'use client'
 
-import { Cloud, FolderOpen, FolderSearch, TriangleAlert } from 'lucide-react'
-import { ActionButton, Panel } from './TracksLibraryUi'
+import { Cloud, FolderOpen, HardDrive, TriangleAlert } from 'lucide-react'
+import type { ReactNode } from 'react'
+import type { UserMessage } from '@/hooks/useTracksLibrary'
+import { ActionButton, Message, Panel } from './TracksLibraryUi'
 
-/** Fournisseurs cloud prévus : affichés pour que l’utilisateur sache qu’ils arrivent. */
-const CLOUD_PROVIDERS = ['Dropbox', 'Google Drive', 'OneDrive']
+interface DestinationProps {
+  icon: ReactNode
+  label: string
+  /** Raison pour laquelle la destination est grisée. */
+  unavailable?: string
+  onClick?: () => void
+}
 
-function CloudProviders() {
+function Destination({ icon, label, unavailable, onClick }: DestinationProps) {
   return (
-    <ul className="flex flex-wrap gap-2">
-      {CLOUD_PROVIDERS.map(name => (
-        <li key={name} className="flex items-center gap-1.5 rounded bg-gray-700/60 px-2.5 py-1 text-gray-400">
-          <Cloud className="h-4 w-4" />
-          {name} <span className="text-xs">(bientôt)</span>
-        </li>
-      ))}
-    </ul>
+    <button
+      type="button"
+      disabled={!!unavailable}
+      onClick={onClick}
+      className="flex flex-col items-center gap-2 rounded-lg bg-gray-700 p-4 text-white transition-colors enabled:hover:bg-gray-600 disabled:cursor-not-allowed disabled:opacity-50"
+    >
+      {icon}
+      <span className="font-medium">{label}</span>
+      {unavailable && <span className="text-xs text-gray-400">{unavailable}</span>}
+    </button>
   )
 }
 
-/** Firefox et Safari : le dossier local est impossible, il faudra passer par un cloud. */
-export function UnsupportedBrowser() {
-  return (
-    <Panel title="Dossier local indisponible dans ce navigateur" icon={<TriangleAlert className="h-5 w-5 text-red-400" />}>
-      <p>
-        L’accès à un dossier de votre ordinateur repose sur la File System Access API, que seuls les navigateurs basés
-        sur Chromium proposent (Chrome, Edge, Brave, Opera). Firefox et Safari ne la prennent pas en charge.
-      </p>
-      <p>Ouvrez MJScreen dans l’un de ces navigateurs, ou utilisez un stockage en ligne :</p>
-      <CloudProviders />
-    </Panel>
-  )
+interface NoLibraryProps {
+  /** Faux sur Firefox et Safari, qui ne savent pas ouvrir un dossier local. */
+  localAvailable: boolean
+  onPickLocal: () => void
 }
 
-interface NoFolderProps {
-  onPick: () => void
-}
-
-export function NoFolder({ onPick }: NoFolderProps) {
+/** Premier écran : pas de bibliothèque, on choisit où la ranger. */
+export function NoLibrary({ localAvailable, onPickLocal }: NoLibraryProps) {
   return (
-    <Panel title="Choisir la bibliothèque" icon={<FolderOpen className="h-5 w-5 text-purple-400" />}>
-      <p>
-        Choisissez le dossier qui contient (ou contiendra) vos pistes. MJScreen y range sa configuration et son index dans
-        un sous-dossier <code className="text-purple-300">.mjlib/</code> : rien de la bibliothèque n’est gardé dans le
-        navigateur, et vous pouvez la rouvrir depuis une autre machine.
-      </p>
-      <ActionButton tone="primary" onClick={onPick}>
-        <FolderSearch className="h-4 w-4" />
-        Choisir un dossier
-      </ActionButton>
-      <p className="pt-2 text-gray-400">Autres stockages :</p>
-      <CloudProviders />
+    <Panel title="Aucune bibliothèque configurée">
+      <p>Choisissez où ranger vos pistes :</p>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <Destination
+          icon={<HardDrive className="h-8 w-8 text-purple-400" />}
+          label="Cet ordinateur"
+          unavailable={localAvailable ? undefined : 'Pas dans ce navigateur'}
+          onClick={onPickLocal}
+        />
+        <Destination icon={<Cloud className="h-8 w-8" />} label="Dropbox" unavailable="Bientôt" />
+        <Destination icon={<Cloud className="h-8 w-8" />} label="Google Drive" unavailable="Bientôt" />
+        <Destination icon={<Cloud className="h-8 w-8" />} label="OneDrive" unavailable="Bientôt" />
+      </div>
+      {!localAvailable && (
+        <p className="flex items-start gap-2 text-gray-400">
+          <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0 text-red-400" />
+          Pour utiliser un dossier de cet ordinateur, ouvrez MJScreen dans Chrome ou Edge.
+        </p>
+      )}
     </Panel>
   )
 }
@@ -59,52 +64,46 @@ interface NeedsPermissionProps {
   folderName: string
   denied?: boolean
   onReopen: () => void
-  onPick: () => void
+  onChange: () => void
 }
 
 /** Le navigateur se souvient du dossier, mais l’accès doit être réautorisé à chaque session. */
-export function NeedsPermission({ folderName, denied, onReopen, onPick }: NeedsPermissionProps) {
+export function NeedsPermission({ folderName, denied, onReopen, onChange }: NeedsPermissionProps) {
   return (
-    <Panel title="Rouvrir la bibliothèque" icon={<FolderOpen className="h-5 w-5 text-purple-400" />}>
-      <p>
-        Le navigateur demande de confirmer l’accès au dossier <strong className="text-gray-100">{folderName}</strong> à
-        chaque nouvelle session.
-      </p>
-      {denied && <p className="text-red-300">L’accès a été refusé. Réessayez, ou choisissez un autre dossier.</p>}
+    <Panel title={folderName} icon={<FolderOpen className="h-5 w-5 text-purple-400" />}>
+      {denied ? (
+        <p className="text-red-300">L’accès a été refusé. Réessayez, ou choisissez un autre emplacement.</p>
+      ) : (
+        <p>Le navigateur demande votre accord pour ouvrir ce dossier.</p>
+      )}
       <div className="flex flex-wrap gap-2">
         <ActionButton tone="primary" onClick={onReopen}>
           <FolderOpen className="h-4 w-4" />
-          Rouvrir « {folderName} »
+          Ouvrir
         </ActionButton>
-        <ActionButton onClick={onPick}>
-          <FolderSearch className="h-4 w-4" />
-          Choisir un autre dossier
-        </ActionButton>
+        <ActionButton onClick={onChange}>Changer d’emplacement</ActionButton>
       </div>
     </Panel>
   )
 }
 
 interface OpenErrorProps {
-  message: string
+  error: UserMessage
   onRetry?: () => void
-  onPick: () => void
+  onChange: () => void
 }
 
-export function OpenError({ message, onRetry, onPick }: OpenErrorProps) {
+export function OpenError({ error, onRetry, onChange }: OpenErrorProps) {
   return (
-    <Panel title="Impossible d’ouvrir le dossier" icon={<TriangleAlert className="h-5 w-5 text-red-400" />}>
-      <p className="text-red-300">{message}</p>
+    <Panel title="Impossible d’ouvrir la bibliothèque" icon={<TriangleAlert className="h-5 w-5 text-red-400" />}>
+      <Message message={error} tone="error" />
       <div className="flex flex-wrap gap-2">
         {onRetry && (
           <ActionButton tone="primary" onClick={onRetry}>
             Réessayer
           </ActionButton>
         )}
-        <ActionButton onClick={onPick}>
-          <FolderSearch className="h-4 w-4" />
-          Choisir un autre dossier
-        </ActionButton>
+        <ActionButton onClick={onChange}>Changer d’emplacement</ActionButton>
       </div>
     </Panel>
   )

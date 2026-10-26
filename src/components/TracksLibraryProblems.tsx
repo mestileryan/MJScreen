@@ -3,27 +3,34 @@
 import { FileWarning } from 'lucide-react'
 import { useState } from 'react'
 import type { FileProblem, TracksLibraryFile } from '@/persistance/TracksLibraryService'
-import { ActionButton, Panel } from './TracksLibraryUi'
+import { ActionButton, Panel, TechnicalDetails } from './TracksLibraryUi'
 
-const FILE_NAMES: Record<TracksLibraryFile, string> = {
-  config: '.mjlib/config.json',
-  index: '.mjlib/index.json',
+/** Comment on nomme chaque fichier pour l’utilisateur, et ce qu’on perd en le recréant. */
+const FILES: Record<TracksLibraryFile, { label: string; path: string; lossOnReset: string }> = {
+  config: {
+    label: 'Les réglages de la bibliothèque',
+    path: '.mjlib/config.json',
+    lossOnReset: 'Les réglages repartiront de zéro.',
+  },
+  index: {
+    label: 'La liste des pistes',
+    path: '.mjlib/index.json',
+    lossOnReset: 'Les noms et mots-clés donnés aux pistes seront perdus (les fichiers audio, eux, restent).',
+  },
 }
 
-/** Ce que l’on perd en recréant le fichier : à dire avant que l’utilisateur confirme. */
-const RESET_CONSEQUENCES: Record<TracksLibraryFile, string> = {
-  config: 'La configuration repartira des valeurs par défaut.',
-  index: 'Le nouvel index sera vide : les noms et tags des pistes ne seront plus associés.',
-}
-
-function describe(problem: FileProblem): string {
+function describe(problem: FileProblem): { text: string; details?: string } {
+  const { label, path } = FILES[problem.file]
   switch (problem.kind) {
     case 'missing':
-      return 'Le fichier est absent.'
+      return { text: `${label} : fichier absent.`, details: `${path} est introuvable.` }
     case 'invalid':
-      return problem.reason
+      return { text: `${label} : fichier abîmé, impossible de le lire.`, details: problem.reason }
     case 'too-new':
-      return `Ce fichier a été écrit par une version plus récente de MJScreen (schéma v${problem.version}, cette version lit jusqu’à la v${problem.supported}). Mettez l’application à jour : le fichier ne sera pas modifié.`
+      return {
+        text: `${label} : enregistré par une version plus récente de MJScreen. Mettez MJScreen à jour.`,
+        details: `${path} est au format v${problem.version} ; cette version lit jusqu’au format v${problem.supported}.`,
+      }
   }
 }
 
@@ -32,50 +39,55 @@ interface TracksLibraryProblemsProps {
   problems: FileProblem[]
   onReset: (file: TracksLibraryFile) => void
   onReload: () => void
-  onPick: () => void
+  onChange: () => void
 }
 
 /** `.mjlib/` est présent mais inutilisable en l’état : on explique, et on ne répare que sur demande. */
-export default function TracksLibraryProblems({ folderName, problems, onReset, onReload, onPick }: TracksLibraryProblemsProps) {
+export default function TracksLibraryProblems({
+  folderName,
+  problems,
+  onReset,
+  onReload,
+  onChange,
+}: TracksLibraryProblemsProps) {
   const [confirming, setConfirming] = useState<TracksLibraryFile | null>(null)
 
   return (
-    <Panel title={`La bibliothèque « ${folderName} » ne peut pas être ouverte`} icon={<FileWarning className="h-5 w-5 text-red-400" />}>
+    <Panel title={`${folderName} : bibliothèque illisible`} icon={<FileWarning className="h-5 w-5 text-red-400" />}>
       <ul className="space-y-3">
-        {problems.map(problem => (
-          <li key={problem.file} className="rounded bg-gray-900/60 p-3">
-            <p className="font-mono text-purple-300">{FILE_NAMES[problem.file]}</p>
-            <p className="mt-1">{describe(problem)}</p>
-            {problem.kind !== 'too-new' &&
-              (confirming === problem.file ? (
-                <div className="mt-2 space-y-2">
-                  <p className="text-red-300">
-                    {RESET_CONSEQUENCES[problem.file]}
-                    {problem.kind === 'invalid' && ' L’ancien fichier sera d’abord copié dans .mjlib/sauvegardes/.'}
-                  </p>
-                  <div className="flex gap-2">
-                    <ActionButton tone="danger" onClick={() => onReset(problem.file)}>
-                      Confirmer
-                    </ActionButton>
-                    <ActionButton onClick={() => setConfirming(null)}>Annuler</ActionButton>
+        {problems.map(problem => {
+          const { text, details } = describe(problem)
+          const repairable = problem.kind !== 'too-new'
+          return (
+            <li key={problem.file} className="space-y-2 rounded bg-gray-900/60 p-3">
+              <p>{text}</p>
+              <TechnicalDetails>{details}</TechnicalDetails>
+              {repairable &&
+                (confirming === problem.file ? (
+                  <div className="space-y-2">
+                    <p className="text-red-300">
+                      {FILES[problem.file].lossOnReset}
+                      {problem.kind === 'invalid' && ' L’ancien fichier est conservé.'}
+                    </p>
+                    <div className="flex gap-2">
+                      <ActionButton tone="danger" onClick={() => onReset(problem.file)}>
+                        Réparer
+                      </ActionButton>
+                      <ActionButton onClick={() => setConfirming(null)}>Annuler</ActionButton>
+                    </div>
                   </div>
-                </div>
-              ) : (
-                <ActionButton className="mt-2" onClick={() => setConfirming(problem.file)}>
-                  {problem.kind === 'missing' ? 'Recréer le fichier' : 'Sauvegarder puis recréer le fichier'}
-                </ActionButton>
-              ))}
-          </li>
-        ))}
+                ) : (
+                  <ActionButton onClick={() => setConfirming(problem.file)}>Réparer</ActionButton>
+                ))}
+            </li>
+          )
+        })}
       </ul>
-      <p className="text-gray-400">
-        Vous pouvez aussi corriger le fichier à la main, puis relancer l’ouverture.
-      </p>
       <div className="flex flex-wrap gap-2">
         <ActionButton tone="primary" onClick={onReload}>
-          Relancer l’ouverture
+          Réessayer
         </ActionButton>
-        <ActionButton onClick={onPick}>Choisir un autre dossier</ActionButton>
+        <ActionButton onClick={onChange}>Changer d’emplacement</ActionButton>
       </div>
     </Panel>
   )

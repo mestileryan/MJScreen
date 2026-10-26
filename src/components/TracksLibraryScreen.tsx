@@ -5,9 +5,10 @@ import { useEffect } from 'react'
 import { useDisplayPrefs } from '@/hooks/useDisplayPrefs'
 import { useTracksLibrary, type TracksLibraryNotice, type TracksLibraryState } from '@/hooks/useTracksLibrary'
 import { publicUrl } from '@/lib/basePath'
-import { NeedsPermission, NoFolder, OpenError, UnsupportedBrowser } from './TracksLibraryFolderChooser'
+import { NeedsPermission, NoLibrary, OpenError } from './TracksLibraryFolderChooser'
 import TracksLibraryOverview from './TracksLibraryOverview'
 import TracksLibraryProblems from './TracksLibraryProblems'
+import { Message } from './TracksLibraryUi'
 import TracksLibraryUnmanagedFolder from './TracksLibraryUnmanagedFolder'
 
 function Loading({ text }: { text: string }) {
@@ -22,9 +23,9 @@ function Loading({ text }: { text: string }) {
 function NoticeBanner({ notice }: { notice: TracksLibraryNotice }) {
   if (!notice) return null
   return (
-    <p className={`rounded p-3 text-sm ${notice.tone === 'error' ? 'bg-red-950 text-red-300' : 'bg-gray-800 text-gray-300'}`}>
-      {notice.text}
-    </p>
+    <div className={`rounded p-3 text-sm ${notice.tone === 'error' ? 'bg-red-950' : 'bg-gray-800 text-gray-300'}`}>
+      <Message message={notice} tone={notice.tone === 'error' ? 'error' : 'normal'} />
+    </div>
   )
 }
 
@@ -45,29 +46,27 @@ export default function TracksLibraryScreen() {
   const content = (current: TracksLibraryState) => {
     switch (current.step) {
       case 'starting':
-        return <Loading text="Recherche du dernier dossier ouvert…" />
-      case 'unsupported':
-        return <UnsupportedBrowser />
-      case 'no-folder':
-        return <NoFolder onPick={pick} />
+        return <Loading text="Chargement…" />
+      case 'no-library':
+        return <NoLibrary localAvailable={current.localAvailable} onPickLocal={pick} />
       case 'needs-permission':
         return (
           <NeedsPermission
             folderName={current.handle.name}
             denied={current.denied}
             onReopen={() => reopen(current.handle)}
-            onPick={pick}
+            onChange={pick}
           />
         )
       case 'opening':
-        return <Loading text={`Ouverture de « ${current.label} »…`} />
+        return <Loading text={`Ouverture de ${current.label}…`} />
       case 'unmanaged':
         return (
           <TracksLibraryUnmanagedFolder
             folderName={current.storage.label}
             audioFileCount={current.audioFileCount}
             onInitialize={name => initialize(current.storage, name)}
-            onPick={pick}
+            onChange={pick}
           />
         )
       case 'problem':
@@ -77,7 +76,7 @@ export default function TracksLibraryScreen() {
             problems={current.problems}
             onReset={file => reset(current.storage, file)}
             onReload={() => reload(current.storage.root)}
-            onPick={pick}
+            onChange={pick}
           />
         )
       case 'ready':
@@ -85,13 +84,13 @@ export default function TracksLibraryScreen() {
           <TracksLibraryOverview
             library={current.library}
             onReload={() => reload(current.storage.root)}
-            onPick={pick}
+            onChange={pick}
             onForget={forget}
           />
         )
       case 'error': {
         const { handle } = current
-        return <OpenError message={current.message} onRetry={handle && (() => reopen(handle))} onPick={pick} />
+        return <OpenError error={current.error} onRetry={handle && (() => reopen(handle))} onChange={pick} />
       }
     }
   }
