@@ -35,7 +35,7 @@ function NoticeBanner({ notice }: { notice: TracksLibraryNotice }) {
  * plus tard comme source pour ajouter des pistes.
  */
 export default function TracksLibraryScreen() {
-  const { state, notice, pick, reopen, reload, initialize, reset, forget } = useTracksLibrary()
+  const { state, notice, pick, reopen, reload, initialize, reset, removeMissing, forget } = useTracksLibrary()
   const { lightMode } = useDisplayPrefs()
 
   // Même thème que le jukebox (voir Screen).
@@ -82,10 +82,11 @@ export default function TracksLibraryScreen() {
       case 'ready':
         return (
           <TracksLibraryOverview
-            library={current.library}
+            state={current}
             onReload={() => reload(current.storage.root)}
             onChange={pick}
             onForget={forget}
+            onRemoveMissing={removeMissing}
           />
         )
       case 'error': {

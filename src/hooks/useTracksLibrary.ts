@@ -1,14 +1,20 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { readAudioDuration } from '@/lib/audioDuration'
+import type { IndexedTrack } from '@/models/TracksLibraryIndex'
 import {
   initTracksLibrary,
   openTracksLibrary,
+  refreshTracksLibrary,
+  removeTracksFromIndex,
   resetTracksLibraryFile,
+  updateTracks,
   type FileProblem,
   type TracksLibrary,
   type TracksLibraryFile,
 } from '@/persistance/TracksLibraryService'
+import type { ReconcileReport } from '@/persistance/TracksLibraryIndexer'
 import {
   DB_ClearTracksLibraryHandle,
   DB_GetTracksLibraryHandle,
@@ -29,6 +35,14 @@ export interface UserMessage {
   details?: string
 }
 
+export interface ReadyState {
+  step: 'ready'
+  storage: LocalFolderProvider
+  library: TracksLibrary
+  /** Résultat du dernier parcours du dossier ; `null` tant qu’il est en cours. */
+  report: ReconcileReport | null
+}
+
 export type TracksLibraryState =
   | { step: 'starting' }
   /** Aucune bibliothèque mémorisée. `localAvailable` est faux sur Firefox et Safari. */
@@ -38,41 +52,91 @@ export type TracksLibraryState =
   | { step: 'opening'; label: string }
   | { step: 'unmanaged'; storage: LocalFolderProvider; audioFileCount: number }
   | { step: 'problem'; storage: LocalFolderProvider; problems: FileProblem[] }
-  | { step: 'ready'; storage: LocalFolderProvider; library: TracksLibrary }
+  | ReadyState
   | { step: 'error'; error: UserMessage; handle?: FileSystemDirectoryHandle }
 
 export type TracksLibraryNotice = ({ tone: 'info' | 'error' } & UserMessage) | null
 
 /**
  * Cycle de vie de la bibliothèque de pistes en dossier local : rouvrir le dossier
- * mémorisé, en choisir un autre, l’initialiser ou réparer ses fichiers.
+ * mémorisé, en choisir un autre, l’initialiser ou réparer ses fichiers, puis
+ * l’indexer et compléter les durées en arrière-plan.
  */
 export function useTracksLibrary() {
   // Toujours `starting` au premier rendu : le HTML pré-rendu ne sait rien du
   // navigateur, la détection se fait après hydratation.
   const [state, setState] = useState<TracksLibraryState>({ step: 'starting' })
   const [notice, setNotice] = useState<TracksLibraryNotice>(null)
+  // Chaque ouverture incrémente la génération : les travaux de fond d’une
+  // ouverture précédente (durées) s’arrêtent dès qu’ils la voient changer.
+  const generation = useRef(0)
+  const latest = useRef<ReadyState | null>(null)
 
-  const open = useCallback(async (handle: FileSystemDirectoryHandle) => {
-    const storage = new LocalFolderProvider(handle)
-    setState({ step: 'opening', label: storage.label })
-    try {
-      const outcome = await openTracksLibrary(storage)
-      switch (outcome.status) {
-        case 'ready':
-          setState({ step: 'ready', storage, library: outcome.library })
-          break
-        case 'unmanaged':
-          setState({ step: 'unmanaged', storage, audioFileCount: outcome.audioFileCount })
-          break
-        case 'problem':
-          setState({ step: 'problem', storage, problems: outcome.problems })
-          break
-      }
-    } catch (error) {
-      setState({ step: 'error', error: describeError(error), handle })
-    }
+  const setReady = useCallback((patch: Partial<ReadyState> & Pick<ReadyState, 'storage' | 'library'>) => {
+    const ready: ReadyState = { step: 'ready', report: null, ...patch }
+    latest.current = ready
+    setState(ready)
   }, [])
+
+  /** Indexe le dossier puis lit les durées manquantes, sans bloquer l’affichage. */
+  const settle = useCallback(
+    async (storage: LocalFolderProvider, library: TracksLibrary) => {
+      const gen = ++generation.current
+      setReady({ storage, library })
+      const refreshed = await refreshTracksLibrary(library)
+      if (gen !== generation.current) return
+      setReady({ storage, library: refreshed.library, report: refreshed.report })
+
+      const missing = new Set(refreshed.report.missing.map(track => track.id))
+      const pending = refreshed.library.index.tracks.filter(track => track.duration === undefined && !missing.has(track.id))
+      const read: IndexedTrack[] = []
+      for (const track of pending) {
+        const duration = await storage
+          .read(track.path)
+          .then(readAudioDuration)
+          .catch(() => null)
+        if (gen !== generation.current) return
+        if (duration === null) continue
+        const current = latest.current
+        if (!current) return
+        const withDuration = { ...track, duration }
+        read.push(withDuration)
+        const tracks = current.library.index.tracks.map(t => (t.id === track.id ? withDuration : t))
+        setReady({ ...current, library: { ...current.library, index: { ...current.library.index, tracks } } })
+      }
+      // Une seule écriture à la fin : les durées ne valent pas une réécriture par piste.
+      if (read.length > 0 && latest.current) {
+        const saved = await updateTracks(latest.current.library, read)
+        if (gen === generation.current && latest.current) setReady({ ...latest.current, library: saved })
+      }
+    },
+    [setReady],
+  )
+
+  const open = useCallback(
+    async (handle: FileSystemDirectoryHandle) => {
+      const storage = new LocalFolderProvider(handle)
+      generation.current++
+      setState({ step: 'opening', label: storage.label })
+      try {
+        const outcome = await openTracksLibrary(storage)
+        switch (outcome.status) {
+          case 'ready':
+            await settle(storage, outcome.library)
+            break
+          case 'unmanaged':
+            setState({ step: 'unmanaged', storage, audioFileCount: outcome.audioFileCount })
+            break
+          case 'problem':
+            setState({ step: 'problem', storage, problems: outcome.problems })
+            break
+        }
+      } catch (error) {
+        setState({ step: 'error', error: describeError(error), handle })
+      }
+    },
+    [settle],
+  )
 
   // Au démarrage, on rouvre directement le dossier mémorisé si le navigateur a gardé
   // la permission ; sinon il faudra un clic, seul geste qui autorise à la redemander.
@@ -125,9 +189,9 @@ export function useTracksLibrary() {
   const initialize = useCallback(
     (storage: LocalFolderProvider, name: string) =>
       run(async () => {
-        setState({ step: 'ready', storage, library: await initTracksLibrary(storage, name) })
+        await settle(storage, await initTracksLibrary(storage, name))
       }),
-    [run],
+    [run, settle],
   )
 
   const reset = useCallback(
@@ -140,16 +204,31 @@ export function useTracksLibrary() {
     [open, run],
   )
 
+  /** Retire de la liste des pistes dont le fichier a disparu. Les fichiers audio ne sont jamais touchés. */
+  const removeMissing = useCallback(
+    (ids: string[]) =>
+      run(async () => {
+        const current = latest.current
+        if (!current) return
+        const removed = new Set(ids)
+        const library = await removeTracksFromIndex(current.library, ids)
+        const report = current.report && { ...current.report, missing: current.report.missing.filter(t => !removed.has(t.id)) }
+        setReady({ ...current, library, report })
+      }),
+    [run, setReady],
+  )
+
   const forget = useCallback(
     () =>
       run(async () => {
+        generation.current++
         await DB_ClearTracksLibraryHandle()
         setState({ step: 'no-library', localAvailable: isLocalFolderSupported() })
       }),
     [run],
   )
 
-  return { state, notice, pick, reopen, reload: open, initialize, reset, forget }
+  return { state, notice, pick, reopen, reload: open, initialize, reset, removeMissing, forget }
 }
 
 /** Traduit une erreur en message courant ; le texte brut reste disponible dans `details`. */
