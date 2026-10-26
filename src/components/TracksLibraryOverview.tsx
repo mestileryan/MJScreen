@@ -13,7 +13,7 @@ interface TracksLibraryOverviewProps {
   onChange: () => void
   onForget: () => void
   onRemoveMissing: (ids: string[]) => void
-  onEdit: (id: string, patch: Pick<IndexedTrack, 'name' | 'tags'>) => void
+  onEdit: (id: string, patch: Partial<Pick<IndexedTrack, 'name' | 'tags'>>) => void
   onDelete: (id: string) => void
 }
 

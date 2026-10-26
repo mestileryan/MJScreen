@@ -220,7 +220,7 @@ export function useTracksLibrary() {
   )
 
   const editTrack = useCallback(
-    (id: string, patch: Pick<IndexedTrack, 'name' | 'tags'>) =>
+    (id: string, patch: Partial<Pick<IndexedTrack, 'name' | 'tags'>>) =>
       run(async () => {
         const current = latest.current
         const track = current?.library.index.tracks.find(t => t.id === id)

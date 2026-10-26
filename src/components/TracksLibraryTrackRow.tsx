@@ -1,7 +1,7 @@
 'use client'
 
-import { FileQuestion, Music, Pause, Pencil, Play, Trash2, Volume2 } from 'lucide-react'
-import { useState, type FormEvent, type KeyboardEvent } from 'react'
+import { FileQuestion, Music, Pause, Play, Trash2, Volume2, X } from 'lucide-react'
+import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
 import type { PreviewState } from '@/hooks/useTrackPreview'
 import { formatDuration } from '@/lib/audioDuration'
 import { parentPath } from '@/lib/storagePath'
@@ -18,48 +18,104 @@ interface TracksLibraryTrackRowProps {
   onToggle: () => void
   onSeek: (fraction: number) => void
   onVolume: (value: number) => void
-  onEdit: (patch: Pick<IndexedTrack, 'name' | 'tags'>) => void
+  /** Enregistré aussitôt : il n’y a pas de bouton « Enregistrer ». */
+  onEdit: (patch: Partial<Pick<IndexedTrack, 'name' | 'tags'>>) => void
   onDelete: () => void
   onRemoveMissing: () => void
 }
 
-function Editor({ track, onEdit, onCancel }: { track: IndexedTrack; onEdit: TracksLibraryTrackRowProps['onEdit']; onCancel: () => void }) {
-  const [name, setName] = useState(track.name)
-  const [tags, setTags] = useState(track.tags.join(', '))
+/** Texte qui devient un champ au clic. Entrée ou perte du focus enregistre, Échap annule. */
+function InlineName({ value, onChange }: { value: string; onChange: (name: string) => void }) {
+  const [draft, setDraft] = useState<string | null>(null)
+  const input = useRef<HTMLInputElement>(null)
 
-  const submit = (event: FormEvent) => {
-    event.preventDefault()
-    onEdit({ name: name.trim() || track.name, tags: parseTags(tags) })
+  useEffect(() => {
+    if (draft !== null) input.current?.select()
+  }, [draft])
+
+  const commit = () => {
+    const name = draft?.trim()
+    if (name && name !== value) onChange(name)
+    setDraft(null)
   }
-  const escape = (event: KeyboardEvent) => {
-    if (event.key === 'Escape') onCancel()
+  const keys = (event: KeyboardEvent) => {
+    if (event.key === 'Enter') commit()
+    if (event.key === 'Escape') setDraft(null)
+  }
+
+  if (draft === null) {
+    return (
+      <button
+        type="button"
+        onClick={() => setDraft(value)}
+        aria-label="Renommer"
+        className="min-w-0 truncate rounded px-1 text-left font-medium text-white hover:bg-gray-700"
+      >
+        {value}
+      </button>
+    )
+  }
+  return (
+    <input
+      ref={input}
+      value={draft}
+      onChange={e => setDraft(e.target.value)}
+      onBlur={commit}
+      onKeyDown={keys}
+      aria-label="Nom de la piste"
+      className="min-w-0 flex-1 rounded bg-gray-900 px-1 font-medium text-white outline-none ring-2 ring-purple-500"
+    />
+  )
+}
+
+/** Puces d’étiquettes : une croix retire, le champ en ajoute (Entrée, virgule ou perte du focus). */
+function InlineTags({ tags, onChange }: { tags: string[]; onChange: (tags: string[]) => void }) {
+  const [draft, setDraft] = useState('')
+
+  const add = () => {
+    const added = parseTags(draft).filter(tag => !tags.some(t => t.toLowerCase() === tag.toLowerCase()))
+    if (added.length) onChange([...tags, ...added])
+    setDraft('')
+  }
+  const keys = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'Enter' || event.key === ',') {
+      event.preventDefault()
+      add()
+    } else if (event.key === 'Escape') {
+      setDraft('')
+    } else if (event.key === 'Backspace' && draft === '' && tags.length) {
+      onChange(tags.slice(0, -1))
+    }
   }
 
   return (
-    <form onSubmit={submit} onKeyDown={escape} className="flex min-w-0 flex-1 flex-wrap items-end gap-2">
-      <label className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <span className="text-xs text-gray-400">Nom</span>
+    <ul className="flex flex-wrap items-center justify-end gap-1">
+      {tags.map(tag => (
+        <li key={tag} className="flex items-center gap-0.5 rounded bg-gray-700 py-0.5 pl-1.5 pr-0.5 text-xs text-gray-300">
+          {tag}
+          <button
+            type="button"
+            onClick={() => onChange(tags.filter(t => t !== tag))}
+            aria-label={`Retirer l’étiquette ${tag}`}
+            className="rounded p-0.5 text-gray-400 hover:bg-gray-600 hover:text-white"
+          >
+            <X className="h-3 w-3" />
+          </button>
+        </li>
+      ))}
+      <li>
         <input
-          autoFocus
-          value={name}
-          onChange={e => setName(e.target.value)}
-          className="rounded bg-gray-900 px-2 py-1 text-white outline-none ring-purple-500 focus:ring-2"
+          value={draft}
+          onChange={e => setDraft(e.target.value)}
+          onKeyDown={keys}
+          onBlur={add}
+          placeholder="+ étiquette"
+          aria-label="Ajouter une étiquette"
+          size={Math.max(10, draft.length + 2)}
+          className="rounded bg-transparent px-1 py-0.5 text-xs text-gray-300 outline-none placeholder:text-gray-500 focus:bg-gray-900 focus:ring-1 focus:ring-purple-500"
         />
-      </label>
-      <label className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <span className="text-xs text-gray-400">Étiquettes, séparées par des virgules</span>
-        <input
-          value={tags}
-          onChange={e => setTags(e.target.value)}
-          placeholder="combat, nuit, forêt"
-          className="rounded bg-gray-900 px-2 py-1 text-white outline-none ring-purple-500 focus:ring-2 placeholder:text-gray-600"
-        />
-      </label>
-      <ActionButton tone="primary" type="submit">
-        Enregistrer
-      </ActionButton>
-      <ActionButton onClick={onCancel}>Annuler</ActionButton>
-    </form>
+      </li>
+    </ul>
   )
 }
 
@@ -75,11 +131,8 @@ export default function TracksLibraryTrackRow({
   onDelete,
   onRemoveMissing,
 }: TracksLibraryTrackRowProps) {
-  const [editing, setEditing] = useState(false)
   const active = preview?.trackId === track.id
   const folder = parentPath(track.path)
-
-  const iconButton = 'rounded p-1 text-gray-400 transition-colors hover:bg-gray-700 hover:text-white'
 
   return (
     <li className={`px-3 py-2 text-sm ${missing ? 'opacity-70' : ''} ${active ? 'bg-gray-700/40' : ''}`}>
@@ -97,26 +150,22 @@ export default function TracksLibraryTrackRow({
           </TooltipButton>
         )}
 
-        {editing ? (
-          <Editor
-            track={track}
-            onEdit={patch => {
-              onEdit(patch)
-              setEditing(false)
-            }}
-            onCancel={() => setEditing(false)}
-          />
-        ) : (
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-1">
+            {!missing && <Music className="h-4 w-4 shrink-0 text-purple-400" />}
+            {missing ? (
+              <p className="truncate font-medium text-white">{track.name}</p>
+            ) : (
+              <InlineName value={track.name} onChange={name => onEdit({ name })} />
+            )}
+          </div>
+          <p className="truncate pl-1 text-xs text-gray-400">{missing ? 'Fichier introuvable' : folder ? `${folder}/` : ''}</p>
+        </div>
+
+        {missing ? (
           <>
-            <div className="min-w-0 flex-1">
-              <p className="flex items-center gap-2 truncate font-medium text-white">
-                {!missing && <Music className="h-4 w-4 shrink-0 text-purple-400" />}
-                {track.name}
-              </p>
-              <p className="truncate text-xs text-gray-400">{missing ? 'Fichier introuvable' : folder ? `${folder}/` : ''}</p>
-            </div>
             {track.tags.length > 0 && (
-              <ul className="hidden flex-wrap justify-end gap-1 sm:flex">
+              <ul className="hidden gap-1 sm:flex">
                 {track.tags.map(tag => (
                   <li key={tag} className="rounded bg-gray-700 px-1.5 py-0.5 text-xs text-gray-300">
                     {tag}
@@ -124,21 +173,24 @@ export default function TracksLibraryTrackRow({
                 ))}
               </ul>
             )}
-            {missing ? (
-              <ActionButton onClick={onRemoveMissing}>Retirer</ActionButton>
-            ) : (
-              <>
-                <span className="w-12 text-right tabular-nums text-gray-400">
-                  {track.duration !== undefined ? formatDuration(track.duration) : '–'}
-                </span>
-                <TooltipButton onClick={() => setEditing(true)} tooltip="Renommer, étiqueter" aria-label="Modifier" className={iconButton}>
-                  <Pencil className="h-4 w-4" />
-                </TooltipButton>
-                <TooltipButton onClick={onDelete} tooltip="Supprimer définitivement" aria-label="Supprimer" className={`${iconButton} hover:text-red-400`}>
-                  <Trash2 className="h-4 w-4" />
-                </TooltipButton>
-              </>
-            )}
+            <ActionButton onClick={onRemoveMissing}>Retirer</ActionButton>
+          </>
+        ) : (
+          <>
+            <div className="hidden sm:block">
+              <InlineTags tags={track.tags} onChange={tags => onEdit({ tags })} />
+            </div>
+            <span className="w-12 text-right tabular-nums text-gray-400">
+              {track.duration !== undefined ? formatDuration(track.duration) : '–'}
+            </span>
+            <TooltipButton
+              onClick={onDelete}
+              tooltip="Supprimer définitivement"
+              aria-label="Supprimer"
+              className="rounded p-1 text-gray-400 transition-colors hover:bg-gray-700 hover:text-red-400"
+            >
+              <Trash2 className="h-4 w-4" />
+            </TooltipButton>
           </>
         )}
       </div>

@@ -16,7 +16,7 @@ interface TracksLibraryTrackListProps {
   tracks: IndexedTrack[]
   /** `null` tant que le dossier est en cours de parcours. */
   report: ReconcileReport | null
-  onEdit: (id: string, patch: Pick<IndexedTrack, 'name' | 'tags'>) => void
+  onEdit: (id: string, patch: Partial<Pick<IndexedTrack, 'name' | 'tags'>>) => void
   onDelete: (id: string) => void
   onRemoveMissing: (ids: string[]) => void
 }
