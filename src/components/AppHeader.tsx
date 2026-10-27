@@ -42,7 +42,9 @@ export default function AppHeader({ current, className = '' }: AppHeaderProps) {
                 key={page}
                 href={href === '/' ? publicUrl('/') : publicUrl(href)}
                 aria-current="page"
-                className="relative flex h-9 items-center gap-1.5 bg-gradient-to-r from-purple-800 to-purple-600 px-5 text-sm font-medium text-on-accent shadow-md shadow-purple-900/40"
+                // Du violet en haut au gris de la page en bas, par-dessus la bordure (`-mb-px`) :
+                // la languette se fond dans le contenu, comme un intercalaire tiré de la page.
+                className="relative -mb-px flex h-10 items-center gap-1.5 bg-gradient-to-b from-purple-600 via-purple-800 to-gray-900 px-5 text-sm font-medium text-on-accent"
                 style={{ clipPath: 'polygon(0 100%, 10px 0, calc(100% - 10px) 0, 100% 100%)' }}
               >
                 <Icon className="h-4 w-4" />
