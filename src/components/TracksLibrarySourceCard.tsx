@@ -1,16 +1,17 @@
 'use client'
 
-import { Cloud, FolderOpen, HardDrive, LoaderCircle, LogIn, RefreshCw, Star, Unplug } from 'lucide-react'
+import { FolderOpen, LoaderCircle, LogIn, RefreshCw, Star, Unplug } from 'lucide-react'
 import type { TracksSource } from '@/hooks/useTracksLibrary'
 import { formatBytes } from '@/lib/formatBytes'
 import type { ReconcileReport } from '@/persistance/TracksLibraryIndexer'
 import { isEmptyReport } from '@/persistance/TracksLibraryIndexer'
 import type { TracksLibraryFile } from '@/persistance/TracksLibraryService'
-import { serializeDocument } from '@/schemas/documentSchema'
 import { CLOUD_LABELS } from '@/storage/cloud/CloudStorage'
 import TooltipButton from './TooltipButton'
 import TracksLibraryProblems from './TracksLibraryProblems'
-import { ActionButton, Message, TechnicalDetails } from './TracksLibraryUi'
+import TracksLibraryQuotaRing from './TracksLibraryQuotaRing'
+import TracksLibrarySourceIcon from './TracksLibrarySourceIcon'
+import { ActionButton, Message } from './TracksLibraryUi'
 
 interface TracksLibrarySourceCardProps {
   source: TracksSource
@@ -39,26 +40,7 @@ function changes(report: ReconcileReport): string {
 
 const iconButton = 'rounded p-1 text-gray-400 transition-colors hover:bg-gray-700 hover:text-white'
 
-/** Jauge de l’espace du compte cloud, avec la part de la bibliothèque. */
-function QuotaGauge({ used, total, library }: { used: number; total?: number; library: number }) {
-  if (!total) return <p className="text-xs text-gray-400">{formatBytes(used)} utilisés sur le compte</p>
-  const ratio = Math.min(1, used / total)
-  const libraryRatio = Math.min(ratio, library / total)
-  return (
-    <div className="space-y-1 text-xs text-gray-400">
-      <div className="relative h-1.5 w-full overflow-hidden rounded bg-gray-700">
-        <div className="absolute inset-y-0 left-0 bg-gray-500" style={{ width: `${ratio * 100}%` }} />
-        <div className="absolute inset-y-0 left-0 bg-purple-500" style={{ width: `${libraryRatio * 100}%` }} />
-      </div>
-      <p>
-        {formatBytes(used)} utilisés sur {formatBytes(total)}, dont{' '}
-        <span className="text-purple-300">{formatBytes(library)} pour la bibliothèque</span>
-      </p>
-    </div>
-  )
-}
-
-/** Une source branchée : son état, et ce qu’on peut en faire. */
+/** Une source branchée, sur une ligne : logo, compte, état, espace, actions. */
 export default function TracksLibrarySourceCard({
   source,
   showDefault,
@@ -72,6 +54,7 @@ export default function TracksLibrarySourceCard({
 }: TracksLibrarySourceCardProps) {
   const { status } = source
   const cloud = source.kind !== 'local'
+  const active = status.step === 'ready' || status.step === 'opening' || status.step === 'unmanaged'
 
   const summary = () => {
     switch (status.step) {
@@ -85,25 +68,67 @@ export default function TracksLibrarySourceCard({
           </span>
         )
       case 'unmanaged':
-        return `pas encore une source · ${plural(status.audioFileCount, 'morceau', 'morceaux')}`
+        return `${plural(status.audioFileCount, 'morceau', 'morceaux')}, pas encore une source`
       case 'problem':
         return <span className="text-red-300">illisible</span>
       case 'error':
         return <span className="text-red-300">erreur</span>
       case 'ready': {
         const count = status.library.index.tracks.length
-        return `${plural(count, 'piste', 'pistes')} · ${formatBytes(status.usedBytes)}`
+        const report = status.report && !isEmptyReport(status.report) ? ` · ${changes(status.report)}` : ''
+        return `${plural(count, 'piste', 'pistes')} · ${formatBytes(status.usedBytes)}${report}`
       }
     }
   }
 
+  /** L’action principale de l’état, quand il y en a une, reste sur la ligne. */
+  const action = () => {
+    switch (status.step) {
+      case 'needs-permission':
+        return (
+          <ActionButton tone="primary" onClick={onReopen}>
+            {cloud ? <LogIn className="h-4 w-4" /> : <FolderOpen className="h-4 w-4" />}
+            {cloud ? 'Se connecter' : 'Ouvrir'}
+          </ActionButton>
+        )
+      case 'unmanaged':
+        return (
+          <TooltipButton
+            onClick={onInitialize}
+            tooltip="Vos fichiers ne seront ni déplacés ni modifiés"
+            className="inline-flex items-center gap-2 rounded bg-purple-600 px-3 py-1.5 text-sm text-on-accent transition-colors hover:bg-purple-500"
+          >
+            {cloud ? 'Utiliser ce compte' : 'Utiliser ce dossier'}
+          </TooltipButton>
+        )
+      case 'error':
+        return (
+          <ActionButton tone="primary" onClick={onReopen}>
+            Réessayer
+          </ActionButton>
+        )
+      case 'ready':
+        return status.report && status.report.missing.length > 1 ? (
+          <ActionButton onClick={() => onRemoveMissing(status.report!.missing.map(t => t.id))}>
+            Retirer les {status.report.missing.length} introuvables
+          </ActionButton>
+        ) : null
+      default:
+        return null
+    }
+  }
+
   return (
-    <li className="space-y-3 rounded-lg bg-gray-800 p-4">
+    <li className="space-y-2 rounded-lg bg-gray-800 px-4 py-2">
       <div className="flex items-center gap-2">
-        {cloud ? <Cloud className="h-5 w-5 shrink-0 text-purple-400" /> : <HardDrive className="h-5 w-5 shrink-0 text-purple-400" />}
+        <TracksLibrarySourceIcon kind={source.kind} active={active} />
         <span className="truncate font-medium text-white">{source.label}</span>
         <span className="truncate text-sm text-gray-400">· {summary()}</span>
-        <div className="ml-auto flex shrink-0 items-center gap-1">
+        <div className="ml-auto flex shrink-0 items-center gap-2">
+          {action()}
+          {source.kind !== 'local' && status.step === 'ready' && source.quota && (
+            <TracksLibraryQuotaRing used={source.quota.used} total={source.quota.total} library={status.usedBytes} />
+          )}
           {showDefault && (
             <TooltipButton
               onClick={onSetDefault}
@@ -130,62 +155,14 @@ export default function TracksLibrarySourceCard({
         </div>
       </div>
 
-      {status.step === 'needs-permission' && (
-        <div className="flex flex-wrap items-center gap-3 text-sm text-gray-300">
-          <span>
-            {status.denied
-              ? 'L’accès a été refusé. Réessayez, ou débranchez la source.'
-              : cloud
-                ? `Connectez-vous à ${CLOUD_LABELS[source.kind]} pour ouvrir cette source.`
-                : 'Le navigateur demande votre accord pour ouvrir ce dossier.'}
-          </span>
-          <ActionButton tone="primary" onClick={onReopen}>
-            {cloud ? <LogIn className="h-4 w-4" /> : <FolderOpen className="h-4 w-4" />}
-            {cloud ? 'Se connecter' : 'Ouvrir'}
-          </ActionButton>
-        </div>
+      {status.step === 'needs-permission' && status.denied && (
+        <p className="text-sm text-red-300">L’accès a été refusé. Réessayez, ou débranchez la source.</p>
       )}
-
-      {status.step === 'unmanaged' && (
-        <div className="flex flex-wrap items-center gap-3 text-sm text-gray-300">
-          <span>Vos fichiers ne seront ni déplacés ni modifiés.</span>
-          <ActionButton tone="primary" onClick={onInitialize}>
-            {cloud ? 'Utiliser ce compte' : 'Utiliser ce dossier'}
-          </ActionButton>
-        </div>
+      {status.step === 'needs-permission' && !status.denied && cloud && (
+        <p className="text-sm text-gray-400">Connectez-vous à {CLOUD_LABELS[source.kind]} pour ouvrir cette source.</p>
       )}
-
       {status.step === 'problem' && <TracksLibraryProblems problems={status.problems} onReset={onReset} onReload={onRefresh} />}
-
-      {status.step === 'error' && (
-        <div className="space-y-2 text-sm">
-          <Message message={status.error} tone="error" />
-          <ActionButton tone="primary" onClick={onReopen}>
-            Réessayer
-          </ActionButton>
-        </div>
-      )}
-
-      {status.step === 'ready' && (
-        <>
-          {source.kind !== 'local' && source.quota && (
-            <QuotaGauge used={source.quota.used} total={source.quota.total} library={status.usedBytes} />
-          )}
-          {status.report && !isEmptyReport(status.report) && (
-            <div className="flex flex-wrap items-center gap-3 text-sm text-gray-300">
-              <span>{changes(status.report)}</span>
-              {status.report.missing.length > 1 && (
-                <ActionButton onClick={() => onRemoveMissing(status.report!.missing.map(t => t.id))}>
-                  Retirer les {status.report.missing.length} introuvables
-                </ActionButton>
-              )}
-            </div>
-          )}
-          <TechnicalDetails>
-            {`Identifiant : ${status.library.config.id}\nFormats : réglages v${status.library.config.schemaVersion}, liste v${status.library.index.schemaVersion}\n\n${serializeDocument(status.library.config)}`}
-          </TechnicalDetails>
-        </>
-      )}
+      {status.step === 'error' && <Message message={status.error} tone="error" />}
     </li>
   )
 }

@@ -1,10 +1,10 @@
 'use client'
 
-import { Cloud, HardDrive } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { useTooltip } from '@/hooks/useTooltip'
 import { CLOUD_KINDS, CLOUD_LABELS, type CloudKind } from '@/storage/cloud/CloudStorage'
 import { cloudAvailability } from '@/storage/cloud/cloudProviders'
+import TracksLibrarySourceIcon from './TracksLibrarySourceIcon'
 
 interface DestinationProps {
   icon: ReactNode
@@ -50,7 +50,7 @@ export default function TracksLibraryDestinations({ localAvailable, onPickLocal,
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
       <Destination
-        icon={<HardDrive className="h-8 w-8 text-purple-400" />}
+        icon={<TracksLibrarySourceIcon kind="local" active={localAvailable} className="h-8 w-8" />}
         label="Cet ordinateur"
         unavailable={localAvailable ? undefined : INCOMPATIBLE}
         onClick={onPickLocal}
@@ -60,7 +60,7 @@ export default function TracksLibraryDestinations({ localAvailable, onPickLocal,
         return (
           <Destination
             key={kind}
-            icon={<Cloud className="h-8 w-8 text-purple-400" />}
+            icon={<TracksLibrarySourceIcon kind={kind} active={availability.available} className="h-8 w-8" />}
             label={CLOUD_LABELS[kind]}
             unavailable={availability.available ? undefined : { label: 'Non configuré', tooltip: availability.reason }}
             onClick={() => onPickCloud(kind)}
