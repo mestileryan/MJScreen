@@ -1,6 +1,6 @@
 import type TracksLibraryIndex from '@/models/TracksLibraryIndex'
-import type { IndexedTrack } from '@/models/TracksLibraryIndex'
-import { INDEX_SCHEMA_VERSION } from '@/models/TracksLibraryIndex'
+import type { IndexedTrack, TrackType } from '@/models/TracksLibraryIndex'
+import { INDEX_SCHEMA_VERSION, TRACK_TYPES } from '@/models/TracksLibraryIndex'
 import type { DocumentSchema } from './documentSchema'
 import {
   expectArray,
@@ -14,6 +14,13 @@ import {
   withoutUndefined,
 } from './validation'
 
+function optionalTrackType(value: unknown, location: string): TrackType | undefined {
+  if (value === undefined) return undefined
+  const type = TRACK_TYPES.find(t => t.value === value)
+  if (!type) throw new SchemaError(location, `type inconnu « ${String(value)} »`)
+  return type.value
+}
+
 function validateTrack(value: unknown, location: string): IndexedTrack {
   const track = expectObject(value, location)
   return withoutUndefined({
@@ -22,6 +29,7 @@ function validateTrack(value: unknown, location: string): IndexedTrack {
     path: expectRelativePath(track.path, `${location}.path`),
     name: expectString(track.name, `${location}.name`, { allowEmpty: true }),
     tags: expectStringArray(track.tags, `${location}.tags`),
+    type: optionalTrackType(track.type, `${location}.type`),
     size: optionalNumber(track.size, `${location}.size`),
     lastModified: optionalNumber(track.lastModified, `${location}.lastModified`),
     duration: optionalNumber(track.duration, `${location}.duration`),

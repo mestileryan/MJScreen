@@ -3,6 +3,22 @@ import { baseName } from '@/lib/storagePath'
 /** Version du schéma de `.mjlib/index.json` écrite par cette version de l'application. */
 export const INDEX_SCHEMA_VERSION = 1
 
+/** Nature d'une piste : une musique, une ambiance continue, ou un effet ponctuel. */
+export type TrackType = 'music' | 'ambience' | 'sfx'
+
+export const TRACK_TYPES: { value: TrackType; label: string }[] = [
+  { value: 'music', label: 'Musique' },
+  { value: 'ambience', label: 'Ambiance' },
+  { value: 'sfx', label: 'Effet sonore' },
+]
+
+export function trackTypeLabel(type: TrackType): string {
+  return TRACK_TYPES.find(t => t.value === type)?.label ?? type
+}
+
+/** Étiquettes proposées à la saisie (les univers de jeu, surtout) ; la liste reste ouverte. */
+export const SUGGESTED_TAGS = ['Médiéval fantastique', 'Cyberpunk', 'Science-fiction', 'Horreur', 'Contemporain', 'Générique']
+
 /** Métadonnées d'une piste. Le fichier audio, lui, reste dans le stockage. */
 export interface IndexedTrack {
   /**
@@ -16,6 +32,8 @@ export interface IndexedTrack {
   /** Nom affiché, modifiable ; par défaut le nom du fichier sans extension. */
   name: string
   tags: string[]
+  /** Nature de la piste, quand elle a été précisée. */
+  type?: TrackType
   /** Taille en octets et date de modification : repèrent un fichier changé hors de l'outil. */
   size?: number
   lastModified?: number

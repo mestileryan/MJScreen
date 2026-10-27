@@ -529,7 +529,7 @@ export function useTracksLibrary() {
   )
 
   const editTrack = useCallback(
-    (sourceId: number, id: string, patch: Partial<Pick<IndexedTrack, 'name' | 'tags'>>) =>
+    (sourceId: number, id: string, patch: Partial<Pick<IndexedTrack, 'name' | 'tags' | 'type'>>) =>
       withLibrary(sourceId, async library => {
         const track = library.index.tracks.find(t => t.id === id)
         return { library: track ? await updateTracks(library, [{ ...track, ...patch }]) : library }

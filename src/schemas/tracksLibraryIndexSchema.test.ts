@@ -44,6 +44,12 @@ describe('tracksLibraryIndexSchema', () => {
     expect(result.status).toBe('too-new')
   })
 
+  it('garde le type et refuse un type inconnu', () => {
+    const typed = { ...track, type: 'ambience' }
+    expect(parseDocumentValue(tracksLibraryIndexSchema, index(typed))).toMatchObject({ value: { tracks: [typed] } })
+    expect(parseDocumentValue(tracksLibraryIndexSchema, index({ ...track, type: 'podcast' })).status).toBe('invalid')
+  })
+
   it('garde l’empreinte d’une piste', () => {
     const hashed = { ...track, hash: 'ba7816bf' }
     expect(parseDocumentValue(tracksLibraryIndexSchema, index(hashed))).toMatchObject({ value: { tracks: [hashed] } })

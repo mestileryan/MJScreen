@@ -1,12 +1,13 @@
 'use client'
 
-import { FileQuestion, Music, Pause, Play, Trash2, Volume2, X } from 'lucide-react'
+import { FileQuestion, Music, Music2, Pause, Play, Trash2, Volume2, X } from 'lucide-react'
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
 import type { PreviewState } from '@/hooks/useTrackPreview'
 import { formatDuration } from '@/lib/audioDuration'
 import { parentPath } from '@/lib/storagePath'
-import { parseTags, type IndexedTrack } from '@/models/TracksLibraryIndex'
+import { parseTags, TRACK_TYPES, trackTypeLabel, type IndexedTrack, type TrackType } from '@/models/TracksLibraryIndex'
 import TooltipButton from './TooltipButton'
+import { TYPE_ICONS } from './TracksLibraryFilters'
 import { ActionButton } from './TracksLibraryUi'
 
 interface TracksLibraryTrackRowProps {
@@ -15,13 +16,15 @@ interface TracksLibraryTrackRowProps {
   sourceLabel?: string
   /** Le fichier a disparu du dossier : pas d’écoute, pas d’édition, seulement le retrait. */
   missing: boolean
+  /** Étiquettes proposées à la saisie. */
+  suggestions: string[]
   preview: PreviewState | null
   volume: number
   onToggle: () => void
   onSeek: (fraction: number) => void
   onVolume: (value: number) => void
   /** Enregistré aussitôt : il n’y a pas de bouton « Enregistrer ». */
-  onEdit: (patch: Partial<Pick<IndexedTrack, 'name' | 'tags'>>) => void
+  onEdit: (patch: Partial<Pick<IndexedTrack, 'name' | 'tags' | 'type'>>) => void
   onDelete: () => void
   onRemoveMissing: () => void
 }
@@ -70,8 +73,41 @@ function InlineName({ value, onChange }: { value: string; onChange: (name: strin
   )
 }
 
+/** Nature de la piste : un clic passe à la suivante (musique → ambiance → effet → aucune). */
+function TypeChip({ type, onChange }: { type?: TrackType; onChange: (type?: TrackType) => void }) {
+  const next = () => {
+    const order = TRACK_TYPES.map(t => t.value)
+    const i = type ? order.indexOf(type) : -1
+    onChange(i + 1 < order.length ? order[i + 1] : undefined)
+  }
+  const Icon = type ? TYPE_ICONS[type] : Music2
+  return (
+    <TooltipButton
+      onClick={next}
+      tooltip={type ? `${trackTypeLabel(type)} · cliquer pour changer` : 'Type non précisé · cliquer pour choisir'}
+      aria-label="Type de piste"
+      className={`inline-flex shrink-0 items-center gap-1 rounded px-1.5 py-0.5 text-xs transition-colors ${
+        type ? 'bg-purple-900/60 text-purple-200 hover:bg-purple-800/60' : 'text-gray-500 hover:bg-gray-700 hover:text-gray-300'
+      }`}
+    >
+      <Icon className="h-3 w-3" />
+      {type ? trackTypeLabel(type) : 'type ?'}
+    </TooltipButton>
+  )
+}
+
 /** Puces d’étiquettes : une croix retire, le champ en ajoute (Entrée, virgule ou perte du focus). */
-function InlineTags({ tags, onChange }: { tags: string[]; onChange: (tags: string[]) => void }) {
+function InlineTags({
+  tags,
+  suggestions,
+  listId,
+  onChange,
+}: {
+  tags: string[]
+  suggestions: string[]
+  listId: string
+  onChange: (tags: string[]) => void
+}) {
   const [draft, setDraft] = useState('')
 
   const add = () => {
@@ -113,9 +149,18 @@ function InlineTags({ tags, onChange }: { tags: string[]; onChange: (tags: strin
           onBlur={add}
           placeholder="+ étiquette"
           aria-label="Ajouter une étiquette"
+          list={listId}
           size={Math.max(10, draft.length + 2)}
           className="rounded bg-transparent px-1 py-0.5 text-xs text-gray-300 outline-none placeholder:text-gray-500 focus:bg-gray-900 focus:ring-1 focus:ring-purple-500"
         />
+        {/* Les étiquettes en usage et quelques univers classiques, proposés par le navigateur. */}
+        <datalist id={listId}>
+          {suggestions
+            .filter(s => !tags.some(t => t.toLowerCase() === s.toLowerCase()))
+            .map(s => (
+              <option key={s} value={s} />
+            ))}
+        </datalist>
       </li>
     </ul>
   )
@@ -125,6 +170,7 @@ export default function TracksLibraryTrackRow({
   track,
   sourceLabel,
   missing,
+  suggestions,
   preview,
   volume,
   onToggle,
@@ -181,8 +227,9 @@ export default function TracksLibraryTrackRow({
           </>
         ) : (
           <>
-            <div className="hidden sm:block">
-              <InlineTags tags={track.tags} onChange={tags => onEdit({ tags })} />
+            <div className="hidden items-center gap-2 sm:flex">
+              <TypeChip type={track.type} onChange={type => onEdit({ type })} />
+              <InlineTags tags={track.tags} suggestions={suggestions} listId={`tags-${track.id}`} onChange={tags => onEdit({ tags })} />
             </div>
             <span className="w-12 text-right tabular-nums text-gray-400">
               {track.duration !== undefined ? formatDuration(track.duration) : '–'}

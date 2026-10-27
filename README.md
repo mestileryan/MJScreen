@@ -78,6 +78,13 @@ une piste dont le contenu existe déjà ailleurs dans la bibliothèque reçoit l
 `doublon`. « Ajouter des pistes » (ou un glisser-déposer sur la page) copie les fichiers
 dans le dossier `pistes/` de la source par défaut, sans jamais écraser un fichier existant.
 
+Chaque piste porte un nom, un **type** (musique, ambiance, effet sonore) et des
+**étiquettes** libres (les univers de jeu, par exemple), modifiables directement dans la
+liste. La recherche (MiniSearch, en mémoire) tolère les fautes et les accents et cherche
+dans le nom, les étiquettes, le type et le dossier ; des pastilles filtrent par type, par
+étiquette, ou sur les pistes restant à qualifier. Sans recherche, les dernières ajoutées
+viennent en premier.
+
 - **Schémas versionnés** (`src/schemas/`) : chaque fichier porte un `schemaVersion`.
   Un fichier plus ancien est migré en mémoire et ne sera réécrit qu'après sauvegarde.
   Un fichier plus récent est signalé et n'est jamais écrasé.
