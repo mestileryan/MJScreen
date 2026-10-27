@@ -1,6 +1,6 @@
 'use client'
 
-import { FolderOpen, LoaderCircle, LogIn, RefreshCw, Star, Unplug } from 'lucide-react'
+import { Check, FolderOpen, ListX, LoaderCircle, LogIn, RefreshCw, Star, Unplug } from 'lucide-react'
 import type { TracksSource } from '@/hooks/useTracksLibrary'
 import { formatBytes } from '@/lib/formatBytes'
 import type { ReconcileReport } from '@/persistance/TracksLibraryIndexer'
@@ -98,6 +98,7 @@ export default function TracksLibrarySourceCard({
             tooltip="Vos fichiers ne seront ni déplacés ni modifiés"
             className="inline-flex items-center gap-2 rounded bg-purple-600 px-3 py-1.5 text-sm text-on-accent transition-colors hover:bg-purple-500"
           >
+            <Check className="h-4 w-4" />
             {cloud ? 'Utiliser ce compte' : 'Utiliser ce dossier'}
           </TooltipButton>
         )
@@ -110,6 +111,7 @@ export default function TracksLibrarySourceCard({
       case 'ready':
         return status.report && status.report.missing.length > 1 ? (
           <ActionButton onClick={() => onRemoveMissing(status.report!.missing.map(t => t.id))}>
+            <ListX className="h-4 w-4" />
             Retirer les {status.report.missing.length} introuvables
           </ActionButton>
         ) : null

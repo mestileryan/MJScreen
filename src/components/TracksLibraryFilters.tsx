@@ -1,6 +1,6 @@
 'use client'
 
-import { Music2, Tag, Wind, X, Zap } from 'lucide-react'
+import { CircleHelp, Music2, Tag, Wind, X, Zap } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { countTags, hasFilters, isUnqualified, NO_FILTERS, type SearchableTrack, type TrackFilters } from '@/lib/trackSearch'
 import { TRACK_TYPES, type TrackType } from '@/models/TracksLibraryIndex'
@@ -61,7 +61,7 @@ export default function TracksLibraryFilters({ tracks, filters, onChange }: Trac
     <div className="flex flex-wrap items-center gap-1.5">
       {unqualified > 0 && (
         <Chip active={filters.untagged} onClick={() => onChange({ ...filters, untagged: !filters.untagged })} count={unqualified}>
-          <Tag className="h-3 w-3" />À qualifier
+          <CircleHelp className="h-3 w-3" />À qualifier
         </Chip>
       )}
       {TRACK_TYPES.map(({ value, label }) => {
@@ -75,7 +75,11 @@ export default function TracksLibraryFilters({ tracks, filters, onChange }: Trac
           </Chip>
         )
       })}
-      {shown.length > 0 && <span className="mx-1 h-4 w-px bg-gray-700" aria-hidden />}
+      {shown.length > 0 && (
+        <span className="ml-1 inline-flex items-center text-gray-500" aria-hidden>
+          <Tag className="h-3.5 w-3.5" />
+        </span>
+      )}
       {shown.map(({ value, count }) => (
         <Chip key={value} active={filters.tags.some(t => t.toLowerCase() === value.toLowerCase())} onClick={() => toggleTag(value)} count={count}>
           {value}

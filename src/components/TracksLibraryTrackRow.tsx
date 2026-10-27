@@ -1,6 +1,6 @@
 'use client'
 
-import { FileQuestion, Music, Music2, Pause, Play, Trash2, Volume2, X } from 'lucide-react'
+import { FileQuestion, ListX, Music, Music2, Pause, Play, Plus, Tag, Trash2, Volume2, X } from 'lucide-react'
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
 import type { PreviewState } from '@/hooks/useTrackPreview'
 import { formatDuration } from '@/lib/audioDuration'
@@ -142,17 +142,21 @@ function InlineTags({
         </li>
       ))}
       <li>
-        <input
-          value={draft}
-          onChange={e => setDraft(e.target.value)}
-          onKeyDown={keys}
-          onBlur={add}
-          placeholder="+ étiquette"
-          aria-label="Ajouter une étiquette"
-          list={listId}
-          size={Math.max(10, draft.length + 2)}
-          className="rounded bg-transparent px-1 py-0.5 text-xs text-gray-300 outline-none placeholder:text-gray-500 focus:bg-gray-900 focus:ring-1 focus:ring-purple-500"
-        />
+        <label className="inline-flex items-center gap-1 rounded px-1 py-0.5 text-gray-500 transition-colors focus-within:bg-gray-900 focus-within:text-gray-300 focus-within:ring-1 focus-within:ring-purple-500 hover:text-gray-300">
+          <Plus className="h-3 w-3" aria-hidden />
+          <Tag className="h-3 w-3" aria-hidden />
+          <input
+            value={draft}
+            onChange={e => setDraft(e.target.value)}
+            onKeyDown={keys}
+            onBlur={add}
+            placeholder="étiquette"
+            aria-label="Ajouter une étiquette"
+            list={listId}
+            size={Math.max(8, draft.length + 2)}
+            className="bg-transparent text-xs text-gray-300 outline-none placeholder:text-gray-500"
+          />
+        </label>
         {/* Les étiquettes en usage et quelques univers classiques, proposés par le navigateur. */}
         <datalist id={listId}>
           {suggestions
@@ -223,7 +227,10 @@ export default function TracksLibraryTrackRow({
                 ))}
               </ul>
             )}
-            <ActionButton onClick={onRemoveMissing}>Retirer</ActionButton>
+            <ActionButton onClick={onRemoveMissing}>
+              <ListX className="h-4 w-4" />
+              Retirer
+            </ActionButton>
           </>
         ) : (
           <>
@@ -238,7 +245,7 @@ export default function TracksLibraryTrackRow({
               onClick={onDelete}
               tooltip="Supprimer définitivement"
               aria-label="Supprimer"
-              className="rounded p-1 text-gray-400 transition-colors hover:bg-gray-700 hover:text-red-400"
+              className="rounded p-1 text-red-400 transition-colors hover:bg-red-900/40 hover:text-red-300"
             >
               <Trash2 className="h-4 w-4" />
             </TooltipButton>
