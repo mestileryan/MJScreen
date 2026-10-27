@@ -4,7 +4,7 @@ import { LoaderCircle, Music } from 'lucide-react'
 import { useEffect } from 'react'
 import { useDisplayPrefs } from '@/hooks/useDisplayPrefs'
 import { useTracksLibrary, type TracksLibraryNotice } from '@/hooks/useTracksLibrary'
-import { publicUrl } from '@/lib/basePath'
+import AppNav from './AppNav'
 import ImportFileDragOverlay from './ImportFileDragOverlay'
 import TracksLibraryAddButton from './TracksLibraryAddButton'
 import TracksLibrarySources from './TracksLibrarySources'
@@ -69,10 +69,7 @@ export default function TracksLibraryScreen() {
           <h1 className="text-2xl font-semibold">Bibliothèque de pistes</h1>
           <div className="ml-auto flex items-center gap-3">
             {canAdd && target && <TracksLibraryAddButton targetLabel={target.label} adding={adding} onFiles={addFiles} />}
-            {/* Lien en dur plutôt que `next/link` : le jukebox est une autre page de l’export statique. */}
-            <a href={publicUrl('/')} className="text-sm text-purple-300 hover:text-purple-400">
-              Retour au jukebox
-            </a>
+            <AppNav current="library" />
           </div>
         </header>
         <NoticeBanner notice={notice} />

@@ -17,6 +17,7 @@ import { useTooltip } from '@/hooks/useTooltip'
 import { useDisplayPrefs } from '@/hooks/useDisplayPrefs'
 import { useAppMode } from '@/hooks/useAppMode'
 import AppModeToggle from './AppModeToggle'
+import AppNav from './AppNav'
 import { useLibrary } from '@/context/LibraryContext'
 import {
   DEFAULT_PROJECT_TITLE,
@@ -230,9 +231,12 @@ export default function Screen() {
               </h1>
             )}
 
-            {/* Planification / Jeu : la bascule vit dans l'en-tête, toujours
-                sous la main — c'est elle qui rend la configuration à l'interface. */}
-            <AppModeToggle />
+            <div className="flex shrink-0 items-center gap-3">
+              <AppNav current="jukebox" compact />
+              {/* Planification / Jeu : la bascule vit dans l'en-tête, toujours
+                  sous la main — c'est elle qui rend la configuration à l'interface. */}
+              <AppModeToggle />
+            </div>
           </div>
 
           <div className="space-y-6">
