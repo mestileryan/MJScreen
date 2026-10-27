@@ -6,12 +6,15 @@ interface ImportFileDragOverlayProps {
   onFilesDropped: (files: File[]) => void
   /** Désactivé (mode jeu) : les fichiers glissés sont ignorés, sans indication. */
   disabled?: boolean
+  /** Texte du bandeau pendant le survol ; par défaut celui du jukebox. */
+  message?: string
   children: ReactNode
 }
 
 export default function ImportFileDragOverlay({
   onFilesDropped,
   disabled = false,
+  message = 'Déposez vos fichiers sur une playlist pour les y ranger',
   children,
 }: ImportFileDragOverlayProps) {
   const [isDragOver, setIsDragOver] = useState(false)
@@ -81,7 +84,7 @@ export default function ImportFileDragOverlay({
             className="pointer-events-none fixed top-4 left-1/2 z-50 -translate-x-1/2 rounded-lg
               bg-gray-900/95 px-4 py-2 text-sm font-semibold text-white shadow-lg"
           >
-            Déposez vos fichiers sur une playlist pour les y ranger
+            {message}
           </div>
         </>
       )}

@@ -5,6 +5,7 @@ import { readAudioDuration } from '@/lib/audioDuration'
 import { sha256Hex } from '@/lib/fileHash'
 import { DUPLICATE_TAG, type IndexedTrack } from '@/models/TracksLibraryIndex'
 import {
+  addTrackFiles,
   deleteTrack,
   initTracksLibrary,
   openTracksLibrary,
@@ -105,6 +106,8 @@ export function useTracksLibrary() {
   // navigateur, la détection se fait après hydratation.
   const [state, setState] = useState<TracksLibraryState>({ step: 'starting' })
   const [notice, setNotice] = useState<TracksLibraryNotice>(null)
+  /** Ajout de fichiers en cours, pour l’afficher. */
+  const [adding, setAdding] = useState<{ done: number; total: number; label: string } | null>(null)
   // Dernière liste de sources connue, pour les travaux de fond qui ne peuvent pas
   // se fier à une valeur capturée.
   const sourcesRef = useRef<TracksSource[]>([])
@@ -132,19 +135,17 @@ export function useTracksLibrary() {
   }
   const stale = (id: number, gen: number) => generations.current.get(id) !== gen
 
-  /** Indexe la source puis lit durées et empreintes manquantes, sans bloquer l’affichage. */
-  const settle = useCallback(
-    async (id: number, library: TracksLibrary) => {
-      const gen = bump(id)
-      patchSource(id, { status: { step: 'ready', library, report: null, usedBytes: 0 } })
-      const refreshed = await refreshTracksLibrary(library)
-      if (stale(id, gen)) return
-      patchSource(id, {
-        status: { step: 'ready', library: refreshed.library, report: refreshed.report, usedBytes: refreshed.usedBytes },
-      })
-
-      const missing = new Set(refreshed.report.missing.map(track => track.id))
-      const pending = refreshed.library.index.tracks.filter(
+  /**
+   * Lit durées et empreintes manquantes d’une source, piste par piste, et
+   * enregistre le tout à la fin. S’arrête si la source est rouverte entre-temps.
+   */
+  const enrichOnce = useCallback(
+    async (id: number) => {
+      const gen = generations.current.get(id) ?? 0
+      const source = findSource(id)
+      if (source?.status.step !== 'ready') return
+      const missing = new Set(source.status.report?.missing.map(track => track.id))
+      const pending = source.status.library.index.tracks.filter(
         track => (track.duration === undefined || track.hash === undefined) && !missing.has(track.id),
       )
       const enriched: IndexedTrack[] = []
@@ -193,6 +194,45 @@ export function useTracksLibrary() {
       }
     },
     [patchSource],
+  )
+
+  // Un seul passage d’enrichissement à la fois par source ; une demande reçue
+  // pendant un passage (pistes ajoutées) en relance un à la fin.
+  const enrichJobs = useRef(new Map<number, { running: boolean; again: boolean }>())
+  const enrich = useCallback(
+    async (id: number) => {
+      const job = enrichJobs.current.get(id) ?? { running: false, again: false }
+      enrichJobs.current.set(id, job)
+      if (job.running) {
+        job.again = true
+        return
+      }
+      job.running = true
+      try {
+        do {
+          job.again = false
+          await enrichOnce(id)
+        } while (job.again)
+      } finally {
+        job.running = false
+      }
+    },
+    [enrichOnce],
+  )
+
+  /** Indexe la source puis complète durées et empreintes, sans bloquer l’affichage. */
+  const settle = useCallback(
+    async (id: number, library: TracksLibrary) => {
+      const gen = bump(id)
+      patchSource(id, { status: { step: 'ready', library, report: null, usedBytes: 0 } })
+      const refreshed = await refreshTracksLibrary(library)
+      if (stale(id, gen)) return
+      patchSource(id, {
+        status: { step: 'ready', library: refreshed.library, report: refreshed.report, usedBytes: refreshed.usedBytes },
+      })
+      await enrich(id)
+    },
+    [enrich, patchSource],
   )
 
   const openSource = useCallback(
@@ -345,6 +385,43 @@ export function useTracksLibrary() {
     [patchSource, run],
   )
 
+  /**
+   * Ajoute des fichiers à la source par défaut : copiés dans son dossier des pistes,
+   * indexés aussitôt, puis durée et empreinte (et étiquette « doublon ») en fond.
+   */
+  const addFiles = useCallback(
+    (files: File[]) =>
+      run(async () => {
+        const target = sourcesRef.current.find(s => s.isDefault) ?? sourcesRef.current[0]
+        if (!target) throw new Error('Aucune source branchée.')
+        if (target.status.step !== 'ready') {
+          setNotice({ tone: 'error', text: `La source par défaut (${target.label}) n’est pas ouverte.` })
+          return
+        }
+        setAdding({ done: 0, total: files.length, label: target.label })
+        try {
+          const result = await addTrackFiles(target.status.library, files)
+          const again = findSource(target.id)
+          if (again?.status.step !== 'ready') return
+          patchSource(target.id, {
+            status: {
+              ...again.status,
+              library: result.library,
+              usedBytes: again.status.usedBytes + result.added.reduce((sum, t) => sum + (t.size ?? 0), 0),
+            },
+          })
+          const parts: string[] = []
+          if (result.added.length) parts.push(`${result.added.length} piste${result.added.length > 1 ? 's' : ''} ajoutée${result.added.length > 1 ? 's' : ''} dans ${target.label}`)
+          if (result.skipped.length) parts.push(`${result.skipped.length} fichier${result.skipped.length > 1 ? 's' : ''} ignoré${result.skipped.length > 1 ? 's' : ''} (pas de l’audio)`)
+          setNotice({ tone: result.added.length ? 'info' : 'error', text: `${parts.join(' · ')}.` })
+        } finally {
+          setAdding(null)
+        }
+        void enrich(target.id)
+      }),
+    [enrich, patchSource, run],
+  )
+
   /** Retire de la liste des pistes dont le fichier a disparu. Les fichiers audio ne sont jamais touchés. */
   const removeMissing = useCallback(
     (sourceId: number, ids: string[]) =>
@@ -383,6 +460,8 @@ export function useTracksLibrary() {
     state,
     tracks,
     notice,
+    adding,
+    addFiles,
     addLocalSource,
     reopenSource,
     refreshSource: openSource,

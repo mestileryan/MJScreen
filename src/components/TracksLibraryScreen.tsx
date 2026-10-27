@@ -5,6 +5,8 @@ import { useEffect } from 'react'
 import { useDisplayPrefs } from '@/hooks/useDisplayPrefs'
 import { useTracksLibrary, type TracksLibraryNotice } from '@/hooks/useTracksLibrary'
 import { publicUrl } from '@/lib/basePath'
+import ImportFileDragOverlay from './ImportFileDragOverlay'
+import TracksLibraryAddButton from './TracksLibraryAddButton'
 import TracksLibrarySources from './TracksLibrarySources'
 import TracksLibraryTrackList from './TracksLibraryTrackList'
 import { Message } from './TracksLibraryUi'
@@ -28,6 +30,8 @@ export default function TracksLibraryScreen() {
     state,
     tracks,
     notice,
+    adding,
+    addFiles,
     addLocalSource,
     reopenSource,
     refreshSource,
@@ -47,17 +51,28 @@ export default function TracksLibraryScreen() {
   }, [lightMode])
 
   const openSources = state.step === 'ready' ? state.sources.filter(s => s.status.step === 'ready') : []
+  // Les fichiers ajoutés vont à la source par défaut ; sans elle, pas d’ajout possible.
+  const target = state.step === 'ready' ? (state.sources.find(s => s.isDefault) ?? state.sources[0]) : undefined
+  const canAdd = target?.status.step === 'ready'
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white">
+    <ImportFileDragOverlay
+      disabled={!canAdd}
+      message={target ? `Déposez vos fichiers audio pour les ajouter à ${target.label}` : ''}
+      onFilesDropped={addFiles}
+    >
+      <div className="min-h-screen bg-gray-900 text-white">
       <main className="mx-auto max-w-3xl space-y-4 p-4 sm:p-6">
         <header className="flex flex-wrap items-center gap-2">
           <Music className="h-6 w-6 text-purple-400" />
           <h1 className="text-2xl font-semibold">Bibliothèque de pistes</h1>
-          {/* Lien en dur plutôt que `next/link` : le jukebox est une autre page de l’export statique. */}
-          <a href={publicUrl('/')} className="ml-auto text-sm text-purple-300 hover:text-purple-400">
-            Retour au jukebox
-          </a>
+          <div className="ml-auto flex items-center gap-3">
+            {canAdd && target && <TracksLibraryAddButton targetLabel={target.label} adding={adding} onFiles={addFiles} />}
+            {/* Lien en dur plutôt que `next/link` : le jukebox est une autre page de l’export statique. */}
+            <a href={publicUrl('/')} className="text-sm text-purple-300 hover:text-purple-400">
+              Retour au jukebox
+            </a>
+          </div>
         </header>
         <NoticeBanner notice={notice} />
 
@@ -92,6 +107,7 @@ export default function TracksLibraryScreen() {
           </>
         )}
       </main>
-    </div>
+      </div>
+    </ImportFileDragOverlay>
   )
 }

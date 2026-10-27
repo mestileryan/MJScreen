@@ -3,6 +3,7 @@ import { MemoryStorageProvider } from '@/storage/MemoryStorageProvider'
 import { readText } from '@/storage/StorageProvider'
 import { LIBRARY_INDEX_PATH } from './TracksLibraryFiles'
 import {
+  addTrackFiles,
   deleteTrack,
   initTracksLibrary,
   openTracksLibrary,
@@ -79,6 +80,59 @@ describe('refreshTracksLibrary', () => {
     expect(after.index.tracks).toEqual([])
   })
 
+  it('ne touche jamais aux fichiers audio', async () => {
+    const storage = new MemoryStorageProvider('Brut', { 'combat.mp3': 'abc' })
+    const { library } = await refreshTracksLibrary(await initTracksLibrary(storage))
+    await removeTracksFromIndex(library, library.index.tracks.map(t => t.id))
+    expect(await readText(storage, 'combat.mp3')).toBe('abc')
+  })
+})
+
+describe('addTrackFiles', () => {
+  it('copie les fichiers audio dans le dossier des pistes et les indexe', async () => {
+    const storage = new MemoryStorageProvider('Brut')
+    const library = await initTracksLibrary(storage)
+    const files = [new File(['abc'], 'Taverne.mp3'), new File(['x'], 'notes.txt'), new File(['de'], 'Combat.ogg')]
+
+    const result = await addTrackFiles(library, files)
+
+    expect(result.added.map(t => [t.path, t.name, t.size])).toEqual([
+      ['pistes/Taverne.mp3', 'Taverne', 3],
+      ['pistes/Combat.ogg', 'Combat', 2],
+    ])
+    expect(result.skipped.map(f => f.name)).toEqual(['notes.txt'])
+    expect(await readText(storage, 'pistes/Taverne.mp3')).toBe('abc')
+    expect((await reopen(storage)).index.tracks).toEqual(result.added)
+  })
+
+  it('n’écrase jamais un fichier du même nom', async () => {
+    const storage = new MemoryStorageProvider('Brut', { 'pistes/Taverne.mp3': 'ancien' })
+    const library = await initTracksLibrary(storage)
+
+    const result = await addTrackFiles(library, [new File(['nouveau'], 'Taverne.mp3'), new File(['encore'], 'Taverne.mp3')])
+
+    expect(result.added.map(t => t.path)).toEqual(['pistes/Taverne (2).mp3', 'pistes/Taverne (3).mp3'])
+    expect(await readText(storage, 'pistes/Taverne.mp3')).toBe('ancien')
+  })
+
+  it('laisse le prochain parcours sans rien à signaler', async () => {
+    const storage = new MemoryStorageProvider('Brut')
+    const { library } = await addTrackFiles(await initTracksLibrary(storage), [new File(['abc'], 'Taverne.mp3')])
+    const { report } = await refreshTracksLibrary(library)
+    expect(report).toEqual({ added: [], missing: [], changed: [] })
+  })
+
+  it('ne réécrit pas l’index quand aucun fichier n’est retenu', async () => {
+    const storage = new MemoryStorageProvider('Brut')
+    const library = await initTracksLibrary(storage)
+    const written = await readText(storage, LIBRARY_INDEX_PATH)
+    const result = await addTrackFiles(library, [new File(['x'], 'notes.txt')])
+    expect(result.library).toBe(library)
+    expect(await readText(storage, LIBRARY_INDEX_PATH)).toBe(written)
+  })
+})
+
+describe('removeTracksFromIndex', () => {
   it('ne touche jamais aux fichiers audio', async () => {
     const storage = new MemoryStorageProvider('Brut', { 'combat.mp3': 'abc' })
     const { library } = await refreshTracksLibrary(await initTracksLibrary(storage))

@@ -75,7 +75,8 @@ Ces fichiers suffisent à rebrancher la source à l'identique sur une autre mach
 autre navigateur. À l'ouverture, chaque source est parcourue (fichiers ajoutés, modifiés
 ou disparus hors de l'outil), puis durées et empreintes sont complétées en arrière-plan ;
 une piste dont le contenu existe déjà ailleurs dans la bibliothèque reçoit l'étiquette
-`doublon`.
+`doublon`. « Ajouter des pistes » (ou un glisser-déposer sur la page) copie les fichiers
+dans le dossier `pistes/` de la source par défaut, sans jamais écraser un fichier existant.
 
 - **Schémas versionnés** (`src/schemas/`) : chaque fichier porte un `schemaVersion`.
   Un fichier plus ancien est migré en mémoire et ne sera réécrit qu'après sauvegarde.

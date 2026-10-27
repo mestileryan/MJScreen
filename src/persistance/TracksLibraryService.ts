@@ -1,7 +1,9 @@
+import { isAudioPath } from '@/lib/audioFiles'
+import { baseName, joinPath, parentPath } from '@/lib/storagePath'
 import type TracksLibraryConfig from '@/models/TracksLibraryConfig'
 import { createTracksLibraryConfig } from '@/models/TracksLibraryConfig'
 import type TracksLibraryIndex from '@/models/TracksLibraryIndex'
-import { createTracksLibraryIndex, type IndexedTrack } from '@/models/TracksLibraryIndex'
+import { createIndexedTrack, createTracksLibraryIndex, type IndexedTrack } from '@/models/TracksLibraryIndex'
 import { tracksLibraryConfigSchema } from '@/schemas/tracksLibraryConfigSchema'
 import { parseDocument, serializeDocument, type DocumentSchema, type ParseResult } from '@/schemas/documentSchema'
 import { tracksLibraryIndexSchema } from '@/schemas/tracksLibraryIndexSchema'
@@ -188,6 +190,50 @@ export async function deleteTrack(library: TracksLibrary, id: string): Promise<T
     if (!isStorageError(error, 'not-found')) throw error
   }
   return removeTracksFromIndex(library, [id])
+}
+
+export interface AddTracksResult {
+  library: TracksLibrary
+  added: IndexedTrack[]
+  /** Fichiers ignorés parce qu’ils ne sont pas de l’audio. */
+  skipped: File[]
+}
+
+/**
+ * Copie des fichiers audio dans le dossier des pistes de la source et les indexe.
+ * Un nom déjà pris reçoit un suffixe « (2) » : rien n’est jamais écrasé.
+ */
+export async function addTrackFiles(library: TracksLibrary, files: File[], now = new Date()): Promise<AddTracksResult> {
+  const added: IndexedTrack[] = []
+  const skipped: File[] = []
+  for (const file of files) {
+    if (!isAudioPath(file.name)) {
+      skipped.push(file)
+      continue
+    }
+    const path = await freePath(library.storage, joinPath(library.config.tracksDir, baseName(file.name)))
+    await library.storage.write(path, file)
+    // Taille et date telles que le prochain parcours les verra : sinon il croirait le fichier modifié.
+    const written = await library.storage.stat(path)
+    added.push(createIndexedTrack(path, written ?? file, now))
+  }
+  if (added.length === 0) return { library, added, skipped }
+  const index = { ...library.index, tracks: [...library.index.tracks, ...added] }
+  return { library: await saveTracksLibraryIndex(library, index), added, skipped }
+}
+
+/** Le chemin demandé s’il est libre, sinon « nom (2).ext », « nom (3).ext »… */
+async function freePath(storage: StorageProvider, path: string): Promise<string> {
+  if (!(await storage.stat(path))) return path
+  const name = baseName(path)
+  const dot = name.lastIndexOf('.')
+  const stem = dot > 0 ? name.slice(0, dot) : name
+  const extension = dot > 0 ? name.slice(dot) : ''
+  const dir = parentPath(path)
+  for (let n = 2; ; n++) {
+    const candidate = joinPath(dir, `${stem} (${n})${extension}`)
+    if (!(await storage.stat(candidate))) return candidate
+  }
 }
 
 /** Remplace des pistes par leur nouvelle version, à identifiant égal, et enregistre. */
