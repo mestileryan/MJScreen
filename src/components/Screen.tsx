@@ -16,8 +16,8 @@ import { useTrackLink } from '@/hooks/useTrackLink'
 import { useTooltip } from '@/hooks/useTooltip'
 import { useDisplayPrefs } from '@/hooks/useDisplayPrefs'
 import { useAppMode } from '@/hooks/useAppMode'
+import AppHeader from './AppHeader'
 import AppModeToggle from './AppModeToggle'
-import AppNav from './AppNav'
 import { useLibrary } from '@/context/LibraryContext'
 import {
   DEFAULT_PROJECT_TITLE,
@@ -168,6 +168,9 @@ export default function Screen() {
         }`}
         style={{ maxWidth: layoutMaxWidth }}
       >
+        {/* Le bandeau de site occupe toute la largeur, au-dessus des deux colonnes. */}
+        <AppHeader current="jukebox" className="md:col-span-2" />
+
         {/* Avancement du calcul des formes d'onde (z-40 : un toast d'erreur passe devant) */}
         <WaveformProgressBadge />
 
@@ -231,12 +234,9 @@ export default function Screen() {
               </h1>
             )}
 
-            <div className="flex shrink-0 items-center gap-3">
-              <AppNav current="jukebox" compact />
-              {/* Planification / Jeu : la bascule vit dans l'en-tête, toujours
-                  sous la main — c'est elle qui rend la configuration à l'interface. */}
-              <AppModeToggle />
-            </div>
+            {/* Planification / Jeu : la bascule vit dans l'en-tête, toujours
+                sous la main — c'est elle qui rend la configuration à l'interface. */}
+            <AppModeToggle />
           </div>
 
           <div className="space-y-6">

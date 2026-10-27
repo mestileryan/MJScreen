@@ -20,13 +20,14 @@ export default function CollapsibleSidebar({
     /* Deux dispositions. Sur téléphone : un panneau fixé en bas de l'écran, replié en
        simple barre. À partir de `md` : la colonne latérale collante d'origine, où
        `self-start` empêche l'étirement sur toute la hauteur de la grille — sans quoi
-       elle n'aurait aucune marge de manœuvre pour coller. */
+       elle n'aurait aucune marge de manœuvre pour coller. Elle se cale sous le bandeau
+       de site (3rem, collant lui aussi), d'où la hauteur `100vh - 3rem`. */
     <div
       className={`fixed inset-x-0 bottom-0 z-30 border-t border-gray-700 bg-gray-800
-        md:sticky md:inset-x-auto md:bottom-auto md:top-0 md:z-auto md:h-screen md:self-start
+        md:sticky md:inset-x-auto md:bottom-auto md:top-12 md:z-auto md:h-[calc(100vh-3rem)] md:self-start
         md:border-l md:border-t-0 ${
           collapsed
-            ? 'flex h-12 items-center justify-end px-3 md:h-screen md:w-6 md:justify-center md:bg-transparent md:px-0'
+            ? 'flex h-12 items-center justify-end px-3 md:h-[calc(100vh-3rem)] md:w-6 md:justify-center md:bg-transparent md:px-0'
             : 'flex max-h-[75vh] flex-col md:max-h-none md:w-96 md:justify-start'
         }`}
     >

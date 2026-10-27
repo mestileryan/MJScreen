@@ -4,7 +4,7 @@ import { LoaderCircle, Music } from 'lucide-react'
 import { useEffect } from 'react'
 import { useDisplayPrefs } from '@/hooks/useDisplayPrefs'
 import { useTracksLibrary, type TracksLibraryNotice } from '@/hooks/useTracksLibrary'
-import AppNav from './AppNav'
+import AppHeader from './AppHeader'
 import ImportFileDragOverlay from './ImportFileDragOverlay'
 import TracksLibraryAddButton from './TracksLibraryAddButton'
 import TracksLibrarySources from './TracksLibrarySources'
@@ -63,14 +63,16 @@ export default function TracksLibraryScreen() {
       onFilesDropped={addFiles}
     >
       <div className="min-h-screen bg-gray-900 text-white">
+      <AppHeader current="library" />
       <main className="mx-auto max-w-3xl space-y-4 p-4 sm:p-6">
         <header className="flex flex-wrap items-center gap-2">
           <Music className="h-6 w-6 text-purple-400" />
           <h1 className="text-2xl font-semibold">Bibliothèque de pistes</h1>
-          <div className="ml-auto flex items-center gap-3">
-            {canAdd && target && <TracksLibraryAddButton targetLabel={target.label} adding={adding} onFiles={addFiles} />}
-            <AppNav current="library" />
-          </div>
+          {canAdd && target && (
+            <div className="ml-auto">
+              <TracksLibraryAddButton targetLabel={target.label} adding={adding} onFiles={addFiles} />
+            </div>
+          )}
         </header>
         <NoticeBanner notice={notice} />
 
