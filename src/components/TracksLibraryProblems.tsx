@@ -1,21 +1,20 @@
 'use client'
 
-import { FileWarning } from 'lucide-react'
 import { useState } from 'react'
 import type { FileProblem, TracksLibraryFile } from '@/persistance/TracksLibraryService'
-import { ActionButton, Panel, TechnicalDetails } from './TracksLibraryUi'
+import { ActionButton, TechnicalDetails } from './TracksLibraryUi'
 
 /** Comment on nomme chaque fichier pour l’utilisateur, et ce qu’on perd en le recréant. */
 const FILES: Record<TracksLibraryFile, { label: string; path: string; lossOnReset: string }> = {
   config: {
-    label: 'Les réglages de la bibliothèque',
+    label: 'Les réglages de la source',
     path: '.mjlib/config.json',
     lossOnReset: 'Les réglages repartiront de zéro.',
   },
   index: {
     label: 'La liste des pistes',
     path: '.mjlib/index.json',
-    lossOnReset: 'Les noms et mots-clés donnés aux pistes seront perdus (les fichiers audio, eux, restent).',
+    lossOnReset: 'Les noms et étiquettes donnés aux pistes seront perdus (les fichiers audio, eux, restent).',
   },
 }
 
@@ -35,26 +34,18 @@ function describe(problem: FileProblem): { text: string; details?: string } {
 }
 
 interface TracksLibraryProblemsProps {
-  folderName: string
   problems: FileProblem[]
   onReset: (file: TracksLibraryFile) => void
   onReload: () => void
-  onChange: () => void
 }
 
 /** `.mjlib/` est présent mais inutilisable en l’état : on explique, et on ne répare que sur demande. */
-export default function TracksLibraryProblems({
-  folderName,
-  problems,
-  onReset,
-  onReload,
-  onChange,
-}: TracksLibraryProblemsProps) {
+export default function TracksLibraryProblems({ problems, onReset, onReload }: TracksLibraryProblemsProps) {
   const [confirming, setConfirming] = useState<TracksLibraryFile | null>(null)
 
   return (
-    <Panel title={`${folderName} : bibliothèque illisible`} icon={<FileWarning className="h-5 w-5 text-red-400" />}>
-      <ul className="space-y-3">
+    <div className="space-y-3 text-sm text-gray-300">
+      <ul className="space-y-2">
         {problems.map(problem => {
           const { text, details } = describe(problem)
           const repairable = problem.kind !== 'too-new'
@@ -83,12 +74,9 @@ export default function TracksLibraryProblems({
           )
         })}
       </ul>
-      <div className="flex flex-wrap gap-2">
-        <ActionButton tone="primary" onClick={onReload}>
-          Réessayer
-        </ActionButton>
-        <ActionButton onClick={onChange}>Changer d’emplacement</ActionButton>
-      </div>
-    </Panel>
+      <ActionButton tone="primary" onClick={onReload}>
+        Réessayer
+      </ActionButton>
+    </div>
   )
 }

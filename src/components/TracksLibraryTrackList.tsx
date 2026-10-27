@@ -3,22 +3,18 @@
 import { Search } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useTrackPreview } from '@/hooks/useTrackPreview'
+import type { LibraryTrack, TracksSource } from '@/hooks/useTracksLibrary'
 import type { IndexedTrack } from '@/models/TracksLibraryIndex'
-import type { ReconcileReport } from '@/persistance/TracksLibraryIndexer'
-import { isEmptyReport } from '@/persistance/TracksLibraryIndexer'
-import type { StorageProvider } from '@/storage/StorageProvider'
 import ConfirmationModal from './ConfirmationModal'
 import TracksLibraryTrackRow from './TracksLibraryTrackRow'
-import { ActionButton } from './TracksLibraryUi'
 
 interface TracksLibraryTrackListProps {
-  storage: StorageProvider
-  tracks: IndexedTrack[]
-  /** `null` tant que le dossier est en cours de parcours. */
-  report: ReconcileReport | null
-  onEdit: (id: string, patch: Partial<Pick<IndexedTrack, 'name' | 'tags'>>) => void
-  onDelete: (id: string) => void
-  onRemoveMissing: (ids: string[]) => void
+  tracks: LibraryTrack[]
+  /** Sources ouvertes, pour le filtre ; la mention de source sur chaque ligne n’apparaît qu’à partir de deux. */
+  sources: TracksSource[]
+  onEdit: (sourceId: number, id: string, patch: Partial<Pick<IndexedTrack, 'name' | 'tags'>>) => void
+  onDelete: (sourceId: number, id: string) => void
+  onRemoveMissing: (sourceId: number, ids: string[]) => void
 }
 
 /** Minuscules sans accents, pour une recherche tolérante. */
@@ -29,86 +25,79 @@ function fold(text: string): string {
     .replace(/[̀-ͯ]/g, '')
 }
 
-function plural(count: number, singular: string, pluralForm: string): string {
-  return `${count} ${count > 1 ? pluralForm : singular}`
-}
+const key = ({ source, track }: LibraryTrack) => `${source.id}:${track.id}`
 
-function reportSummary(report: ReconcileReport): string {
-  const parts: string[] = []
-  if (report.added.length) parts.push(plural(report.added.length, 'nouvelle piste', 'nouvelles pistes'))
-  if (report.changed.length) parts.push(plural(report.changed.length, 'fichier modifié', 'fichiers modifiés'))
-  if (report.missing.length) parts.push(plural(report.missing.length, 'fichier introuvable', 'fichiers introuvables'))
-  return parts.join(' · ')
-}
-
-export default function TracksLibraryTrackList({
-  storage,
-  tracks,
-  report,
-  onEdit,
-  onDelete,
-  onRemoveMissing,
-}: TracksLibraryTrackListProps) {
+export default function TracksLibraryTrackList({ tracks, sources, onEdit, onDelete, onRemoveMissing }: TracksLibraryTrackListProps) {
   const [query, setQuery] = useState('')
-  const [deleting, setDeleting] = useState<IndexedTrack | null>(null)
-  const missing = useMemo(() => new Set(report?.missing.map(t => t.id)), [report])
-  const { preview, volume, toggle, stop, seek, setVolume } = useTrackPreview(storage)
+  const [sourceFilter, setSourceFilter] = useState<number | null>(null)
+  const [deleting, setDeleting] = useState<LibraryTrack | null>(null)
+  const { preview, volume, toggle, stop, seek, setVolume } = useTrackPreview()
+  const multiSource = sources.length > 1
 
   const visible = useMemo(() => {
     const needle = fold(query.trim())
-    if (!needle) return tracks
-    return tracks.filter(track => fold(`${track.name} ${track.path} ${track.tags.join(' ')}`).includes(needle))
-  }, [tracks, query])
+    return tracks.filter(({ source, track }) => {
+      if (sourceFilter !== null && source.id !== sourceFilter) return false
+      return !needle || fold(`${track.name} ${track.path} ${track.tags.join(' ')}`).includes(needle)
+    })
+  }, [tracks, query, sourceFilter])
 
-  if (tracks.length === 0 && report) {
+  if (tracks.length === 0) {
     return (
       <p className="rounded-lg bg-gray-800 p-5 text-sm text-gray-400">
-        Aucune piste pour l’instant. Déposez vos fichiers audio dans le dossier, puis cliquez sur « Actualiser ».
+        Aucune piste pour l’instant. Déposez vos fichiers audio dans le dossier d’une source, puis actualisez-la.
       </p>
     )
   }
 
   return (
     <section className="space-y-3">
-      {report && !isEmptyReport(report) && (
-        <div className="flex flex-wrap items-center gap-3 rounded bg-gray-800 px-3 py-2 text-sm text-gray-300">
-          <span>{reportSummary(report)}</span>
-          {report.missing.length > 1 && (
-            <ActionButton className="ml-auto" onClick={() => onRemoveMissing(report.missing.map(t => t.id))}>
-              Retirer les {report.missing.length} introuvables
-            </ActionButton>
-          )}
-        </div>
-      )}
-
-      <label className="flex items-center gap-2 rounded bg-gray-800 px-3 py-2 text-sm">
-        <Search className="h-4 w-4 text-gray-400" />
-        <input
-          type="search"
-          value={query}
-          onChange={event => setQuery(event.target.value)}
-          placeholder="Rechercher une piste…"
-          className="w-full bg-transparent text-white outline-none placeholder:text-gray-500"
-        />
-      </label>
+      <div className="flex flex-wrap items-center gap-2">
+        <label className="flex min-w-60 flex-1 items-center gap-2 rounded bg-gray-800 px-3 py-2 text-sm">
+          <Search className="h-4 w-4 text-gray-400" />
+          <input
+            type="search"
+            value={query}
+            onChange={event => setQuery(event.target.value)}
+            placeholder="Rechercher une piste…"
+            className="w-full bg-transparent text-white outline-none placeholder:text-gray-500"
+          />
+        </label>
+        {multiSource && (
+          <select
+            value={sourceFilter ?? ''}
+            onChange={event => setSourceFilter(event.target.value === '' ? null : Number(event.target.value))}
+            aria-label="Filtrer par source"
+            className="rounded bg-gray-800 px-2 py-2 text-sm text-gray-300 outline-none"
+          >
+            <option value="">Toutes les sources</option>
+            {sources.map(source => (
+              <option key={source.id} value={source.id}>
+                {source.label}
+              </option>
+            ))}
+          </select>
+        )}
+      </div>
 
       {visible.length === 0 ? (
         <p className="px-3 text-sm text-gray-400">Aucune piste ne correspond.</p>
       ) : (
         <ul className="divide-y divide-gray-700 rounded-lg bg-gray-800">
-          {visible.map(track => (
+          {visible.map(item => (
             <TracksLibraryTrackRow
-              key={track.id}
-              track={track}
-              missing={missing.has(track.id)}
+              key={key(item)}
+              track={item.track}
+              sourceLabel={multiSource ? item.source.label : undefined}
+              missing={item.missing}
               preview={preview}
               volume={volume}
-              onToggle={() => toggle(track)}
+              onToggle={() => toggle(item.track, item.source.storage)}
               onSeek={seek}
               onVolume={setVolume}
-              onEdit={patch => onEdit(track.id, patch)}
-              onDelete={() => setDeleting(track)}
-              onRemoveMissing={() => onRemoveMissing([track.id])}
+              onEdit={patch => onEdit(item.source.id, item.track.id, patch)}
+              onDelete={() => setDeleting(item)}
+              onRemoveMissing={() => onRemoveMissing(item.source.id, [item.track.id])}
             />
           ))}
         </ul>
@@ -116,12 +105,12 @@ export default function TracksLibraryTrackList({
 
       {deleting && (
         <ConfirmationModal
-          message={`Supprimer définitivement « ${deleting.name} » ? Le fichier sera effacé du dossier.`}
+          message={`Supprimer définitivement « ${deleting.track.name} » ? Le fichier sera effacé de ${deleting.source.label}.`}
           confirmLabel="Supprimer"
           confirmTone="danger"
           onConfirm={() => {
-            if (preview?.trackId === deleting.id) stop()
-            onDelete(deleting.id)
+            if (preview?.trackId === deleting.track.id) stop()
+            onDelete(deleting.source.id, deleting.track.id)
             setDeleting(null)
           }}
           onCancel={() => setDeleting(null)}

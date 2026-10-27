@@ -21,6 +21,8 @@ export interface IndexedTrack {
   lastModified?: number
   /** Durée en secondes, connue après lecture des métadonnées audio. */
   duration?: number
+  /** Empreinte SHA-256 du contenu, calculée en arrière-plan ; sert à repérer les doublons. */
+  hash?: string
   /** Date d'ajout à l'index, ISO 8601. */
   addedAt: string
 }
@@ -52,6 +54,21 @@ export function parseTags(text: string): string[] {
     tags.push(tag)
   }
   return tags
+}
+
+/** Étiquette posée d’office sur une piste dont le contenu existe déjà ailleurs dans la bibliothèque. */
+export const DUPLICATE_TAG = 'doublon'
+
+/** Empreintes portées par plus d’une piste, toutes sources confondues. */
+export function duplicateHashes(tracks: Iterable<Pick<IndexedTrack, 'hash'>>): Set<string> {
+  const seen = new Set<string>()
+  const duplicates = new Set<string>()
+  for (const { hash } of tracks) {
+    if (!hash) continue
+    if (seen.has(hash)) duplicates.add(hash)
+    seen.add(hash)
+  }
+  return duplicates
 }
 
 export function createIndexedTrack(

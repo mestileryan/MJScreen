@@ -161,10 +161,11 @@ async function countAudioFiles(storage: StorageProvider): Promise<number> {
  */
 export async function refreshTracksLibrary(
   library: TracksLibrary,
-): Promise<{ library: TracksLibrary; report: ReconcileReport }> {
+): Promise<{ library: TracksLibrary; report: ReconcileReport; usedBytes: number }> {
   const files = await scanAudioFiles(library.storage)
   const { index, report } = reconcileIndex(library.index, files)
-  return { library: index === library.index ? library : await saveTracksLibraryIndex(library, index), report }
+  const usedBytes = files.reduce((total, file) => total + (file.size ?? 0), 0)
+  return { library: index === library.index ? library : await saveTracksLibraryIndex(library, index), report, usedBytes }
 }
 
 /** Retire des entrées de l’index (les fichiers audio, eux, ne sont pas touchés). */

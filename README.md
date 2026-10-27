@@ -54,24 +54,28 @@ Les tests (`src/**/*.test.ts`) tournent sous Node : IndexedDB est imité par
 
 ## Bibliothèque de pistes
 
-Page autonome, servie sur `/MJScreen/trackslibrary/`. Elle gère une bibliothèque de
-fichiers audio rangée dans un stockage choisi par l'utilisateur. Le jukebox s'en
-servira plus tard comme source pour ajouter des pistes.
+Page autonome, servie sur `/MJScreen/trackslibrary/`. Une seule bibliothèque, faite de
+plusieurs **sources** : des dossiers de l'ordinateur aujourd'hui, Dropbox, Google Drive
+et OneDrive ensuite. La liste des pistes fusionne toutes les sources ; le jukebox s'en
+servira plus tard pour ajouter des pistes.
 
-Contrairement au jukebox, **aucune piste n'est stockée dans le navigateur**. Seul le
-handle du dossier local y est gardé (IndexedDB, base `FolderHandles`). Tout le reste vit
-dans le stockage :
+Contrairement au jukebox, **aucune piste n'est stockée dans le navigateur**. Il ne retient
+que les sources branchées (IndexedDB, base `TracksSources` : handle du dossier, source
+par défaut). Tout le reste vit dans chaque source :
 
 ```
-<racine de la bibliothèque>/
+<racine de la source>/
   .mjlib/config.json     configuration (nom, identifiant, sorties réservées)
-  .mjlib/index.json      métadonnées et tags de chaque piste, identifiants stables
+  .mjlib/index.json      métadonnées, tags et empreinte SHA-256 de chaque piste
   .mjlib/sauvegardes/    copies faites avant toute réécriture d'un fichier abîmé ou migré
   pistes/…               fichiers audio ajoutés depuis l'outil
 ```
 
-Ces fichiers suffisent à recharger la bibliothèque à l'identique sur une autre machine
-ou un autre navigateur.
+Ces fichiers suffisent à rebrancher la source à l'identique sur une autre machine ou un
+autre navigateur. À l'ouverture, chaque source est parcourue (fichiers ajoutés, modifiés
+ou disparus hors de l'outil), puis durées et empreintes sont complétées en arrière-plan ;
+une piste dont le contenu existe déjà ailleurs dans la bibliothèque reçoit l'étiquette
+`doublon`.
 
 - **Schémas versionnés** (`src/schemas/`) : chaque fichier porte un `schemaVersion`.
   Un fichier plus ancien est migré en mémoire et ne sera réécrit qu'après sauvegarde.

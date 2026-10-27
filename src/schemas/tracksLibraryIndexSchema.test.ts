@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   createIndexedTrack,
   createTracksLibraryIndex,
+  duplicateHashes,
   INDEX_SCHEMA_VERSION,
   parseTags,
   trackNameFromPath,
@@ -43,6 +44,12 @@ describe('tracksLibraryIndexSchema', () => {
     expect(result.status).toBe('too-new')
   })
 
+  it('garde l’empreinte d’une piste', () => {
+    const hashed = { ...track, hash: 'ba7816bf' }
+    expect(parseDocumentValue(tracksLibraryIndexSchema, index(hashed))).toMatchObject({ value: { tracks: [hashed] } })
+    expect(parseDocumentValue(tracksLibraryIndexSchema, index({ ...track, hash: 12 })).status).toBe('invalid')
+  })
+
   it.each([
     ['sans liste de pistes', { schemaVersion: 1 }],
     ['avec une piste sans identifiant', index({ ...track, id: undefined })],
@@ -53,6 +60,13 @@ describe('tracksLibraryIndexSchema', () => {
     ['avec un chemin en double', index(track, { ...track, id: 't2' })],
   ])('refuse un index %s', (_, document) => {
     expect(parseDocumentValue(tracksLibraryIndexSchema, document).status).toBe('invalid')
+  })
+})
+
+describe('duplicateHashes', () => {
+  it('ne retient que les empreintes portées par plusieurs pistes', () => {
+    const tracks = [{ hash: 'a' }, { hash: 'b' }, { hash: 'a' }, {}, { hash: 'c' }, { hash: 'a' }]
+    expect([...duplicateHashes(tracks)]).toEqual(['a'])
   })
 })
 

@@ -58,6 +58,11 @@ export function optionalNumber(value: unknown, location: string): number | undef
   return value
 }
 
+/** Champ texte facultatif : absent ou `undefined`, mais jamais `null` ni vide. */
+export function optionalString(value: unknown, location: string): string | undefined {
+  return value === undefined ? undefined : expectString(value, location)
+}
+
 /** Retire les clés `undefined` : le JSON réécrit reste identique au JSON lu. */
 export function withoutUndefined<T extends JsonObject>(object: T): T {
   return Object.fromEntries(Object.entries(object).filter(([, v]) => v !== undefined)) as T

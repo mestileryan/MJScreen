@@ -9,6 +9,7 @@ import {
   expectString,
   expectStringArray,
   optionalNumber,
+  optionalString,
   SchemaError,
   withoutUndefined,
 } from './validation'
@@ -24,6 +25,7 @@ function validateTrack(value: unknown, location: string): IndexedTrack {
     size: optionalNumber(track.size, `${location}.size`),
     lastModified: optionalNumber(track.lastModified, `${location}.lastModified`),
     duration: optionalNumber(track.duration, `${location}.duration`),
+    hash: optionalString(track.hash, `${location}.hash`),
     addedAt: expectString(track.addedAt, `${location}.addedAt`),
   })
 }

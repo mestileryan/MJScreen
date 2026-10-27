@@ -13,10 +13,11 @@ export interface PreviewState {
 }
 
 /**
- * Pré-écoute d’une piste de la bibliothèque, une seule à la fois. Le fichier est
- * lu via un object URL créé à la demande et révoqué à l’arrêt : rien n’est gardé.
+ * Pré-écoute d’une piste de la bibliothèque, une seule à la fois, quelle que soit
+ * sa source. Le fichier est lu via un object URL créé à la demande et révoqué à
+ * l’arrêt : rien n’est gardé.
  */
-export function useTrackPreview(storage: StorageProvider) {
+export function useTrackPreview() {
   const audio = useRef<HTMLAudioElement | null>(null)
   const url = useRef<string | null>(null)
   const [state, setState] = useState<PreviewState | null>(null)
@@ -38,7 +39,7 @@ export function useTrackPreview(storage: StorageProvider) {
   }, [])
 
   const play = useCallback(
-    async (track: IndexedTrack) => {
+    async (track: IndexedTrack, storage: StorageProvider) => {
       stop()
       setState({ trackId: track.id, playing: false, time: 0, duration: track.duration ?? 0 })
       const blob = await storage.read(track.path)
@@ -63,13 +64,13 @@ export function useTrackPreview(storage: StorageProvider) {
       audio.current = element
       await element.play().catch(stop)
     },
-    [storage, stop, volume],
+    [stop, volume],
   )
 
   const toggle = useCallback(
-    (track: IndexedTrack) => {
+    (track: IndexedTrack, storage: StorageProvider) => {
       const current = audio.current
-      if (!current || state?.trackId !== track.id) return void play(track)
+      if (!current || state?.trackId !== track.id) return void play(track, storage)
       if (current.paused) void current.play()
       else current.pause()
     },

@@ -11,6 +11,8 @@ import { ActionButton } from './TracksLibraryUi'
 
 interface TracksLibraryTrackRowProps {
   track: IndexedTrack
+  /** Nom de la source, affiché seulement quand la bibliothèque en a plusieurs. */
+  sourceLabel?: string
   /** Le fichier a disparu du dossier : pas d’écoute, pas d’édition, seulement le retrait. */
   missing: boolean
   preview: PreviewState | null
@@ -121,6 +123,7 @@ function InlineTags({ tags, onChange }: { tags: string[]; onChange: (tags: strin
 
 export default function TracksLibraryTrackRow({
   track,
+  sourceLabel,
   missing,
   preview,
   volume,
@@ -133,6 +136,7 @@ export default function TracksLibraryTrackRow({
 }: TracksLibraryTrackRowProps) {
   const active = preview?.trackId === track.id
   const folder = parentPath(track.path)
+  const subtitle = [missing ? 'Fichier introuvable' : folder ? `${folder}/` : '', sourceLabel].filter(Boolean).join(' · ')
 
   return (
     <li className={`px-3 py-2 text-sm ${missing ? 'opacity-70' : ''} ${active ? 'bg-gray-700/40' : ''}`}>
@@ -159,7 +163,7 @@ export default function TracksLibraryTrackRow({
               <InlineName value={track.name} onChange={name => onEdit({ name })} />
             )}
           </div>
-          <p className="truncate pl-1 text-xs text-gray-400">{missing ? 'Fichier introuvable' : folder ? `${folder}/` : ''}</p>
+          <p className={`truncate pl-1 text-xs ${missing ? 'text-red-300' : 'text-gray-400'}`}>{subtitle}</p>
         </div>
 
         {missing ? (
