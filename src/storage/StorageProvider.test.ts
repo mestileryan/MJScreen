@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { FakeDirectoryHandle } from '@/test/fakeFileSystem'
 import { LocalFolderProvider } from './local/LocalFolderProvider'
+import { MockCloudStorage } from './cloud/MockCloudStorage'
 import { MemoryStorageProvider } from './MemoryStorageProvider'
 import { isStorageError, readText, type StorageProvider } from './StorageProvider'
 
@@ -8,6 +9,7 @@ import { isStorageError, readText, type StorageProvider } from './StorageProvide
 // bibliothèque se comporte de la même façon quel que soit le stockage.
 const providers: [string, () => StorageProvider][] = [
   ['mémoire', () => new MemoryStorageProvider()],
+  ['cloud simulé', () => new MockCloudStorage('dropbox')],
   ['dossier local', () => new LocalFolderProvider(new FakeDirectoryHandle('racine').asHandle())],
 ]
 

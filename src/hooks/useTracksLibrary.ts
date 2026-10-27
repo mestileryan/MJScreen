@@ -19,12 +19,24 @@ import {
 } from '@/persistance/TracksLibraryService'
 import type { ReconcileReport } from '@/persistance/TracksLibraryIndexer'
 import {
+  DB_AddCloudTracksSource,
   DB_AddLocalTracksSource,
   DB_GetTracksSources,
   DB_RemoveTracksSource,
   DB_SetDefaultTracksSource,
   type StoredTracksSource,
 } from '@/persistance/TracksSourceService'
+import { CLOUD_LABELS, type CloudAccount, type CloudKind, type CloudQuota, type CloudStorage } from '@/storage/cloud/CloudStorage'
+import {
+  cloudAuthClient,
+  cloudConnected,
+  cloudSignOut,
+  createCloudStorage,
+  isMockCloud,
+  mockConnect,
+  oauthRedirectUri,
+} from '@/storage/cloud/cloudProviders'
+import { NotConnectedError, OAuthClient } from '@/storage/cloud/oauth'
 import { LocalFolderProvider } from '@/storage/local/LocalFolderProvider'
 import {
   isLocalFolderSupported,
@@ -32,7 +44,7 @@ import {
   queryFolderPermission,
   requestFolderPermission,
 } from '@/storage/local/localFolder'
-import { isStorageError } from '@/storage/StorageProvider'
+import { isStorageError, type StorageProvider } from '@/storage/StorageProvider'
 
 /** Message pour l’utilisateur, avec le détail technique à n’afficher que sur demande. */
 export interface UserMessage {
@@ -41,7 +53,7 @@ export interface UserMessage {
 }
 
 export type SourceStatus =
-  /** Dossier mémorisé, mais l’accès doit être redemandé pour cette session. */
+  /** Dossier mémorisé dont l’accès doit être redemandé, ou compte cloud à reconnecter. */
   | { step: 'needs-permission'; denied?: boolean }
   | { step: 'opening' }
   /** Pas de `.mjlib/` : le dossier n’a jamais servi de source. */
@@ -58,15 +70,16 @@ export type SourceStatus =
   | { step: 'error'; error: UserMessage }
 
 /** Une source branchée : un stockage et, s’il s’ouvre, sa part de la bibliothèque. */
-export interface TracksSource {
+export type TracksSource = {
   id: number
-  kind: 'local'
   label: string
   /** Reçoit les pistes ajoutées depuis la page. */
   isDefault: boolean
-  storage: LocalFolderProvider
   status: SourceStatus
-}
+} & (
+  | { kind: 'local'; storage: LocalFolderProvider; handle: FileSystemDirectoryHandle }
+  | { kind: CloudKind; storage: CloudStorage; account: CloudAccount; quota?: CloudQuota }
+)
 
 export type TracksLibraryState =
   | { step: 'starting' }
@@ -83,6 +96,9 @@ export interface LibraryTrack {
   missing: boolean
 }
 
+/** Ce qu’on faisait avant la redirection OAuth, repris au retour. */
+type OAuthContext = { action: 'connect' } | { action: 'open'; sourceId: number }
+
 /** Toutes les pistes des sources ouvertes, dans l’ordre des sources. */
 export function libraryTracks(sources: TracksSource[]): LibraryTrack[] {
   const all: LibraryTrack[] = []
@@ -97,9 +113,9 @@ export function libraryTracks(sources: TracksSource[]): LibraryTrack[] {
 }
 
 /**
- * La bibliothèque de pistes : une seule, faite de plusieurs sources. Chaque source
- * est rouverte au démarrage, indexée, puis complétée en arrière-plan (durées,
- * empreintes pour repérer les doublons).
+ * La bibliothèque de pistes : une seule, faite de plusieurs sources (dossiers
+ * locaux, comptes cloud). Chaque source est rouverte au démarrage, indexée, puis
+ * complétée en arrière-plan (durées, empreintes pour repérer les doublons).
  */
 export function useTracksLibrary() {
   // Toujours `starting` au premier rendu : le HTML pré-rendu ne sait rien du
@@ -121,8 +137,8 @@ export function useTracksLibrary() {
   }, [])
 
   const patchSource = useCallback(
-    (id: number, patch: Partial<TracksSource>) =>
-      setSources(sources => sources.map(s => (s.id === id ? { ...s, ...patch } : s))),
+    (id: number, patch: Partial<Pick<TracksSource, 'status' | 'isDefault' | 'label'> & { quota: CloudQuota }>) =>
+      setSources(sources => sources.map(s => (s.id === id ? ({ ...s, ...patch } as TracksSource) : s))),
     [setSources],
   )
 
@@ -230,6 +246,14 @@ export function useTracksLibrary() {
       patchSource(id, {
         status: { step: 'ready', library: refreshed.library, report: refreshed.report, usedBytes: refreshed.usedBytes },
       })
+      const source = findSource(id)
+      if (source && source.kind !== 'local') {
+        // L’espace du compte, pour la jauge ; sans gravité s’il n’est pas disponible.
+        source.storage
+          .quota()
+          .then(quota => !stale(id, gen) && patchSource(id, { quota }))
+          .catch(() => undefined)
+      }
       await enrich(id)
     },
     [enrich, patchSource],
@@ -255,36 +279,79 @@ export function useTracksLibrary() {
             break
         }
       } catch (error) {
-        patchSource(id, { status: { step: 'error', error: describeError(error) } })
+        if (error instanceof NotConnectedError || isStorageError(error, 'permission-denied')) {
+          patchSource(id, { status: { step: 'needs-permission' } })
+        } else {
+          patchSource(id, { status: { step: 'error', error: describeError(error) } })
+        }
       }
     },
     [patchSource, settle],
   )
 
-  // Au démarrage, chaque source mémorisée est rouverte si le navigateur a gardé la
-  // permission ; sinon il faudra un clic, seul geste qui autorise à la redemander.
+  /** Branche le compte cloud connecté (ou rouvre la source qui le porte déjà). */
+  const finishCloudConnection = useCallback(
+    async (kind: CloudKind) => {
+      const probe = createCloudStorage(kind, CLOUD_LABELS[kind])
+      const account = await probe.account()
+      const existing = sourcesRef.current.find(s => s.kind === kind && s.account.id === account.id)
+      if (existing) return openSource(existing.id)
+      const row = await DB_AddCloudTracksSource(kind, account)
+      setSources(sources => [...sources, toSource(row, { step: 'opening' })])
+      await openSource(row.id)
+    },
+    [openSource, setSources],
+  )
+
+  // Au démarrage : d’abord un éventuel retour de connexion cloud, puis chaque source
+  // mémorisée est rouverte si on en a encore l’accès ; sinon il faudra un clic.
   useEffect(() => {
     let cancelled = false
     void (async () => {
       const localAvailable = isLocalFolderSupported()
-      const stored = localAvailable ? await DB_GetTracksSources().catch(() => []) : []
+      let resume: { kind: CloudKind; context: OAuthContext } | null = null
+      let failure: UserMessage | null = null
+      const pending = OAuthClient.pending(window.location.href, window.sessionStorage)
+      if (pending) {
+        try {
+          const context = await cloudAuthClient(pending.kind).complete<OAuthContext>(window.location.href)
+          resume = { kind: pending.kind, context }
+        } catch (error) {
+          failure = describeError(error)
+        }
+        // L’URL ne doit pas garder le code : un rechargement le rejouerait.
+        window.history.replaceState(null, '', oauthRedirectUri())
+      }
+
+      const stored = await DB_GetTracksSources().catch(() => [])
       if (cancelled) return
       const sources: TracksSource[] = []
-      const granted: number[] = []
+      const toOpen: number[] = []
       for (const row of stored) {
-        const permission = await queryFolderPermission(row.handle).catch(() => 'prompt' as const)
-        if (permission === 'granted') granted.push(row.id)
-        sources.push(toSource(row, permission === 'granted' ? { step: 'opening' } : { step: 'needs-permission' }))
+        if (row.kind === 'local') {
+          if (!localAvailable) continue
+          const permission = await queryFolderPermission(row.handle).catch(() => 'prompt' as const)
+          if (permission === 'granted') toOpen.push(row.id)
+          sources.push(toSource(row, permission === 'granted' ? { step: 'opening' } : { step: 'needs-permission' }))
+        } else {
+          const connected = cloudConnected(row.kind)
+          if (connected) toOpen.push(row.id)
+          sources.push(toSource(row, connected ? { step: 'opening' } : { step: 'needs-permission' }))
+        }
       }
       if (cancelled) return
       sourcesRef.current = sources
       setState({ step: 'ready', sources, localAvailable })
-      await Promise.all(granted.map(openSource))
+      if (failure) setNotice({ tone: 'error', ...failure })
+      await Promise.all(toOpen.map(openSource))
+      if (resume?.context.action === 'connect') {
+        await finishCloudConnection(resume.kind).catch(error => setNotice({ tone: 'error', ...describeError(error) }))
+      }
     })()
     return () => {
       cancelled = true
     }
-  }, [openSource])
+  }, [finishCloudConnection, openSource])
 
   const run = useCallback(async (action: () => Promise<void>) => {
     setNotice(null)
@@ -302,7 +369,7 @@ export function useTracksLibrary() {
         if (!handle) return
         // Le même dossier déjà branché : on le rouvre plutôt que de le brancher deux fois.
         for (const source of sourcesRef.current) {
-          if (await source.storage.root.isSameEntry(handle).catch(() => false)) return openSource(source.id)
+          if (source.kind === 'local' && (await source.handle.isSameEntry(handle).catch(() => false))) return openSource(source.id)
         }
         const row = await DB_AddLocalTracksSource(handle)
         setSources(sources => [...sources, toSource(row, { step: 'opening' })])
@@ -311,13 +378,36 @@ export function useTracksLibrary() {
     [openSource, run, setSources],
   )
 
+  /** Connexion à un cloud : redirection vers le service, puis retour sur la page. */
+  const addCloudSource = useCallback(
+    (kind: CloudKind) =>
+      run(async () => {
+        if (isMockCloud()) {
+          mockConnect(kind)
+          return finishCloudConnection(kind)
+        }
+        if (cloudConnected(kind)) return finishCloudConnection(kind)
+        window.location.assign(await cloudAuthClient(kind).authorizationUrl<OAuthContext>({ action: 'connect' }))
+      }),
+    [finishCloudConnection, run],
+  )
+
   const reopenSource = useCallback(
     (id: number) =>
       run(async () => {
         const source = findSource(id)
         if (!source) return
-        if ((await requestFolderPermission(source.storage.root)) === 'granted') await openSource(id)
-        else patchSource(id, { status: { step: 'needs-permission', denied: true } })
+        if (source.kind === 'local') {
+          if ((await requestFolderPermission(source.handle)) === 'granted') await openSource(id)
+          else patchSource(id, { status: { step: 'needs-permission', denied: true } })
+          return
+        }
+        if (isMockCloud()) {
+          mockConnect(source.kind)
+          return openSource(id)
+        }
+        if (cloudConnected(source.kind)) return openSource(id)
+        window.location.assign(await cloudAuthClient(source.kind).authorizationUrl<OAuthContext>({ action: 'open', sourceId: id }))
       }),
     [openSource, patchSource, run],
   )
@@ -345,14 +435,17 @@ export function useTracksLibrary() {
     [openSource, run],
   )
 
-  /** Débranche la source : la bibliothèque ne la voit plus, son dossier reste intact. */
+  /** Débranche la source : la bibliothèque ne la voit plus, son contenu reste intact. */
   const removeSource = useCallback(
     (id: number) =>
       run(async () => {
+        const source = findSource(id)
         bump(id)
         await DB_RemoveTracksSource(id)
         const defaults = new Map((await DB_GetTracksSources()).map(row => [row.id, row.isDefault]))
-        setSources(sources => sources.filter(s => s.id !== id).map(s => ({ ...s, isDefault: defaults.get(s.id) ?? false })))
+        setSources(sources => sources.filter(s => s.id !== id).map(s => ({ ...s, isDefault: defaults.get(s.id) ?? false }) as TracksSource))
+        // Plus aucune source sur ce compte : on oublie aussi la connexion.
+        if (source && source.kind !== 'local' && !sourcesRef.current.some(s => s.kind === source.kind)) cloudSignOut(source.kind)
       }),
     [run, setSources],
   )
@@ -361,28 +454,9 @@ export function useTracksLibrary() {
     (id: number) =>
       run(async () => {
         await DB_SetDefaultTracksSource(id)
-        setSources(sources => sources.map(s => ({ ...s, isDefault: s.id === id })))
+        setSources(sources => sources.map(s => ({ ...s, isDefault: s.id === id }) as TracksSource))
       }),
     [run, setSources],
-  )
-
-  /** Applique un changement à la part de bibliothèque d’une source ouverte, et l’enregistre. */
-  const withLibrary = useCallback(
-    (
-      id: number,
-      change: (library: TracksLibrary, report: ReconcileReport | null) => Promise<{ library: TracksLibrary; report?: ReconcileReport | null }>,
-    ) =>
-      run(async () => {
-        const source = findSource(id)
-        if (source?.status.step !== 'ready') return
-        const result = await change(source.status.library, source.status.report)
-        const again = findSource(id)
-        if (again?.status.step !== 'ready') return
-        patchSource(id, {
-          status: { ...again.status, library: result.library, report: result.report === undefined ? again.status.report : result.report },
-        })
-      }),
-    [patchSource, run],
   )
 
   /**
@@ -420,6 +494,25 @@ export function useTracksLibrary() {
         void enrich(target.id)
       }),
     [enrich, patchSource, run],
+  )
+
+  /** Applique un changement à la part de bibliothèque d’une source ouverte, et l’enregistre. */
+  const withLibrary = useCallback(
+    (
+      id: number,
+      change: (library: TracksLibrary, report: ReconcileReport | null) => Promise<{ library: TracksLibrary; report?: ReconcileReport | null }>,
+    ) =>
+      run(async () => {
+        const source = findSource(id)
+        if (source?.status.step !== 'ready') return
+        const result = await change(source.status.library, source.status.report)
+        const again = findSource(id)
+        if (again?.status.step !== 'ready') return
+        patchSource(id, {
+          status: { ...again.status, library: result.library, report: result.report === undefined ? again.status.report : result.report },
+        })
+      }),
+    [patchSource, run],
   )
 
   /** Retire de la liste des pistes dont le fichier a disparu. Les fichiers audio ne sont jamais touchés. */
@@ -463,6 +556,7 @@ export function useTracksLibrary() {
     adding,
     addFiles,
     addLocalSource,
+    addCloudSource,
     reopenSource,
     refreshSource: openSource,
     initializeSource,
@@ -476,18 +570,28 @@ export function useTracksLibrary() {
 }
 
 function toSource(row: StoredTracksSource, status: SourceStatus): TracksSource {
-  const storage = new LocalFolderProvider(row.handle)
-  return { id: row.id, kind: 'local', label: storage.label, isDefault: row.isDefault, storage, status }
+  const base = { id: row.id, isDefault: row.isDefault, status }
+  if (row.kind === 'local') {
+    const storage = new LocalFolderProvider(row.handle)
+    return { ...base, kind: 'local', label: storage.label, storage, handle: row.handle }
+  }
+  const storage = createCloudStorage(row.kind, row.account.label)
+  return { ...base, kind: row.kind, label: `${CLOUD_LABELS[row.kind]} · ${row.account.label}`, storage, account: row.account }
 }
 
 /** Traduit une erreur en message courant ; le texte brut reste disponible dans `details`. */
 function describeError(error: unknown): UserMessage {
   const details = error instanceof Error ? `${error.name} : ${error.message}` : String(error)
+  if (error instanceof NotConnectedError) {
+    return { text: 'Le compte n’est plus connecté. Reconnectez-le pour continuer.', details }
+  }
   if (isStorageError(error, 'permission-denied')) {
-    return { text: 'L’accès au dossier a été refusé. Autorisez-le à nouveau pour continuer.', details }
+    return { text: 'L’accès a été refusé ou retiré. Autorisez-le à nouveau pour continuer.', details }
   }
   if (isStorageError(error, 'not-found')) {
     return { text: 'Le dossier est introuvable. Il a peut-être été déplacé ou supprimé.', details }
   }
   return { text: 'Quelque chose s’est mal passé.', details }
 }
+
+export type { StorageProvider }

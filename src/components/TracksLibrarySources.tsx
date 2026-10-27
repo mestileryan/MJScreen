@@ -4,6 +4,7 @@ import { Plus } from 'lucide-react'
 import { useState } from 'react'
 import type { TracksSource } from '@/hooks/useTracksLibrary'
 import type { TracksLibraryFile } from '@/persistance/TracksLibraryService'
+import type { CloudKind } from '@/storage/cloud/CloudStorage'
 import TracksLibraryDestinations from './TracksLibraryDestinations'
 import TracksLibrarySourceCard from './TracksLibrarySourceCard'
 import { ActionButton, Panel } from './TracksLibraryUi'
@@ -12,6 +13,7 @@ interface TracksLibrarySourcesProps {
   sources: TracksSource[]
   localAvailable: boolean
   onAddLocal: () => void
+  onAddCloud: (kind: CloudKind) => void
   onReopen: (id: number) => void
   onRefresh: (id: number) => void
   onInitialize: (id: number) => void
@@ -26,6 +28,7 @@ export default function TracksLibrarySources({
   sources,
   localAvailable,
   onAddLocal,
+  onAddCloud,
   onReopen,
   onRefresh,
   onInitialize,
@@ -40,7 +43,7 @@ export default function TracksLibrarySources({
     return (
       <Panel title="Aucune source configurée">
         <p>Choisissez où sont vos pistes :</p>
-        <TracksLibraryDestinations localAvailable={localAvailable} onPickLocal={onAddLocal} />
+        <TracksLibraryDestinations localAvailable={localAvailable} onPickLocal={onAddLocal} onPickCloud={onAddCloud} />
       </Panel>
     )
   }
@@ -61,6 +64,10 @@ export default function TracksLibrarySources({
             onPickLocal={() => {
               setAdding(false)
               onAddLocal()
+            }}
+            onPickCloud={kind => {
+              setAdding(false)
+              onAddCloud(kind)
             }}
           />
         </div>

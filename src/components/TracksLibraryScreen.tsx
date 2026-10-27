@@ -33,6 +33,7 @@ export default function TracksLibraryScreen() {
     adding,
     addFiles,
     addLocalSource,
+    addCloudSource,
     reopenSource,
     refreshSource,
     initializeSource,
@@ -87,6 +88,7 @@ export default function TracksLibraryScreen() {
               sources={state.sources}
               localAvailable={state.localAvailable}
               onAddLocal={addLocalSource}
+              onAddCloud={addCloudSource}
               onReopen={reopenSource}
               onRefresh={refreshSource}
               onInitialize={initializeSource}

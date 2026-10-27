@@ -1,12 +1,13 @@
 'use client'
 
-import { FolderOpen, HardDrive, LoaderCircle, RefreshCw, Star, Unplug } from 'lucide-react'
+import { Cloud, FolderOpen, HardDrive, LoaderCircle, LogIn, RefreshCw, Star, Unplug } from 'lucide-react'
 import type { TracksSource } from '@/hooks/useTracksLibrary'
 import { formatBytes } from '@/lib/formatBytes'
 import type { ReconcileReport } from '@/persistance/TracksLibraryIndexer'
 import { isEmptyReport } from '@/persistance/TracksLibraryIndexer'
 import type { TracksLibraryFile } from '@/persistance/TracksLibraryService'
 import { serializeDocument } from '@/schemas/documentSchema'
+import { CLOUD_LABELS } from '@/storage/cloud/CloudStorage'
 import TooltipButton from './TooltipButton'
 import TracksLibraryProblems from './TracksLibraryProblems'
 import { ActionButton, Message, TechnicalDetails } from './TracksLibraryUi'
@@ -38,6 +39,25 @@ function changes(report: ReconcileReport): string {
 
 const iconButton = 'rounded p-1 text-gray-400 transition-colors hover:bg-gray-700 hover:text-white'
 
+/** Jauge de l’espace du compte cloud, avec la part de la bibliothèque. */
+function QuotaGauge({ used, total, library }: { used: number; total?: number; library: number }) {
+  if (!total) return <p className="text-xs text-gray-400">{formatBytes(used)} utilisés sur le compte</p>
+  const ratio = Math.min(1, used / total)
+  const libraryRatio = Math.min(ratio, library / total)
+  return (
+    <div className="space-y-1 text-xs text-gray-400">
+      <div className="relative h-1.5 w-full overflow-hidden rounded bg-gray-700">
+        <div className="absolute inset-y-0 left-0 bg-gray-500" style={{ width: `${ratio * 100}%` }} />
+        <div className="absolute inset-y-0 left-0 bg-purple-500" style={{ width: `${libraryRatio * 100}%` }} />
+      </div>
+      <p>
+        {formatBytes(used)} utilisés sur {formatBytes(total)}, dont{' '}
+        <span className="text-purple-300">{formatBytes(library)} pour la bibliothèque</span>
+      </p>
+    </div>
+  )
+}
+
 /** Une source branchée : son état, et ce qu’on peut en faire. */
 export default function TracksLibrarySourceCard({
   source,
@@ -51,11 +71,13 @@ export default function TracksLibrarySourceCard({
   onRemoveMissing,
 }: TracksLibrarySourceCardProps) {
   const { status } = source
+  const cloud = source.kind !== 'local'
 
   const summary = () => {
     switch (status.step) {
       case 'needs-permission':
-        return status.denied ? <span className="text-red-300">accès refusé</span> : 'à ouvrir'
+        if (status.denied) return <span className="text-red-300">accès refusé</span>
+        return cloud ? 'à connecter' : 'à ouvrir'
       case 'opening':
         return (
           <span className="inline-flex items-center gap-1">
@@ -78,7 +100,7 @@ export default function TracksLibrarySourceCard({
   return (
     <li className="space-y-3 rounded-lg bg-gray-800 p-4">
       <div className="flex items-center gap-2">
-        <HardDrive className="h-5 w-5 shrink-0 text-purple-400" />
+        {cloud ? <Cloud className="h-5 w-5 shrink-0 text-purple-400" /> : <HardDrive className="h-5 w-5 shrink-0 text-purple-400" />}
         <span className="truncate font-medium text-white">{source.label}</span>
         <span className="truncate text-sm text-gray-400">· {summary()}</span>
         <div className="ml-auto flex shrink-0 items-center gap-1">
@@ -99,7 +121,7 @@ export default function TracksLibrarySourceCard({
           )}
           <TooltipButton
             onClick={onRemove}
-            tooltip="Débrancher cette source (le dossier n’est pas touché)"
+            tooltip={cloud ? 'Débrancher ce compte (rien n’est supprimé chez le service)' : 'Débrancher cette source (le dossier n’est pas touché)'}
             aria-label="Débrancher"
             className={`${iconButton} hover:text-red-400`}
           >
@@ -113,11 +135,13 @@ export default function TracksLibrarySourceCard({
           <span>
             {status.denied
               ? 'L’accès a été refusé. Réessayez, ou débranchez la source.'
-              : 'Le navigateur demande votre accord pour ouvrir ce dossier.'}
+              : cloud
+                ? `Connectez-vous à ${CLOUD_LABELS[source.kind]} pour ouvrir cette source.`
+                : 'Le navigateur demande votre accord pour ouvrir ce dossier.'}
           </span>
           <ActionButton tone="primary" onClick={onReopen}>
-            <FolderOpen className="h-4 w-4" />
-            Ouvrir
+            {cloud ? <LogIn className="h-4 w-4" /> : <FolderOpen className="h-4 w-4" />}
+            {cloud ? 'Se connecter' : 'Ouvrir'}
           </ActionButton>
         </div>
       )}
@@ -126,7 +150,7 @@ export default function TracksLibrarySourceCard({
         <div className="flex flex-wrap items-center gap-3 text-sm text-gray-300">
           <span>Vos fichiers ne seront ni déplacés ni modifiés.</span>
           <ActionButton tone="primary" onClick={onInitialize}>
-            Utiliser ce dossier
+            {cloud ? 'Utiliser ce compte' : 'Utiliser ce dossier'}
           </ActionButton>
         </div>
       )}
@@ -144,6 +168,9 @@ export default function TracksLibrarySourceCard({
 
       {status.step === 'ready' && (
         <>
+          {source.kind !== 'local' && source.quota && (
+            <QuotaGauge used={source.quota.used} total={source.quota.total} library={status.usedBytes} />
+          )}
           {status.report && !isEmptyReport(status.report) && (
             <div className="flex flex-wrap items-center gap-3 text-sm text-gray-300">
               <span>{changes(status.report)}</span>

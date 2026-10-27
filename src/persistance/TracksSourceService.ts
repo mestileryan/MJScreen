@@ -1,3 +1,4 @@
+import type { CloudAccount, CloudKind } from '@/storage/cloud/CloudStorage'
 import { tracksSourceDB, type TracksSourceDB } from './TracksSourcePersistance'
 
 export type StoredTracksSource = TracksSourceDB & { id: number }
@@ -8,15 +9,25 @@ export async function DB_GetTracksSources(): Promise<StoredTracksSource[]> {
   return sources as StoredTracksSource[]
 }
 
-/** Branche un dossier local. La première source branchée devient la source par défaut. */
-export async function DB_AddLocalTracksSource(handle: FileSystemDirectoryHandle): Promise<StoredTracksSource> {
+/** La première source branchée devient la source par défaut. */
+type NewSource = { kind: 'local'; handle: FileSystemDirectoryHandle } | { kind: CloudKind; account: CloudAccount }
+
+async function addSource(source: NewSource): Promise<StoredTracksSource> {
   const db = tracksSourceDB()
   return db.transaction('rw', db.sources, async () => {
     const isDefault = (await db.sources.count()) === 0
-    const source: TracksSourceDB = { kind: 'local', handle, isDefault, addedAt: Date.now() }
-    const id = await db.sources.add(source)
-    return { ...source, id }
+    const row = { ...source, isDefault, addedAt: Date.now() } as TracksSourceDB
+    const id = await db.sources.add(row)
+    return { ...row, id }
   })
+}
+
+export function DB_AddLocalTracksSource(handle: FileSystemDirectoryHandle): Promise<StoredTracksSource> {
+  return addSource({ kind: 'local', handle })
+}
+
+export function DB_AddCloudTracksSource(kind: CloudKind, account: CloudAccount): Promise<StoredTracksSource> {
+  return addSource({ kind, account })
 }
 
 /** Débranche une source. Si c’était la source par défaut, la plus ancienne restante prend le relais. */

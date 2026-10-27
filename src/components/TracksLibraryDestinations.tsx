@@ -3,6 +3,8 @@
 import { Cloud, HardDrive } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { useTooltip } from '@/hooks/useTooltip'
+import { CLOUD_KINDS, CLOUD_LABELS, type CloudKind } from '@/storage/cloud/CloudStorage'
+import { cloudAvailability } from '@/storage/cloud/cloudProviders'
 
 interface DestinationProps {
   icon: ReactNode
@@ -31,7 +33,6 @@ function Destination({ icon, label, unavailable, onClick }: DestinationProps) {
   )
 }
 
-const SOON = { label: 'Bientôt', tooltip: 'Disponible dans une prochaine version.' }
 const INCOMPATIBLE = {
   label: 'Navigateur incompatible',
   tooltip: 'Ouvrir un dossier de cet ordinateur n’est possible que dans Chrome ou Edge. Firefox et Safari ne le permettent pas.',
@@ -41,10 +42,11 @@ interface TracksLibraryDestinationsProps {
   /** Faux sur Firefox et Safari, qui ne savent pas ouvrir un dossier local. */
   localAvailable: boolean
   onPickLocal: () => void
+  onPickCloud: (kind: CloudKind) => void
 }
 
-/** Les endroits où une source peut vivre. Seul le dossier local existe pour l’instant. */
-export default function TracksLibraryDestinations({ localAvailable, onPickLocal }: TracksLibraryDestinationsProps) {
+/** Les endroits où une source peut vivre : un dossier de l’ordinateur, ou un compte cloud. */
+export default function TracksLibraryDestinations({ localAvailable, onPickLocal, onPickCloud }: TracksLibraryDestinationsProps) {
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
       <Destination
@@ -53,9 +55,18 @@ export default function TracksLibraryDestinations({ localAvailable, onPickLocal 
         unavailable={localAvailable ? undefined : INCOMPATIBLE}
         onClick={onPickLocal}
       />
-      <Destination icon={<Cloud className="h-8 w-8" />} label="Dropbox" unavailable={SOON} />
-      <Destination icon={<Cloud className="h-8 w-8" />} label="Google Drive" unavailable={SOON} />
-      <Destination icon={<Cloud className="h-8 w-8" />} label="OneDrive" unavailable={SOON} />
+      {CLOUD_KINDS.map(kind => {
+        const availability = cloudAvailability(kind)
+        return (
+          <Destination
+            key={kind}
+            icon={<Cloud className="h-8 w-8 text-purple-400" />}
+            label={CLOUD_LABELS[kind]}
+            unavailable={availability.available ? undefined : { label: 'Non configuré', tooltip: availability.reason }}
+            onClick={() => onPickCloud(kind)}
+          />
+        )
+      })}
     </div>
   )
 }

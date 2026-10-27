@@ -1,6 +1,7 @@
 import 'fake-indexeddb/auto'
 import { describe, expect, it } from 'vitest'
 import {
+  DB_AddCloudTracksSource,
   DB_AddLocalTracksSource,
   DB_GetTracksSources,
   DB_RemoveTracksSource,
@@ -18,10 +19,17 @@ describe('TracksSourceService', () => {
     const b = await DB_AddLocalTracksSource(handle('B'))
     expect(a.isDefault).toBe(true)
     expect(b.isDefault).toBe(false)
-    expect((await DB_GetTracksSources()).map(s => [s.handle.name, s.isDefault])).toEqual([
+    expect((await DB_GetTracksSources()).map(s => [s.kind === 'local' && s.handle.name, s.isDefault])).toEqual([
       ['A', true],
       ['B', false],
     ])
+  })
+
+  it('branche un compte cloud comme n’importe quelle source', async () => {
+    const c = await DB_AddCloudTracksSource('dropbox', { id: 'dbid:1', label: 'moi@exemple.fr' })
+    expect(c).toMatchObject({ kind: 'dropbox', account: { id: 'dbid:1' }, isDefault: false })
+    await DB_RemoveTracksSource(c.id)
+    expect((await DB_GetTracksSources()).map(s => s.kind)).toEqual(['local', 'local'])
   })
 
   it('change de source par défaut, une seule à la fois', async () => {

@@ -1,5 +1,5 @@
 import { baseName, normalizePath, parentPath } from '@/lib/storagePath'
-import { StorageError, type ListOptions, type StorageEntry, type StorageProvider } from './StorageProvider'
+import { StorageError, type ListOptions, type StorageEntry, type StorageKind, type StorageProvider } from './StorageProvider'
 
 interface MemoryFile {
   blob: Blob
@@ -12,7 +12,8 @@ interface MemoryFile {
  * sans navigateur. Les dossiers n'existent qu'à travers les fichiers qu'ils contiennent.
  */
 export class MemoryStorageProvider implements StorageProvider {
-  readonly kind = 'memory'
+  // Typé largement pour que le cloud simulé, qui en hérite, se présente sous son propre nom.
+  readonly kind: StorageKind = 'memory'
   readonly label: string
   private readonly files = new Map<string, MemoryFile>()
 

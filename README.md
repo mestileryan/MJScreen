@@ -82,9 +82,37 @@ dans le dossier `pistes/` de la source par défaut, sans jamais écraser un fich
   Un fichier plus ancien est migré en mémoire et ne sera réécrit qu'après sauvegarde.
   Un fichier plus récent est signalé et n'est jamais écrasé.
 - **Stockage** (`src/storage/`) : interface `StorageProvider` commune à tous les
-  fournisseurs. Seul le dossier local existe pour l'instant (File System Access API,
-  Chromium seulement, accès à réautoriser à chaque session). Dropbox, Google Drive et
-  OneDrive viendront ensuite.
+  fournisseurs : dossier local (File System Access API, Chromium seulement, accès à
+  réautoriser à chaque session), Dropbox, Google Drive et OneDrive (`src/storage/cloud/`).
+
+### Clouds : configuration OAuth
+
+Chaque cloud demande un **identifiant client** (public, sans secret), obtenu en déclarant
+MJScreen comme application chez le service. Les identifiants vont dans un fichier
+`.env.local` (non versionné, voir `.env.example`) :
+
+```sh
+NEXT_PUBLIC_DROPBOX_CLIENT_ID=…
+NEXT_PUBLIC_GOOGLE_CLIENT_ID=…
+NEXT_PUBLIC_ONEDRIVE_CLIENT_ID=…
+```
+
+Un cloud sans identifiant reste grisé (« Non configuré »). En développement,
+`.env.development` active `NEXT_PUBLIC_CLOUD_MOCK=true` : les trois clouds sont simulés
+en mémoire, sans connexion réelle.
+
+Adresses de retour à déclarer chez chaque service (la page de la bibliothèque) :
+`https://mestileryan.github.io/MJScreen/trackslibrary/` et
+`http://localhost:3200/MJScreen/trackslibrary/`.
+
+| Service | Où créer l'application | Type / réglages | Flux |
+| --- | --- | --- | --- |
+| Dropbox | [App Console](https://www.dropbox.com/developers/apps) | Scoped access, **App folder** (la bibliothèque vit dans `Apps/MJScreen/`), permissions `account_info.read`, `files.metadata.read`, `files.content.read`, `files.content.write` | code + PKCE, jeton rafraîchi |
+| Google Drive | [Google Cloud Console](https://console.cloud.google.com/apis/credentials), API Drive activée | Client OAuth « Application Web », portée `drive.file` (MJScreen ne voit que ce qu'il a créé, dans un dossier `MJScreen/`) ; en mode test, ajouter son compte aux testeurs | implicite (Google n'échange pas de code sans secret pour une page web) : reconnexion à chaque session |
+| OneDrive | [Entra ID, inscriptions d'applications](https://portal.azure.com/#view/Microsoft_AAD_RegisteredApps) | Plateforme **Application monopage (SPA)**, comptes personnels et professionnels, permissions `Files.ReadWrite.AppFolder`, `User.Read`, `offline_access` (dossier `Apps/MJScreen/`) | code + PKCE, jeton rafraîchi |
+
+Les jetons ne vivent qu'en `sessionStorage` : ils disparaissent avec l'onglet et ne
+contiennent rien de la bibliothèque.
 - **Service** (`src/persistance/TracksLibraryService.ts`) : ouverture (sans écriture),
   initialisation d'un dossier (sans toucher à ses fichiers) et réparation sur demande.
 
