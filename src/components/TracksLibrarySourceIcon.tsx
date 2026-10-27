@@ -1,6 +1,6 @@
 'use client'
 
-import { HardDrive } from 'lucide-react'
+import { Laptop } from 'lucide-react'
 import type { StorageKind } from '@/storage/StorageProvider'
 
 interface TracksLibrarySourceIconProps {
@@ -17,7 +17,7 @@ const COLORS: Partial<Record<StorageKind, string>> = {
   onedrive: '#0078D4',
 }
 
-/** Logo de la source : disque pour l’ordinateur, marque du service pour un cloud. */
+/** Logo de la source : un ordinateur pour un dossier local, la marque du service pour un cloud. */
 export default function TracksLibrarySourceIcon({ kind, active, className = 'h-5 w-5' }: TracksLibrarySourceIconProps) {
   const color = active ? (COLORS[kind] ?? 'currentColor') : undefined
   const shared = { className: `shrink-0 ${className} ${active ? '' : 'text-gray-500'}`, style: color ? { color } : undefined }
@@ -42,6 +42,6 @@ export default function TracksLibrarySourceIcon({ kind, active, className = 'h-5
         </svg>
       )
     default:
-      return <HardDrive aria-hidden {...shared} style={active ? { color: '#a78bfa' } : undefined} />
+      return <Laptop aria-hidden {...shared} style={active ? { color: '#a78bfa' } : undefined} />
   }
 }
