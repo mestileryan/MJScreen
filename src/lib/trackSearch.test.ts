@@ -54,8 +54,9 @@ describe('matchesFilters', () => {
     expect(t.filter(x => matchesFilters(x, { ...NO_FILTERS, tags: ['combat'], type: 'sfx' })).map(x => x.id)).toEqual(['b'])
   })
 
-  it('isole les pistes qui restent à qualifier', () => {
+  it('isole les pistes sans étiquette, et celles sans type', () => {
     expect(t.filter(x => matchesFilters(x, { ...NO_FILTERS, untagged: true })).map(x => x.id)).toEqual(['e'])
+    expect(t.filter(x => matchesFilters(x, { ...NO_FILTERS, type: 'none' })).map(x => x.id)).toEqual(['d', 'e'])
   })
 })
 

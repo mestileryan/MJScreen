@@ -1,13 +1,13 @@
 'use client'
 
-import { FileQuestion, ListX, Music, Music2, Pause, Play, Plus, Tag, Trash2, Volume2, X } from 'lucide-react'
+import { FileQuestion, ListX, Music, Pause, Play, Plus, Tag, Trash2, Volume2, X } from 'lucide-react'
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
+import { useTooltip } from '@/hooks/useTooltip'
 import type { PreviewState } from '@/hooks/useTrackPreview'
 import { formatDuration } from '@/lib/audioDuration'
 import { parentPath } from '@/lib/storagePath'
 import { parseTags, TRACK_TYPES, trackTypeLabel, type IndexedTrack, type TrackType } from '@/models/TracksLibraryIndex'
 import TooltipButton from './TooltipButton'
-import { TYPE_ICONS } from './TracksLibraryFilters'
 import { ActionButton } from './TracksLibraryUi'
 
 interface TracksLibraryTrackRowProps {
@@ -80,18 +80,16 @@ function TypeChip({ type, onChange }: { type?: TrackType; onChange: (type?: Trac
     const i = type ? order.indexOf(type) : -1
     onChange(i + 1 < order.length ? order[i + 1] : undefined)
   }
-  const Icon = type ? TYPE_ICONS[type] : Music2
   return (
     <TooltipButton
       onClick={next}
-      tooltip={type ? `${trackTypeLabel(type)} · cliquer pour changer` : 'Type non précisé · cliquer pour choisir'}
-      aria-label="Type de piste"
-      className={`inline-flex shrink-0 items-center gap-1 rounded px-1.5 py-0.5 text-xs transition-colors ${
-        type ? 'bg-purple-900/60 text-purple-200 hover:bg-purple-800/60' : 'text-gray-500 hover:bg-gray-700 hover:text-gray-300'
+      tooltip="Sélectionner un type"
+      aria-label="Sélectionner un type"
+      className={`inline-flex shrink-0 items-center rounded px-1.5 py-0.5 text-xs transition-colors hover:bg-purple-800/60 ${
+        type ? 'bg-purple-900/60 text-purple-200' : 'bg-purple-900/30 text-purple-300/70'
       }`}
     >
-      <Icon className="h-3 w-3" />
-      {type ? trackTypeLabel(type) : 'type ?'}
+      {type ? trackTypeLabel(type) : 'Type'}
     </TooltipButton>
   )
 }
@@ -109,6 +107,7 @@ function InlineTags({
   onChange: (tags: string[]) => void
 }) {
   const [draft, setDraft] = useState('')
+  const tooltip = useTooltip('Sélectionner des étiquettes')
 
   const add = () => {
     const added = parseTags(draft).filter(tag => !tags.some(t => t.toLowerCase() === tag.toLowerCase()))
@@ -142,7 +141,11 @@ function InlineTags({
         </li>
       ))}
       <li>
-        <label className="inline-flex items-center gap-1 rounded px-1 py-0.5 text-gray-500 transition-colors focus-within:bg-gray-900 focus-within:text-gray-300 focus-within:ring-1 focus-within:ring-purple-500 hover:text-gray-300">
+        {/* Pas de texte : le + et l’étiquette suffisent ; le champ ne s’ouvre qu’à la saisie. */}
+        <label
+          ref={tooltip}
+          className="inline-flex items-center gap-1 rounded px-1 py-0.5 text-gray-500 transition-colors focus-within:bg-gray-900 focus-within:text-gray-300 focus-within:ring-1 focus-within:ring-purple-500 hover:text-gray-300"
+        >
           <Plus className="h-3 w-3" aria-hidden />
           <Tag className="h-3 w-3" aria-hidden />
           <input
@@ -150,11 +153,10 @@ function InlineTags({
             onChange={e => setDraft(e.target.value)}
             onKeyDown={keys}
             onBlur={add}
-            placeholder="étiquette"
-            aria-label="Ajouter une étiquette"
+            aria-label="Sélectionner des étiquettes"
             list={listId}
-            size={Math.max(8, draft.length + 2)}
-            className="bg-transparent text-xs text-gray-300 outline-none placeholder:text-gray-500"
+            size={Math.max(1, draft.length + 1)}
+            className="w-4 bg-transparent text-xs text-gray-300 outline-none focus:w-auto"
           />
         </label>
         {/* Les étiquettes en usage et quelques univers classiques, proposés par le navigateur. */}

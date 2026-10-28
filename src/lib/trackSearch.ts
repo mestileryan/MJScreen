@@ -60,10 +60,11 @@ export class TrackSearch {
 }
 
 export interface TrackFilters {
-  type: TrackType | null
+  /** Un type précis, `'none'` pour les pistes sans type, `null` pour ne pas filtrer. */
+  type: TrackType | 'none' | null
   /** Une piste passe si elle porte l’une de ces étiquettes. */
   tags: string[]
-  /** Pistes sans étiquette ni type : celles qui restent à qualifier. */
+  /** Pistes sans aucune étiquette. */
   untagged: boolean
 }
 
@@ -73,17 +74,13 @@ export function hasFilters(filters: TrackFilters): boolean {
   return filters.type !== null || filters.tags.length > 0 || filters.untagged
 }
 
-export function isUnqualified(track: IndexedTrack): boolean {
-  return track.tags.length === 0 && track.type === undefined
-}
-
-const same = (a: string, b: string) => fold(a) === fold(b)
+export const sameTag = (a: string, b: string) => fold(a) === fold(b)
 
 /** Les groupes se cumulent (ET) ; à l’intérieur du groupe des étiquettes, une valeur suffit (OU). */
 export function matchesFilters(track: IndexedTrack, filters: TrackFilters): boolean {
-  if (filters.untagged && !isUnqualified(track)) return false
-  if (filters.type !== null && track.type !== filters.type) return false
-  if (filters.tags.length && !filters.tags.some(tag => track.tags.some(t => same(t, tag)))) return false
+  if (filters.untagged && track.tags.length > 0) return false
+  if (filters.type === 'none' ? track.type !== undefined : filters.type !== null && track.type !== filters.type) return false
+  if (filters.tags.length && !filters.tags.some(tag => track.tags.some(t => sameTag(t, tag)))) return false
   return true
 }
 
