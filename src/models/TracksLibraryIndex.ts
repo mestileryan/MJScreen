@@ -19,6 +19,27 @@ export function trackTypeLabel(type: TrackType): string {
 /** Étiquettes proposées à la saisie (les univers de jeu, surtout) ; la liste reste ouverte. */
 export const SUGGESTED_TAGS = ['Médiéval fantastique', 'Cyberpunk', 'Science-fiction', 'Horreur', 'Contemporain', 'Générique']
 
+/**
+ * Ce que le fichier dit de lui-même (ID3, commentaires Vorbis, atomes M4A…),
+ * complété ou corrigé à la main. Tout est facultatif ; un objet vide signifie
+ * « lu, rien trouvé », pour ne pas relire le fichier à chaque ouverture.
+ */
+export interface TrackMeta {
+  title?: string
+  artist?: string
+  album?: string
+  genre?: string
+  comment?: string
+}
+
+export const META_FIELDS: { key: keyof TrackMeta; label: string }[] = [
+  { key: 'title', label: 'Titre' },
+  { key: 'artist', label: 'Artiste' },
+  { key: 'album', label: 'Album' },
+  { key: 'genre', label: 'Genre' },
+  { key: 'comment', label: 'Commentaire' },
+]
+
 /** Métadonnées d'une piste. Le fichier audio, lui, reste dans le stockage. */
 export interface IndexedTrack {
   /**
@@ -34,6 +55,8 @@ export interface IndexedTrack {
   tags: string[]
   /** Nature de la piste, quand elle a été précisée. */
   type?: TrackType
+  /** Métadonnées du fichier, lues en arrière-plan ; absent tant qu'elles ne l'ont pas été. */
+  meta?: TrackMeta
   /** Taille en octets et date de modification : repèrent un fichier changé hors de l'outil. */
   size?: number
   lastModified?: number

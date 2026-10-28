@@ -12,7 +12,7 @@ const tracks = [
   track('b', 'Ours en colère', { tags: ['animal', 'combat'], type: 'sfx', addedAt: '2026-10-03T00:00:00.000Z' }),
   track('c', 'Forêt la nuit', { tags: ['Médiéval fantastique', 'Horreur'], type: 'ambience', addedAt: '2026-10-02T00:00:00.000Z' }),
   track('d', 'Néons sous la pluie', { tags: ['Cyberpunk'], addedAt: '2026-10-04T00:00:00.000Z' }),
-  track('e', 'Sans rien', { addedAt: '2026-10-05T00:00:00.000Z' }),
+  track('e', 'Sans rien', { addedAt: '2026-10-05T00:00:00.000Z', meta: { artist: 'Tabletop Audio', album: 'Fantasy Vol. 2' } }),
 ]
 
 describe('TrackSearch', () => {
@@ -32,6 +32,11 @@ describe('TrackSearch', () => {
     expect(search.search('combat')).toEqual(expect.arrayContaining(['a', 'b']))
     expect(search.search('cyberpunk')).toEqual(['d'])
     expect(search.search('effet')).toEqual(['b'])
+  })
+
+  it('cherche dans les métadonnées du fichier', () => {
+    expect(search.search('tabletop')).toEqual(['e'])
+    expect(search.search('fantasy')).toEqual(['e'])
   })
 
   it('exige tous les mots', () => {

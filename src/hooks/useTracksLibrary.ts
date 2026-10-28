@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { readAudioDuration } from '@/lib/audioDuration'
+import { readAudioMeta } from '@/lib/audioMeta'
 import { sha256Hex } from '@/lib/fileHash'
 import { DUPLICATE_TAG, type IndexedTrack } from '@/models/TracksLibraryIndex'
 import {
@@ -162,7 +163,7 @@ export function useTracksLibrary() {
       if (source?.status.step !== 'ready') return
       const missing = new Set(source.status.report?.missing.map(track => track.id))
       const pending = source.status.library.index.tracks.filter(
-        track => (track.duration === undefined || track.hash === undefined) && !missing.has(track.id),
+        track => (track.duration === undefined || track.hash === undefined || track.meta === undefined) && !missing.has(track.id),
       )
       const enriched: IndexedTrack[] = []
       for (const [i, track] of pending.entries()) {
@@ -179,6 +180,8 @@ export function useTracksLibrary() {
           const duration = await readAudioDuration(blob)
           if (duration !== null) updated.duration = duration
         }
+        // Un objet vide vaut « lu, rien trouvé » : le fichier ne sera pas relu à chaque ouverture.
+        if (updated.meta === undefined) updated.meta = await readAudioMeta(blob)
         if (updated.hash === undefined) {
           updated.hash = await sha256Hex(blob).catch(() => undefined)
           // Même contenu déjà présent ailleurs (autre source comprise) : on l’étiquette
@@ -529,7 +532,7 @@ export function useTracksLibrary() {
   )
 
   const editTrack = useCallback(
-    (sourceId: number, id: string, patch: Partial<Pick<IndexedTrack, 'name' | 'tags' | 'type'>>) =>
+    (sourceId: number, id: string, patch: Partial<Pick<IndexedTrack, 'name' | 'tags' | 'type' | 'meta'>>) =>
       withLibrary(sourceId, async library => {
         const track = library.index.tracks.find(t => t.id === id)
         return { library: track ? await updateTracks(library, [{ ...track, ...patch }]) : library }

@@ -50,6 +50,13 @@ describe('tracksLibraryIndexSchema', () => {
     expect(parseDocumentValue(tracksLibraryIndexSchema, index({ ...track, type: 'podcast' })).status).toBe('invalid')
   })
 
+  it('garde les métadonnées du fichier, même vides, et refuse un champ qui n’est pas du texte', () => {
+    const tagged = { ...track, meta: { title: 'Taverne', artist: 'Tabletop Audio' } }
+    expect(parseDocumentValue(tracksLibraryIndexSchema, index(tagged))).toMatchObject({ value: { tracks: [tagged] } })
+    expect(parseDocumentValue(tracksLibraryIndexSchema, index({ ...track, meta: {} }))).toMatchObject({ value: { tracks: [{ meta: {} }] } })
+    expect(parseDocumentValue(tracksLibraryIndexSchema, index({ ...track, meta: { title: 3 } })).status).toBe('invalid')
+  })
+
   it('garde l’empreinte d’une piste', () => {
     const hashed = { ...track, hash: 'ba7816bf' }
     expect(parseDocumentValue(tracksLibraryIndexSchema, index(hashed))).toMatchObject({ value: { tracks: [hashed] } })

@@ -11,7 +11,7 @@ import ConfirmationModal from './ConfirmationModal'
 import TracksLibraryFilters from './TracksLibraryFilters'
 import TracksLibraryTrackRow from './TracksLibraryTrackRow'
 
-export type TrackPatch = Partial<Pick<IndexedTrack, 'name' | 'tags' | 'type'>>
+export type TrackPatch = Partial<Pick<IndexedTrack, 'name' | 'tags' | 'type' | 'meta'>>
 
 /** Pistes par page. */
 const PAGE_SIZE = 50

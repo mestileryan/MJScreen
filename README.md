@@ -80,7 +80,9 @@ dans le dossier `pistes/` de la source par défaut, sans jamais écraser un fich
 
 Chaque piste porte un nom, un **type** (musique, ambiance, effet sonore) et des
 **étiquettes** libres (les univers de jeu, par exemple), modifiables directement dans la
-liste. La recherche (MiniSearch, en mémoire) tolère les fautes et les accents et cherche
+liste. Les **métadonnées du fichier** (titre, artiste, album, genre, commentaire : ID3,
+commentaires Vorbis, atomes M4A, lues par music-metadata en arrière-plan) s'affichent au
+survol du nom et se complètent ou se corrigent via le crayon, dans un volet sous la piste. La recherche (MiniSearch, en mémoire) tolère les fautes et les accents et cherche
 dans le nom, les étiquettes, le type et le dossier ; des pastilles filtrent par type, par
 étiquette, ou sur les pistes restant à qualifier. Sans recherche, les dernières ajoutées
 viennent en premier.

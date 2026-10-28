@@ -1,12 +1,21 @@
 'use client'
 
-import { FileQuestion, ListX, Music, Pause, Play, Plus, Shapes, Tag, Trash2, Volume2, X } from 'lucide-react'
+import { FileQuestion, ListX, Music, Pause, Pencil, Play, Plus, Shapes, Tag, Trash2, Volume2, X } from 'lucide-react'
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
 import { useTooltip } from '@/hooks/useTooltip'
 import type { PreviewState } from '@/hooks/useTrackPreview'
 import { formatDuration } from '@/lib/audioDuration'
+import { describeMeta, hasMeta } from '@/lib/audioMeta'
 import { parentPath } from '@/lib/storagePath'
-import { parseTags, TRACK_TYPES, trackTypeLabel, type IndexedTrack, type TrackType } from '@/models/TracksLibraryIndex'
+import {
+  META_FIELDS,
+  parseTags,
+  TRACK_TYPES,
+  trackTypeLabel,
+  type IndexedTrack,
+  type TrackMeta,
+  type TrackType,
+} from '@/models/TracksLibraryIndex'
 import TooltipButton from './TooltipButton'
 import { ActionButton } from './TracksLibraryUi'
 
@@ -24,7 +33,7 @@ interface TracksLibraryTrackRowProps {
   onSeek: (fraction: number) => void
   onVolume: (value: number) => void
   /** Enregistré aussitôt : il n’y a pas de bouton « Enregistrer ». */
-  onEdit: (patch: Partial<Pick<IndexedTrack, 'name' | 'tags' | 'type'>>) => void
+  onEdit: (patch: Partial<Pick<IndexedTrack, 'name' | 'tags' | 'type' | 'meta'>>) => void
   onDelete: () => void
   onRemoveMissing: () => void
 }
@@ -173,6 +182,44 @@ function InlineTags({
   )
 }
 
+/** Un champ de métadonnée : enregistré à la perte du focus ou sur Entrée, Échap annule. */
+function MetaField({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
+  const [draft, setDraft] = useState(value)
+  const commit = () => {
+    if (draft.trim() !== value) onChange(draft.trim())
+  }
+  return (
+    <label className="flex flex-col gap-0.5 text-xs text-gray-400">
+      {label}
+      <input
+        value={draft}
+        onChange={e => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={e => {
+          if (e.key === 'Enter') commit()
+          if (e.key === 'Escape') setDraft(value)
+        }}
+        className="rounded-md bg-gray-900 px-2 py-1 text-sm text-white outline-none ring-purple-500 focus:ring-1"
+      />
+    </label>
+  )
+}
+
+/** Les métadonnées du fichier, à compléter ou corriger ; chaque champ s’enregistre seul. */
+function MetaForm({ meta, onChange }: { meta: TrackMeta; onChange: (meta: TrackMeta) => void }) {
+  const set = (key: keyof TrackMeta, value: string) => {
+    const next = { ...meta, [key]: value || undefined }
+    onChange(Object.fromEntries(Object.entries(next).filter(([, v]) => v !== undefined)) as TrackMeta)
+  }
+  return (
+    <div className="mt-2 grid grid-cols-2 gap-2 pl-11 sm:grid-cols-5">
+      {META_FIELDS.map(({ key, label }) => (
+        <MetaField key={key} label={label} value={meta[key] ?? ''} onChange={value => set(key, value)} />
+      ))}
+    </div>
+  )
+}
+
 export default function TracksLibraryTrackRow({
   track,
   sourceLabel,
@@ -187,9 +234,12 @@ export default function TracksLibraryTrackRow({
   onDelete,
   onRemoveMissing,
 }: TracksLibraryTrackRowProps) {
+  const [editing, setEditing] = useState(false)
   const active = preview?.trackId === track.id
   const folder = parentPath(track.path)
   const subtitle = [missing ? 'Fichier introuvable' : folder ? `${folder}/` : '', sourceLabel].filter(Boolean).join(' · ')
+  // Les métadonnées du fichier ne s’affichent qu’au survol du nom.
+  const metaTooltip = useTooltip(hasMeta(track.meta) ? describeMeta(track.meta) : undefined)
 
   return (
     <li className={`px-3 py-2 text-sm ${missing ? 'opacity-70' : ''} ${active ? 'bg-gray-700/40' : ''}`}>
@@ -208,7 +258,7 @@ export default function TracksLibraryTrackRow({
         )}
 
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-1">
+          <div ref={metaTooltip} className="flex items-center gap-1">
             {!missing && <Music className="h-4 w-4 shrink-0 text-purple-400" />}
             {missing ? (
               <p className="truncate font-medium text-white">{track.name}</p>
@@ -245,6 +295,15 @@ export default function TracksLibraryTrackRow({
               {track.duration !== undefined ? formatDuration(track.duration) : '–'}
             </span>
             <TooltipButton
+              onClick={() => setEditing(e => !e)}
+              tooltip="Titre, artiste, album… du fichier"
+              aria-label="Métadonnées"
+              aria-expanded={editing}
+              className={`rounded-md p-1 transition-colors hover:bg-gray-700 hover:text-white ${editing ? 'text-purple-300' : 'text-gray-400'}`}
+            >
+              <Pencil className="h-4 w-4" />
+            </TooltipButton>
+            <TooltipButton
               onClick={onDelete}
               tooltip="Supprimer définitivement"
               aria-label="Supprimer"
@@ -255,6 +314,8 @@ export default function TracksLibraryTrackRow({
           </>
         )}
       </div>
+
+      {editing && !missing && <MetaForm meta={track.meta ?? {}} onChange={meta => onEdit({ meta })} />}
 
       {active && preview && (
         <div className="mt-2 flex items-center gap-3 pl-11 text-xs text-gray-400">

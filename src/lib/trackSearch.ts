@@ -28,12 +28,12 @@ export class TrackSearch {
 
   constructor(tracks: SearchableTrack[]) {
     this.index = new MiniSearch({
-      fields: ['name', 'tags', 'type', 'folder'],
+      fields: ['name', 'tags', 'type', 'folder', 'title', 'artist', 'album', 'genre', 'comment'],
       storeFields: [],
       processTerm: term => fold(term),
       searchOptions: {
-        // Le nom pèse le plus ; les étiquettes sont ce qu’on cherche ensuite.
-        boost: { name: 3, tags: 2 },
+        // Le nom pèse le plus ; les étiquettes et le titre du fichier ensuite.
+        boost: { name: 3, tags: 2, title: 2 },
         prefix: true,
         // Une faute tolérée dès quatre lettres, deux au-delà de huit.
         fuzzy: term => (term.length >= 8 ? 0.25 : term.length >= 4 ? 0.2 : false),
@@ -47,6 +47,7 @@ export class TrackSearch {
         tags: track.tags.join(' '),
         type: track.type ? trackTypeLabel(track.type) : '',
         folder: parentPath(track.path).replace(/\//g, ' '),
+        ...track.meta,
       })),
     )
   }
