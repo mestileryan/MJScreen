@@ -182,25 +182,38 @@ function InlineTags({
   )
 }
 
-/** Un champ de métadonnée : enregistré à la perte du focus ou sur Entrée, Échap annule. */
-function MetaField({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
+/**
+ * Un champ de métadonnée : enregistré à la perte du focus ou sur Entrée, Échap annule.
+ * Le commentaire est une zone de texte : Entrée y fait un retour à la ligne.
+ */
+function MetaField({
+  label,
+  value,
+  multiline = false,
+  onChange,
+}: {
+  label: string
+  value: string
+  multiline?: boolean
+  onChange: (value: string) => void
+}) {
   const [draft, setDraft] = useState(value)
   const commit = () => {
     if (draft.trim() !== value) onChange(draft.trim())
   }
+  const keys = (e: KeyboardEvent) => {
+    if (e.key === 'Enter' && !multiline) commit()
+    if (e.key === 'Escape') setDraft(value)
+  }
+  const field = 'rounded-md bg-gray-900 px-2 py-1 text-sm text-white outline-none ring-purple-500 focus:ring-1'
   return (
     <label className="flex flex-col gap-0.5 text-xs text-gray-400">
       {label}
-      <input
-        value={draft}
-        onChange={e => setDraft(e.target.value)}
-        onBlur={commit}
-        onKeyDown={e => {
-          if (e.key === 'Enter') commit()
-          if (e.key === 'Escape') setDraft(value)
-        }}
-        className="rounded-md bg-gray-900 px-2 py-1 text-sm text-white outline-none ring-purple-500 focus:ring-1"
-      />
+      {multiline ? (
+        <textarea value={draft} onChange={e => setDraft(e.target.value)} onBlur={commit} onKeyDown={keys} rows={2} className={`${field} resize-y`} />
+      ) : (
+        <input value={draft} onChange={e => setDraft(e.target.value)} onBlur={commit} onKeyDown={keys} className={field} />
+      )}
     </label>
   )
 }
@@ -211,11 +224,15 @@ function MetaForm({ meta, onChange }: { meta: TrackMeta; onChange: (meta: TrackM
     const next = { ...meta, [key]: value || undefined }
     onChange(Object.fromEntries(Object.entries(next).filter(([, v]) => v !== undefined)) as TrackMeta)
   }
+  const short = META_FIELDS.filter(({ key }) => key !== 'comment')
   return (
-    <div className="mt-2 grid grid-cols-2 gap-2 pl-11 sm:grid-cols-5">
-      {META_FIELDS.map(({ key, label }) => (
-        <MetaField key={key} label={label} value={meta[key] ?? ''} onChange={value => set(key, value)} />
-      ))}
+    <div className="mt-2 space-y-2 pl-11">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        {short.map(({ key, label }) => (
+          <MetaField key={key} label={label} value={meta[key] ?? ''} onChange={value => set(key, value)} />
+        ))}
+      </div>
+      <MetaField label="Commentaire" value={meta.comment ?? ''} multiline onChange={value => set('comment', value)} />
     </div>
   )
 }
