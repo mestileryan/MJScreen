@@ -99,7 +99,7 @@ function TypeChip({ type, onChange }: { type?: TrackType; onChange: (type?: Trac
       }`}
     >
       <Shapes className="h-3 w-3" aria-hidden />
-      {type ? trackTypeLabel(type) : 'Type'}
+      <span className="hidden sm:inline">{type ? trackTypeLabel(type) : 'Type'}</span>
     </TooltipButton>
   )
 }
@@ -137,8 +137,9 @@ function InlineTags({
 
   return (
     <ul className="flex flex-wrap items-center justify-end gap-1">
+      {/* Sur téléphone, les puces céderaient toute la ligne : seule l’icône d’ajout reste. */}
       {tags.map(tag => (
-        <li key={tag} className="flex items-center gap-0.5 rounded-md bg-gray-700 py-0.5 pl-1.5 pr-0.5 text-xs text-gray-300">
+        <li key={tag} className="hidden items-center gap-0.5 rounded-md bg-gray-700 py-0.5 pl-1.5 pr-0.5 text-xs text-gray-300 sm:flex">
           {tag}
           <button
             type="button"
@@ -156,7 +157,7 @@ function InlineTags({
           ref={tooltip}
           className="inline-flex items-center gap-1 rounded-md px-1 py-0.5 text-gray-500 transition-colors focus-within:bg-gray-900 focus-within:text-gray-300 focus-within:ring-1 focus-within:ring-purple-500 hover:text-gray-300"
         >
-          <Plus className="h-3 w-3" aria-hidden />
+          <Plus className="hidden h-3 w-3 sm:inline" aria-hidden />
           <Tag className="h-3 w-3" aria-hidden />
           <input
             value={draft}
@@ -304,11 +305,12 @@ export default function TracksLibraryTrackRow({
           </>
         ) : (
           <>
-            <div className="hidden items-center gap-2 sm:flex">
+            <div className="flex items-center gap-2">
               <TypeChip type={track.type} onChange={type => onEdit({ type })} />
               <InlineTags tags={track.tags} suggestions={suggestions} listId={`tags-${track.id}`} onChange={tags => onEdit({ tags })} />
             </div>
-            <span className="w-12 text-right tabular-nums text-gray-400">
+            {/* Sur téléphone, la durée cède sa place au type et aux étiquettes. */}
+            <span className="hidden w-12 text-right tabular-nums text-gray-400 sm:inline">
               {track.duration !== undefined ? formatDuration(track.duration) : '–'}
             </span>
             <TooltipButton
