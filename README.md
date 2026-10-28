@@ -59,7 +59,10 @@ plusieurs **sources** : des dossiers de l'ordinateur aujourd'hui, Dropbox, Googl
 et OneDrive ensuite. La liste des pistes fusionne toutes les sources. Dans le jukebox, le
 « + » de la bibliothèque de playlists ouvre un sélecteur (recherche, dix pistes par page,
 dernières ajoutées d'abord) : la piste choisie est copiée dans le jukebox comme un fichier
-déposé.
+déposé. Dans l'autre sens, l'option « Proposer d'y ranger les pistes importées » (roue
+crantée, désactivée par défaut, grisée sans source) ouvre, à chaque import dans le jukebox
+d'une piste inconnue de la bibliothèque (empreinte), une proposition de l'y ajouter avec
+nom, type, étiquettes et métadonnées pré-remplies.
 
 Contrairement au jukebox, **aucune piste n'est stockée dans le navigateur**. Il ne retient
 que les sources branchées (IndexedDB, base `TracksSources` : handle du dossier, source

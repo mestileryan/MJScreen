@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState, type DragEvent, type MouseEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type DragEvent, type MouseEvent } from 'react'
 import {
   Archive,
   ChevronDown,
@@ -14,7 +14,14 @@ import {
 import PlaylistItems, { visibleItems } from './PlaylistItems'
 import PlaylistSettingsPanel, { isPlaylistTweaked } from './PlaylistSettingsPanel'
 import TooltipButton from './TooltipButton'
+import TracksLibraryOfferModal, { type OfferCandidate } from './TracksLibraryOfferModal'
 import TracksLibraryPicker from './TracksLibraryPicker'
+import { useLibraryPrefs } from '@/hooks/useLibraryPrefs'
+import { useTracksLibrary } from '@/hooks/useTracksLibrary'
+import { readAudioMeta } from '@/lib/audioMeta'
+import { sha256Hex } from '@/lib/fileHash'
+import { countTags } from '@/lib/trackSearch'
+import { SUGGESTED_TAGS } from '@/models/TracksLibraryIndex'
 import ImportFileDragOverlay from './ImportFileDragOverlay'
 import ViewModePlayerToggle from './ViewModePlayerToggle'
 import { useLibrary } from '@/context/LibraryContext'
@@ -105,6 +112,33 @@ export default function Library({ onPlayAudio, onOpenImage }: LibraryProps) {
   const [searchTerm, setSearchTerm] = useState('')
   // Le « + » ouvre le sélecteur de la bibliothèque de pistes (ou d'un fichier).
   const [pickerOpen, setPickerOpen] = useState(false)
+
+  // Option « proposer de ranger dans la bibliothèque » : la bibliothèque n'est
+  // ouverte ici que si elle est active, pour savoir ce qu'elle connaît déjà (empreintes).
+  const { offerToLibrary } = useLibraryPrefs()
+  const tracksLibrary = useTracksLibrary({ enabled: offerToLibrary })
+  // Les empreintes connues, lues depuis une tâche asynchrone : un ref, tenu à jour par effet.
+  const knownHashes = useRef(new Set<string>())
+  useEffect(() => {
+    knownHashes.current = new Set(tracksLibrary.tracks.map(t => t.track.hash).filter((h): h is string => !!h))
+  }, [tracksLibrary.tracks])
+  const [offers, setOffers] = useState<OfferCandidate[]>([])
+  const offerSuggestions = useMemo(() => {
+    const used = countTags(tracksLibrary.tracks.map(t => ({ key: t.track.id, track: t.track }))).map(t => t.value)
+    return [...used, ...SUGGESTED_TAGS.filter(s => !used.some(u => u.toLowerCase() === s.toLowerCase()))]
+  }, [tracksLibrary.tracks])
+
+  /** Après un import : les fichiers audio inconnus de la bibliothèque sont proposés, un par un. */
+  async function offerUnknown(files: File[]) {
+    const candidates: OfferCandidate[] = []
+    for (const file of files) {
+      if (!file.type.startsWith('audio/')) continue
+      const hash = await sha256Hex(file).catch(() => null)
+      if (!hash || knownHashes.current.has(hash)) continue
+      candidates.push({ file, hash, meta: await readAudioMeta(file) })
+    }
+    if (candidates.length) setOffers(current => [...current, ...candidates])
+  }
   const [editingPlaylistId, setEditingPlaylistId] = useState<number | null>(null)
   const [editingName, setEditingName] = useState('')
   const [settingsPlaylistId, setSettingsPlaylistId] = useState<number | null>(null)
@@ -233,6 +267,7 @@ export default function Library({ onPlayAudio, onOpenImage }: LibraryProps) {
     }
     playlistsRef.current = current
     setPlaylists(current)
+    if (offerToLibrary) void offerUnknown(files)
   }
 
   // ------------------------------------------------- dépôt ciblé de fichiers
@@ -781,6 +816,29 @@ export default function Library({ onPlayAudio, onOpenImage }: LibraryProps) {
       </ImportFileDragOverlay>
 
       {pickerOpen && <TracksLibraryPicker onPick={file => addFiles([file])} onClose={() => setPickerOpen(false)} />}
+
+      {offers[0] && (
+        <TracksLibraryOfferModal
+          key={offers[0].hash}
+          candidate={offers[0]}
+          target={tracksLibrary.state.step === 'ready' ? (tracksLibrary.state.sources.find(s => s.isDefault) ?? tracksLibrary.state.sources[0]) : undefined}
+          remaining={offers.length - 1}
+          suggestions={offerSuggestions}
+          onConfirm={async details => {
+            await tracksLibrary.addFiles([offers[0].file], details)
+            setOffers(current => current.slice(1))
+          }}
+          onSkip={() => setOffers(current => current.slice(1))}
+          sourceActions={{
+            onReopen: tracksLibrary.reopenSource,
+            onRefresh: tracksLibrary.refreshSource,
+            onInitialize: tracksLibrary.initializeSource,
+            onReset: tracksLibrary.resetSourceFile,
+            onRemove: tracksLibrary.removeSource,
+            onRemoveMissing: tracksLibrary.removeMissing,
+          }}
+        />
+      )}
     </div>
   )
 }

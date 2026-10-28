@@ -118,7 +118,15 @@ export function libraryTracks(sources: TracksSource[]): LibraryTrack[] {
  * locaux, comptes cloud). Chaque source est rouverte au démarrage, indexée, puis
  * complétée en arrière-plan (durées, empreintes pour repérer les doublons).
  */
-export function useTracksLibrary() {
+export interface UseTracksLibraryOptions {
+  /** Faux : rien n’est ouvert ni lu, l’état reste à `starting`. Pour n’ouvrir la bibliothèque qu’à bon escient. */
+  enabled?: boolean
+}
+
+/** Champs posés sur une piste ajoutée, en plus de ce que le fichier donne. */
+export type AddedTrackDetails = Partial<Pick<IndexedTrack, 'name' | 'type' | 'tags' | 'meta' | 'hash'>>
+
+export function useTracksLibrary({ enabled = true }: UseTracksLibraryOptions = {}) {
   // Toujours `starting` au premier rendu : le HTML pré-rendu ne sait rien du
   // navigateur, la détection se fait après hydratation.
   const [state, setState] = useState<TracksLibraryState>({ step: 'starting' })
@@ -309,6 +317,7 @@ export function useTracksLibrary() {
   // Au démarrage : d’abord un éventuel retour de connexion cloud, puis chaque source
   // mémorisée est rouverte si on en a encore l’accès ; sinon il faudra un clic.
   useEffect(() => {
+    if (!enabled) return
     let cancelled = false
     void (async () => {
       const localAvailable = isLocalFolderSupported()
@@ -354,7 +363,7 @@ export function useTracksLibrary() {
     return () => {
       cancelled = true
     }
-  }, [finishCloudConnection, openSource])
+  }, [enabled, finishCloudConnection, openSource])
 
   const run = useCallback(async (action: () => Promise<void>) => {
     setNotice(null)
@@ -467,7 +476,7 @@ export function useTracksLibrary() {
    * indexés aussitôt, puis durée et empreinte (et étiquette « doublon ») en fond.
    */
   const addFiles = useCallback(
-    (files: File[]) =>
+    (files: File[], details?: AddedTrackDetails) =>
       run(async () => {
         const target = sourcesRef.current.find(s => s.isDefault) ?? sourcesRef.current[0]
         if (!target) throw new Error('Aucune source branchée.')
@@ -478,12 +487,14 @@ export function useTracksLibrary() {
         setAdding({ done: 0, total: files.length, label: target.label })
         try {
           const result = await addTrackFiles(target.status.library, files)
+          // Ce que l’appelant sait déjà de la piste (saisi, ou lu du fichier) : posé tout de suite.
+          const library = details && result.added.length ? await updateTracks(result.library, result.added.map(t => ({ ...t, ...details }))) : result.library
           const again = findSource(target.id)
           if (again?.status.step !== 'ready') return
           patchSource(target.id, {
             status: {
               ...again.status,
-              library: result.library,
+              library,
               usedBytes: again.status.usedBytes + result.added.reduce((sum, t) => sum + (t.size ?? 0), 0),
             },
           })

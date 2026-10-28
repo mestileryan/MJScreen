@@ -1,7 +1,9 @@
 'use client'
 
-import { useState, type ChangeEvent } from 'react'
+import { useEffect, useState, type ChangeEvent } from 'react'
 import { CircleX, LoaderCircle } from 'lucide-react'
+import { useLibraryPrefs } from '@/hooks/useLibraryPrefs'
+import { DB_GetTracksSources } from '@/persistance/TracksSourceService'
 import {
   clearLibrary,
   exportLibrary,
@@ -27,19 +29,28 @@ interface SettingsModalProps {
 function Switch({
   label,
   checked,
+  disabled = false,
+  title,
   onChange,
 }: {
   label: string
   checked: boolean
+  /** Grisé, avec `title` pour dire pourquoi. */
+  disabled?: boolean
+  title?: string
   onChange: (checked: boolean) => void
 }) {
   return (
-    <label className="flex cursor-pointer items-center justify-between gap-3 text-sm text-gray-200">
+    <label
+      title={title}
+      className={`flex items-center justify-between gap-3 text-sm text-gray-200 ${disabled ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'}`}
+    >
       <span>{label}</span>
       <button
         type="button"
         role="switch"
         aria-checked={checked}
+        disabled={disabled}
         onClick={() => onChange(!checked)}
         className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${
           checked ? 'bg-purple-600' : 'bg-gray-600'
@@ -73,6 +84,19 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const { layoutWidth, setLayoutWidth, lightMode, setLightMode } = useDisplayPrefs()
+  const { offerToLibrary, setOfferToLibrary } = useLibraryPrefs()
+  // Y a-t-il au moins une source branchée ? Lu à l'ouverture de la modale.
+  const [hasSources, setHasSources] = useState(false)
+  useEffect(() => {
+    if (!isOpen) return
+    let alive = true
+    DB_GetTracksSources()
+      .then(rows => alive && setHasSources(rows.length > 0))
+      .catch(() => undefined)
+    return () => {
+      alive = false
+    }
+  }, [isOpen])
 
   // Génère l'archive et déclenche le téléchargement
   async function triggerExport() {
@@ -193,6 +217,21 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                   ))}
                 </select>
               </label>
+            </div>
+
+            {/* Lien avec la bibliothèque de pistes. L'option n'a de sens qu'avec une
+                source branchée : sinon elle reste grisée, et dit pourquoi. */}
+            <div className="mb-5 flex flex-col gap-2 border-b border-gray-700 pb-5">
+              <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">
+                Bibliothèque de pistes
+              </p>
+              <Switch
+                label="Proposer d'y ranger les pistes importées"
+                checked={offerToLibrary && hasSources}
+                disabled={!hasSources}
+                title={hasSources ? 'À chaque import dans le jukebox, propose d’ajouter la piste à la bibliothèque si elle n’y est pas déjà' : 'Branchez d’abord une source dans la page Bibliothèque'}
+                onChange={setOfferToLibrary}
+              />
             </div>
 
             <div className="flex flex-col gap-3">
