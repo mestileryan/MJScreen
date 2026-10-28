@@ -14,7 +14,7 @@ import {
 import PlaylistItems, { visibleItems } from './PlaylistItems'
 import PlaylistSettingsPanel, { isPlaylistTweaked } from './PlaylistSettingsPanel'
 import TooltipButton from './TooltipButton'
-import Uploader from './Uploader'
+import TracksLibraryPicker from './TracksLibraryPicker'
 import ImportFileDragOverlay from './ImportFileDragOverlay'
 import ViewModePlayerToggle from './ViewModePlayerToggle'
 import { useLibrary } from '@/context/LibraryContext'
@@ -103,6 +103,8 @@ export default function Library({ onPlayAudio, onOpenImage }: LibraryProps) {
     falseValue: 'soundboard',
   })
   const [searchTerm, setSearchTerm] = useState('')
+  // Le « + » ouvre le sélecteur de la bibliothèque de pistes (ou d'un fichier).
+  const [pickerOpen, setPickerOpen] = useState(false)
   const [editingPlaylistId, setEditingPlaylistId] = useState<number | null>(null)
   const [editingName, setEditingName] = useState('')
   const [settingsPlaylistId, setSettingsPlaylistId] = useState<number | null>(null)
@@ -498,7 +500,16 @@ export default function Library({ onPlayAudio, onOpenImage }: LibraryProps) {
             {/* Le dépôt de fichiers sur une playlist a remplacé l'astuce du
                 préfixe « Playlist -- » ; le routage par nom reste géré, sans
                 être mis en avant. */}
-            {!gameMode && <Uploader onFileSelected={file => void addFiles([file])} />}
+            {!gameMode && (
+              <TooltipButton
+                onClick={() => setPickerOpen(true)}
+                tooltip="Ajouter une piste depuis la bibliothèque ou un fichier"
+                aria-label="Ajouter une piste"
+                className="flex w-8 items-center justify-center rounded-lg bg-purple-600 px-2 py-1 transition-colors hover:bg-purple-500"
+              >
+                <Plus />
+              </TooltipButton>
+            )}
           </div>
           <div className="flex min-w-0 flex-1 items-center justify-end gap-2">
             <input
@@ -768,6 +779,8 @@ export default function Library({ onPlayAudio, onOpenImage }: LibraryProps) {
           </div>
         )}
       </ImportFileDragOverlay>
+
+      {pickerOpen && <TracksLibraryPicker onPick={file => addFiles([file])} onClose={() => setPickerOpen(false)} />}
     </div>
   )
 }

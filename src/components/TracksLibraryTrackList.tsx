@@ -1,6 +1,6 @@
 'use client'
 
-import { ChevronLeft, ChevronRight, Search } from 'lucide-react'
+import { Search } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useRecentTags } from '@/hooks/useRecentTags'
 import { useTrackPreview } from '@/hooks/useTrackPreview'
@@ -9,62 +9,13 @@ import { countTags, NO_FILTERS, sameTag, selectTracks, TrackSearch, type TrackFi
 import { SUGGESTED_TAGS, type IndexedTrack } from '@/models/TracksLibraryIndex'
 import ConfirmationModal from './ConfirmationModal'
 import TracksLibraryFilters from './TracksLibraryFilters'
+import TracksLibraryPagination, { pageFor } from './TracksLibraryPagination'
 import TracksLibraryTrackRow from './TracksLibraryTrackRow'
 
 export type TrackPatch = Partial<Pick<IndexedTrack, 'name' | 'tags' | 'type' | 'meta'>>
 
 /** Pistes par page. */
 const PAGE_SIZE = 50
-
-/** Numéros à afficher : la première, la dernière, la courante et ses voisines ; `null` marque un trou. */
-function pageNumbers(page: number, pageCount: number): (number | null)[] {
-  const wanted = new Set([1, pageCount, page - 1, page, page + 1].filter(p => p >= 1 && p <= pageCount))
-  const numbers: (number | null)[] = []
-  for (let p = 1; p <= pageCount; p++) {
-    if (wanted.has(p)) numbers.push(p)
-    else if (numbers[numbers.length - 1] !== null) numbers.push(null)
-  }
-  return numbers
-}
-
-interface PaginationProps {
-  page: number
-  pageCount: number
-  total: number
-  onChange: (page: number) => void
-}
-
-function Pagination({ page, pageCount, total, onChange }: PaginationProps) {
-  const button = 'rounded-lg px-2.5 py-1 text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-40'
-  return (
-    <nav aria-label="Pages" className="flex flex-wrap items-center justify-center gap-1 text-sm text-gray-400">
-      <button type="button" onClick={() => onChange(page - 1)} disabled={page === 1} aria-label="Page précédente" className={`${button} hover:bg-gray-700 hover:text-white`}>
-        <ChevronLeft className="h-4 w-4" />
-      </button>
-      {pageNumbers(page, pageCount).map((n, i) =>
-        n === null ? (
-          <span key={`gap-${i}`} className="px-1">
-            …
-          </span>
-        ) : (
-          <button
-            key={n}
-            type="button"
-            onClick={() => onChange(n)}
-            aria-current={n === page ? 'page' : undefined}
-            className={`${button} ${n === page ? 'bg-purple-600 text-on-accent' : 'hover:bg-gray-700 hover:text-white'}`}
-          >
-            {n}
-          </button>
-        ),
-      )}
-      <button type="button" onClick={() => onChange(page + 1)} disabled={page === pageCount} aria-label="Page suivante" className={`${button} hover:bg-gray-700 hover:text-white`}>
-        <ChevronRight className="h-4 w-4" />
-      </button>
-      <span className="ml-2 text-xs text-gray-500">{total} pistes</span>
-    </nav>
-  )
-}
 
 interface TracksLibraryTrackListProps {
   tracks: LibraryTrack[]
@@ -95,9 +46,8 @@ export default function TracksLibraryTrackList({ tracks, sources, onEdit, onDele
   // centaines de pistes, c’est instantané, et rien n’est à garder.
   const search = useMemo(() => new TrackSearch(items), [items])
   const matching = useMemo(() => selectTracks(items, search, query, filters), [items, search, query, filters])
-  const pageCount = Math.max(1, Math.ceil(matching.length / PAGE_SIZE))
-  const page = Math.min(paging.signature === signature ? paging.page : 1, pageCount)
-  const visible = matching.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+  const { page, pageCount, slice } = pageFor(paging, signature, matching.length, PAGE_SIZE)
+  const visible = slice(matching)
   /** Étiquettes proposées à la saisie : celles en usage, plus quelques univers classiques. */
   const suggestions = useMemo(() => {
     const used = countTags(items).map(t => t.value)
@@ -171,7 +121,7 @@ export default function TracksLibraryTrackList({ tracks, sources, onEdit, onDele
         </ul>
       )}
 
-      {pageCount > 1 && <Pagination page={page} pageCount={pageCount} total={matching.length} onChange={setPage} />}
+      <TracksLibraryPagination page={page} pageCount={pageCount} total={matching.length} onChange={setPage} />
 
       {deleting && (
         <ConfirmationModal

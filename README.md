@@ -56,8 +56,10 @@ Les tests (`src/**/*.test.ts`) tournent sous Node : IndexedDB est imité par
 
 Page autonome, servie sur `/MJScreen/trackslibrary/`. Une seule bibliothèque, faite de
 plusieurs **sources** : des dossiers de l'ordinateur aujourd'hui, Dropbox, Google Drive
-et OneDrive ensuite. La liste des pistes fusionne toutes les sources ; le jukebox s'en
-servira plus tard pour ajouter des pistes.
+et OneDrive ensuite. La liste des pistes fusionne toutes les sources. Dans le jukebox, le
+« + » de la bibliothèque de playlists ouvre un sélecteur (recherche, dix pistes par page,
+dernières ajoutées d'abord) : la piste choisie est copiée dans le jukebox comme un fichier
+déposé.
 
 Contrairement au jukebox, **aucune piste n'est stockée dans le navigateur**. Il ne retient
 que les sources branchées (IndexedDB, base `TracksSources` : handle du dossier, source
