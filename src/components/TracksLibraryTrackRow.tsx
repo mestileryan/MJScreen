@@ -1,6 +1,6 @@
 'use client'
 
-import { FileQuestion, ListX, Music, Pause, Play, Plus, Tag, Trash2, Volume2, X } from 'lucide-react'
+import { FileQuestion, ListX, Music, Pause, Play, Plus, Shapes, Tag, Trash2, Volume2, X } from 'lucide-react'
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
 import { useTooltip } from '@/hooks/useTooltip'
 import type { PreviewState } from '@/hooks/useTrackPreview'
@@ -85,10 +85,11 @@ function TypeChip({ type, onChange }: { type?: TrackType; onChange: (type?: Trac
       onClick={next}
       tooltip="Sélectionner un type"
       aria-label="Sélectionner un type"
-      className={`inline-flex shrink-0 items-center rounded px-1.5 py-0.5 text-xs transition-colors hover:bg-purple-800/60 ${
+      className={`inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-xs transition-colors hover:bg-purple-800/60 ${
         type ? 'bg-purple-900/60 text-purple-200' : 'bg-purple-900/30 text-purple-300/70'
       }`}
     >
+      <Shapes className="h-3 w-3" aria-hidden />
       {type ? trackTypeLabel(type) : 'Type'}
     </TooltipButton>
   )
@@ -128,7 +129,7 @@ function InlineTags({
   return (
     <ul className="flex flex-wrap items-center justify-end gap-1">
       {tags.map(tag => (
-        <li key={tag} className="flex items-center gap-0.5 rounded bg-gray-700 py-0.5 pl-1.5 pr-0.5 text-xs text-gray-300">
+        <li key={tag} className="flex items-center gap-0.5 rounded-md bg-gray-700 py-0.5 pl-1.5 pr-0.5 text-xs text-gray-300">
           {tag}
           <button
             type="button"
@@ -144,7 +145,7 @@ function InlineTags({
         {/* Pas de texte : le + et l’étiquette suffisent ; le champ ne s’ouvre qu’à la saisie. */}
         <label
           ref={tooltip}
-          className="inline-flex items-center gap-1 rounded px-1 py-0.5 text-gray-500 transition-colors focus-within:bg-gray-900 focus-within:text-gray-300 focus-within:ring-1 focus-within:ring-purple-500 hover:text-gray-300"
+          className="inline-flex items-center gap-1 rounded-md px-1 py-0.5 text-gray-500 transition-colors focus-within:bg-gray-900 focus-within:text-gray-300 focus-within:ring-1 focus-within:ring-purple-500 hover:text-gray-300"
         >
           <Plus className="h-3 w-3" aria-hidden />
           <Tag className="h-3 w-3" aria-hidden />
@@ -223,7 +224,7 @@ export default function TracksLibraryTrackRow({
             {track.tags.length > 0 && (
               <ul className="hidden gap-1 sm:flex">
                 {track.tags.map(tag => (
-                  <li key={tag} className="rounded bg-gray-700 px-1.5 py-0.5 text-xs text-gray-300">
+                  <li key={tag} className="rounded-md bg-gray-700 px-1.5 py-0.5 text-xs text-gray-300">
                     {tag}
                   </li>
                 ))}

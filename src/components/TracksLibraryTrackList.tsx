@@ -1,6 +1,6 @@
 'use client'
 
-import { Search } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Search } from 'lucide-react'
 import { useMemo, useState } from 'react'
 import { useRecentTags } from '@/hooks/useRecentTags'
 import { useTrackPreview } from '@/hooks/useTrackPreview'
@@ -12,6 +12,59 @@ import TracksLibraryFilters from './TracksLibraryFilters'
 import TracksLibraryTrackRow from './TracksLibraryTrackRow'
 
 export type TrackPatch = Partial<Pick<IndexedTrack, 'name' | 'tags' | 'type'>>
+
+/** Pistes par page. */
+const PAGE_SIZE = 50
+
+/** Numéros à afficher : la première, la dernière, la courante et ses voisines ; `null` marque un trou. */
+function pageNumbers(page: number, pageCount: number): (number | null)[] {
+  const wanted = new Set([1, pageCount, page - 1, page, page + 1].filter(p => p >= 1 && p <= pageCount))
+  const numbers: (number | null)[] = []
+  for (let p = 1; p <= pageCount; p++) {
+    if (wanted.has(p)) numbers.push(p)
+    else if (numbers[numbers.length - 1] !== null) numbers.push(null)
+  }
+  return numbers
+}
+
+interface PaginationProps {
+  page: number
+  pageCount: number
+  total: number
+  onChange: (page: number) => void
+}
+
+function Pagination({ page, pageCount, total, onChange }: PaginationProps) {
+  const button = 'rounded-lg px-2.5 py-1 text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-40'
+  return (
+    <nav aria-label="Pages" className="flex flex-wrap items-center justify-center gap-1 text-sm text-gray-400">
+      <button type="button" onClick={() => onChange(page - 1)} disabled={page === 1} aria-label="Page précédente" className={`${button} hover:bg-gray-700 hover:text-white`}>
+        <ChevronLeft className="h-4 w-4" />
+      </button>
+      {pageNumbers(page, pageCount).map((n, i) =>
+        n === null ? (
+          <span key={`gap-${i}`} className="px-1">
+            …
+          </span>
+        ) : (
+          <button
+            key={n}
+            type="button"
+            onClick={() => onChange(n)}
+            aria-current={n === page ? 'page' : undefined}
+            className={`${button} ${n === page ? 'bg-purple-600 text-on-accent' : 'hover:bg-gray-700 hover:text-white'}`}
+          >
+            {n}
+          </button>
+        ),
+      )}
+      <button type="button" onClick={() => onChange(page + 1)} disabled={page === pageCount} aria-label="Page suivante" className={`${button} hover:bg-gray-700 hover:text-white`}>
+        <ChevronRight className="h-4 w-4" />
+      </button>
+      <span className="ml-2 text-xs text-gray-500">{total} pistes</span>
+    </nav>
+  )
+}
 
 interface TracksLibraryTrackListProps {
   tracks: LibraryTrack[]
@@ -28,19 +81,23 @@ export default function TracksLibraryTrackList({ tracks, sources, onEdit, onDele
   const [query, setQuery] = useState('')
   const [filters, setFiltersState] = useState<TrackFilters>(NO_FILTERS)
   const { recent: recentTags, touch } = useRecentTags()
-  const [sourceFilter, setSourceFilter] = useState<number | null>(null)
   const [deleting, setDeleting] = useState<LibraryTrack | null>(null)
   const { preview, volume, toggle, stop, seek, setVolume } = useTrackPreview()
   const multiSource = sources.length > 1
+  // Pagination : la page est liée à la recherche et aux filtres en cours, pour
+  // revenir à la première dès qu’ils changent, sans effet ni état superflu.
+  const signature = `${query}\u0000${JSON.stringify(filters)}`
+  const [paging, setPaging] = useState({ signature, page: 1 })
+  const setPage = (page: number) => setPaging({ signature, page })
 
   const items = useMemo<Item[]>(() => tracks.map(t => ({ ...t, key: `${t.source.id}:${t.track.id}` })), [tracks])
   // L’index de recherche est refait à chaque changement de liste : pour quelques
   // centaines de pistes, c’est instantané, et rien n’est à garder.
   const search = useMemo(() => new TrackSearch(items), [items])
-  const visible = useMemo(
-    () => selectTracks(items, search, query, filters).filter(item => sourceFilter === null || item.source.id === sourceFilter),
-    [items, search, query, filters, sourceFilter],
-  )
+  const matching = useMemo(() => selectTracks(items, search, query, filters), [items, search, query, filters])
+  const pageCount = Math.max(1, Math.ceil(matching.length / PAGE_SIZE))
+  const page = Math.min(paging.signature === signature ? paging.page : 1, pageCount)
+  const visible = matching.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
   /** Étiquettes proposées à la saisie : celles en usage, plus quelques univers classiques. */
   const suggestions = useMemo(() => {
     const used = countTags(items).map(t => t.value)
@@ -76,7 +133,7 @@ export default function TracksLibraryTrackList({ tracks, sources, onEdit, onDele
   return (
     <section className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
-        <label className="flex min-w-60 flex-1 items-center gap-2 rounded bg-gray-800 px-3 py-2 text-sm">
+        <label className="flex min-w-60 flex-1 items-center gap-2 rounded-lg bg-gray-800 px-3 py-2 text-sm">
           <Search className="h-4 w-4 text-gray-400" />
           <input
             type="search"
@@ -86,26 +143,11 @@ export default function TracksLibraryTrackList({ tracks, sources, onEdit, onDele
             className="w-full bg-transparent text-white outline-none placeholder:text-gray-500"
           />
         </label>
-        {multiSource && (
-          <select
-            value={sourceFilter ?? ''}
-            onChange={event => setSourceFilter(event.target.value === '' ? null : Number(event.target.value))}
-            aria-label="Filtrer par source"
-            className="rounded bg-gray-800 px-2 py-2 text-sm text-gray-300 outline-none"
-          >
-            <option value="">Toutes les sources</option>
-            {sources.map(source => (
-              <option key={source.id} value={source.id}>
-                {source.label}
-              </option>
-            ))}
-          </select>
-        )}
       </div>
 
       <TracksLibraryFilters tracks={items} filters={filters} recentTags={recentTags} onChange={setFilters} />
 
-      {visible.length === 0 ? (
+      {matching.length === 0 ? (
         <p className="px-3 text-sm text-gray-400">Aucune piste ne correspond.</p>
       ) : (
         <ul className="divide-y divide-gray-700 rounded-lg bg-gray-800">
@@ -128,6 +170,8 @@ export default function TracksLibraryTrackList({ tracks, sources, onEdit, onDele
           ))}
         </ul>
       )}
+
+      {pageCount > 1 && <Pagination page={page} pageCount={pageCount} total={matching.length} onChange={setPage} />}
 
       {deleting && (
         <ConfirmationModal
